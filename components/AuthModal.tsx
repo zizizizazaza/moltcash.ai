@@ -30,8 +30,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
                         onClick={onLogin}
                         className="w-full flex items-center justify-center gap-3 py-3.5 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-2xl text-sm font-bold text-black transition-all"
                     >
-                        <span className="text-lg">✉</span> Continue with Email
+                        <span className="text-lg font-serif tracking-tighter">𝕏</span> Continue with X
                     </button>
+
+
 
                     <div className="relative flex items-center py-4">
                         <div className="flex-grow border-t border-gray-100"></div>

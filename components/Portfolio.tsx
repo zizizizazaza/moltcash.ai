@@ -22,7 +22,13 @@ const generateChartData = () => {
 
 const chartData = generateChartData();
 
-const Portfolio: React.FC = () => {
+interface PortfolioProps {
+  isWalletConnected?: boolean;
+  onConnect?: () => void;
+  onSettingsClick?: () => void;
+}
+
+const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConnect, onSettingsClick }) => {
   const [balance] = useState(12450.88);
   const [yieldAccumulated, setYieldAccumulated] = useState(0.00012);
   const [isHidden, setIsHidden] = useState(false);
@@ -55,96 +61,151 @@ const Portfolio: React.FC = () => {
 
   const filteredChartData = getFilteredData();
 
+  if (!isWalletConnected) {
+    return (
+      <div className="max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-fadeIn">
+        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+          <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-black text-black">Authentication Required</h2>
+          <p className="text-sm font-medium text-gray-400 max-w-sm mx-auto leading-relaxed">
+            Please connect your wallet to access your portfolio positions, track yields, and review transaction history.
+          </p>
+        </div>
+        <button
+          onClick={onConnect}
+          className="mt-6 px-8 py-3 bg-black text-white rounded-full text-xs font-bold tracking-widest  hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl active:scale-95"
+        >
+          Connect Wallet
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto animate-fadeIn pb-24 px-4 space-y-10">
 
-      {/* 1. Global Header */}
-      <header className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-1">{greeting},</p>
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-black border-r border-gray-100 pr-3">
-              {walletAddress.slice(0, 4)}{walletAddress.slice(-3)}
-            </h2>
-            <div
-              onClick={handleCopy}
-              className="flex items-center gap-1.5 cursor-pointer group"
-              title="Copy Address"
-            >
-              <span className="text-[10px] font-mono text-gray-400 font-medium group-hover:text-black transition-colors">
-                {walletAddress.slice(0, 10)}...{walletAddress.slice(-8)}
-              </span>
-              <div className="flex items-center justify-center p-1 rounded bg-gray-50 group-hover:bg-gray-100 transition-colors">
-                {copied ? (
-                  <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                ) : (
-                  <svg className="w-3 h-3 text-gray-400 group-hover:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* TWO COLUMN PORTFOLIO HERO LAYOUT */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-6 pb-6">
 
-      {/* TOP SECTION: Net Worth Balance & Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-6">
+        {/* --- Left Card: Profile & Overview --- */}
+        <div className="md:col-span-5 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between space-y-6">
 
-        {/* Left: Numbers */}
-        <div className="flex flex-col">
-          <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">Net Worth</p>
-          <div className="flex flex-col gap-2">
-            <h1
-              onClick={() => setIsHidden(!isHidden)}
-              className="text-4xl md:text-5xl font-bold tracking-tight text-black cursor-pointer select-none transition-all hover:opacity-80"
-            >
-              {isHidden ? '••••••••' : `$${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-            </h1>
-
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Yield</span>
-                <div className="flex items-center gap-1 font-mono text-green-500 font-bold">
-                  <span>+</span>
-                  <span>$</span>
-                  <span className="tabular-nums">340.00</span>
+          {/* User Profile */}
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              {/* Gradiant Avatar Mock */}
+              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0" />
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black text-black tracking-tight">{walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}</h2>
+                  <button onClick={handleCopy} className="text-gray-400 hover:text-black transition-colors" title="Copy Address">
+                    {copied ? (
+                      <svg className="w-4 h-4 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    )}
+                  </button>
                 </div>
+                <p className="text-[11px] font-medium text-gray-400">Joined Nov {new Date().getFullYear()} <span className="mx-1">•</span> Web3 Investor</p>
               </div>
-              <p className="text-[11px] font-bold text-gray-400 tracking-tight bg-gray-50 px-2 py-1 rounded-md mt-4">Today's Return: +$5.24</p>
+            </div>
+
+            <button
+              onClick={onSettingsClick}
+              className="p-2 text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors shrink-0"
+              title="Account Settings"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </button>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="flex justify-between items-center py-2 border-y border-gray-50/80">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Net Worth</span>
+              <span className="text-lg font-black text-black">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="w-px h-8 bg-gray-100"></div>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Total Yield</span>
+              <span className="text-lg font-black text-[#00E676]">+$340.00</span>
+            </div>
+            <div className="w-px h-8 bg-gray-100"></div>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Assets</span>
+              <span className="text-lg font-black text-black">4</span>
             </div>
           </div>
-        </div>
 
-        {/* Right: Inline Chart & Timeframe Toggles */}
-        <div className="flex flex-col items-end w-full">
-          <div className="flex bg-gray-50/80 p-1 rounded-full border border-gray-100 mb-2 gap-1">
-            {['7D', '30D', '3M', 'ALL'].map(t => (
-              <button
-                key={t}
-                onClick={() => setTimeframe(t)}
-                className={`px-4 py-1.5 text-[10px] font-bold rounded-full transition-all ${timeframe === t ? 'bg-white text-black shadow-sm border border-gray-200/50' : 'text-gray-400 hover:text-black'}`}
-              >
-                {t}
-              </button>
-            ))}
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }))}
+              className="w-full py-2.5 bg-transparent border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-500 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+              Deposit
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'withdraw' }))}
+              className="w-full py-2.5 bg-transparent border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-500 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+              Withdraw
+            </button>
           </div>
 
-          <div className="h-[120px] w-full">
+        </div>
+
+        {/* --- Right Card: Chart & History --- */}
+        <div className="md:col-span-7 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between">
+
+          {/* Chart Header */}
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#00E676] animate-pulse"></div>
+                <span className="text-[10px] text-gray-500 font-bold tracking-widest ">Profit / Loss</span>
+              </div>
+              <h2 className="text-3xl font-black text-black">+${(340.00).toFixed(2)}</h2>
+              <p className="text-[11px] font-bold text-gray-400 mt-1  tracking-widest">{timeframe === 'ALL' ? 'All Time' : `Past ${timeframe}`}</p>
+            </div>
+
+            {/* Toggles */}
+            <div className="flex bg-gray-50 p-1 rounded-full border border-gray-100 gap-0.5">
+              {['7D', '30D', '3M', 'ALL'].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTimeframe(t)}
+                  className={`px-3.5 py-1.5 text-[10px] font-black rounded-full transition-all ${timeframe === t ? 'bg-white text-black shadow-sm border border-gray-200/50' : 'text-gray-400 hover:text-black'}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Chart Container */}
+          <div className="h-[150px] w-full mt-6 -mx-1">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={filteredChartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#00E676" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#00E676" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                 <XAxis
                   dataKey="timestamp"
                   type="number"
                   domain={['dataMin', 'dataMax']}
                   axisLine={false}
                   tickLine={false}
-                  minTickGap={20}
+                  minTickGap={30}
                   tickFormatter={(tick) => {
                     const date = new Date(tick);
                     if (timeframe === '7D') return date.toLocaleDateString('en-US', { weekday: 'short' });
@@ -154,13 +215,14 @@ const Portfolio: React.FC = () => {
                   tick={{ fontSize: 9, fill: '#9CA3AF', fontWeight: 'bold' }}
                   dy={5}
                 />
-                <YAxis domain={['dataMin - 500', 'dataMax + 100']} hide />
+                <YAxis domain={['dataMin - 200', 'dataMax + 100']} hide />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       return (
-                        <div className="bg-black text-white p-2 rounded-xl border border-white/10 shadow-2xl backdrop-blur-md">
-                          <p className="text-[11px] font-bold">${payload[0].value?.toLocaleString()}</p>
+                        <div className="bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-xl">
+                          <p className="text-[10px] text-gray-400 font-bold mb-0.5  tracking-widest">{new Date(payload[0].payload.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                          <p className="text-sm font-black text-black">${payload[0].value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
                       );
                     }
@@ -170,15 +232,16 @@ const Portfolio: React.FC = () => {
                 <Area
                   type="monotone"
                   dataKey="total"
-                  stroke="#22c55e"
+                  stroke="#00E676"
                   fillOpacity={1}
                   fill="url(#colorTotal)"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   animationDuration={800}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+
         </div>
       </div>
 
@@ -240,6 +303,7 @@ const Portfolio: React.FC = () => {
                 <AllocationCard
                   title="ComputeDAO - GPU Expansion"
                   desc="Active Yield Strategy"
+                  statusBadge={<span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-[9px] font-black">Funded</span>}
                   apy="15.5% APY · 60d"
                   amount="$5,000.00"
                   earnings="+$387.50"
@@ -248,30 +312,6 @@ const Portfolio: React.FC = () => {
                     window.dispatchEvent(new CustomEvent('loka-nav-market'));
                     setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
                   }}
-                  action={
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.dispatchEvent(new CustomEvent('loka-nav-market'));
-                          setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
-                        }}
-                        className="px-4 py-1.5 bg-gray-100/80 text-black text-[11px] font-bold rounded-full hover:bg-gray-200 transition-colors shadow-sm"
-                      >
-                        Add
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.dispatchEvent(new CustomEvent('loka-nav-market'));
-                          setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
-                        }}
-                        className="px-4 py-1.5 bg-black text-white text-[11px] font-bold rounded-full hover:bg-gray-800 transition-colors shadow-sm"
-                      >
-                        Sell
-                      </button>
-                    </div>
-                  }
                 />
               </div>
             </section>
@@ -322,7 +362,7 @@ const ActionButton: React.FC<{ label: string; sub: string; icon: React.ReactNode
       {icon}
     </div>
     <span className="text-xs font-bold tracking-tight">{label}</span>
-    <span className={`text-[9px] font-medium opacity-50 uppercase tracking-widest mt-1 ${primary ? 'text-gray-400' : 'text-gray-500'}`}>{sub}</span>
+    <span className={`text-[9px] font-medium opacity-50  tracking-widest mt-1 ${primary ? 'text-gray-400' : 'text-gray-500'}`}>{sub}</span>
   </button>
 );
 
@@ -336,7 +376,8 @@ const AllocationCard: React.FC<{
   progress?: string;
   action?: React.ReactNode;
   onClick?: () => void;
-}> = ({ title, desc, apy, amount, earnings, icon, progress, action, onClick }) => (
+  statusBadge?: React.ReactNode;
+}> = ({ title, desc, apy, amount, earnings, icon, progress, action, onClick, statusBadge }) => (
   <div onClick={onClick} className="glass p-6 rounded-[32px] bg-white flex items-center justify-between hover:border-black/20 transition-all cursor-pointer group shadow-sm border-gray-100">
     <div className="flex items-center gap-5">
       <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white transition-all">
@@ -345,7 +386,8 @@ const AllocationCard: React.FC<{
       <div>
         <div className="flex items-center gap-2">
           <h5 className="text-sm font-bold text-black">{title}</h5>
-          <span className="text-[9px] font-bold text-gray-400 tracking-tighter uppercase">({desc})</span>
+          <span className="text-[9px] font-bold text-gray-400 tracking-tighter ">({desc})</span>
+          {statusBadge}
         </div>
         <p className="text-[11px] text-gray-500 font-medium mt-0.5">{apy}</p>
         {progress && <p className="text-[10px] text-orange-500 font-bold mt-1 tracking-tight">{progress}</p>}

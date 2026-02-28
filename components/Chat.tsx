@@ -5,6 +5,10 @@ import { Icons } from '../constants';
 const Chat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
     const [inputText, setInputText] = useState('');
+    const [chatHistory, setChatHistory] = useState<{ id: number, title: string }[]>([]);
+    const [editingChatId, setEditingChatId] = useState<number | null>(null);
+    const [editChatTitle, setEditChatTitle] = useState('');
+    const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
     const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
     const [sidebarTab, setSidebarTab] = useState<'recommend' | 'portfolio'>('recommend');
     const [activeForm, setActiveForm] = useState<'buy' | 'sell' | 'deposit' | 'withdraw' | null>(null);
@@ -213,16 +217,104 @@ const Chat: React.FC = () => {
                 >
                     <div className="px-6 mb-6 min-w-[18rem]">
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Chat History</h2>
+                            <h2 className="text-sm font-bold text-gray-400  tracking-widest">Chat History</h2>
                         </div>
-                        <button className="w-full py-3 px-4 rounded-xl border border-black/10 text-black font-bold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                        <button
+                            onClick={() => {
+                                if (messages.length > 0) {
+                                    const title = messages.find(m => m.role === 'user')?.content || 'New Conversation';
+                                    setChatHistory(prev => [{ id: Date.now(), title }, ...prev]);
+                                }
+                                setMessages([]);
+                            }}
+                            className="w-full py-3 px-4 rounded-xl border border-black/10 text-black font-bold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                        >
                             <Icons.Plus />
                             New chat
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-4 flex flex-col items-center justify-center text-center opacity-40 min-w-[18rem]">
-                        <p className="text-xs font-medium text-gray-500">No conversations yet</p>
+                    <div className="flex-1 overflow-y-auto px-4 flex flex-col items-center min-w-[18rem]">
+                        {messages.length === 0 && chatHistory.length === 0 ? (
+                            <div className="opacity-40 h-full flex flex-col items-center justify-center">
+                                <p className="text-xs font-medium text-gray-500">No conversations yet</p>
+                            </div>
+                        ) : (
+                            <div className="w-full space-y-2 pb-6">
+                                {messages.length > 0 && (
+                                    <button className="w-full text-left px-4 py-3 bg-gray-50 rounded-xl text-sm font-bold text-black border border-gray-200 truncate">
+                                        {messages.find(m => m.role === 'user')?.content || 'New Conversation'}
+                                    </button>
+                                )}
+                                {chatHistory.map(chat => (
+                                    <div key={chat.id} className="relative group flex items-center w-full bg-white hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-all">
+                                        {editingChatId === chat.id ? (
+                                            <input
+                                                value={editChatTitle}
+                                                onChange={e => setEditChatTitle(e.target.value)}
+                                                onBlur={() => {
+                                                    setChatHistory(prev => prev.map(c => c.id === chat.id ? { ...c, title: editChatTitle || c.title } : c));
+                                                    setEditingChatId(null);
+                                                }}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') {
+                                                        setChatHistory(prev => prev.map(c => c.id === chat.id ? { ...c, title: editChatTitle || c.title } : c));
+                                                        setEditingChatId(null);
+                                                    }
+                                                }}
+                                                autoFocus
+                                                className="w-full bg-transparent px-4 py-3 text-sm font-bold text-black outline-none"
+                                            />
+                                        ) : (
+                                            <>
+                                                <button className="flex-1 text-left px-4 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 truncate">
+                                                    {chat.title}
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === chat.id ? null : chat.id); }}
+                                                    className="opacity-0 group-hover:opacity-100 px-3 py-3 text-gray-400 hover:text-black transition-all flex items-center justify-center"
+                                                >
+                                                    <div className="flex gap-[3px]">
+                                                        <div className="w-1 h-1 bg-current rounded-full"></div>
+                                                        <div className="w-1 h-1 bg-current rounded-full"></div>
+                                                        <div className="w-1 h-1 bg-current rounded-full"></div>
+                                                    </div>
+                                                </button>
+
+                                                {activeDropdownId === chat.id && (
+                                                    <div
+                                                        className="absolute right-2 top-10 w-32 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-black/5 py-1 z-50 text-xs font-bold"
+                                                        onMouseLeave={() => setActiveDropdownId(null)}
+                                                    >
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingChatId(chat.id);
+                                                                setEditChatTitle(chat.title);
+                                                                setActiveDropdownId(null);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2 hover:bg-gray-50 text-black"
+                                                        >
+                                                            Rename
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setChatHistory(prev => prev.filter(c => c.id !== chat.id));
+                                                                setActiveDropdownId(null);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </aside>
 
@@ -252,7 +344,7 @@ const Chat: React.FC = () => {
                                         </div>
                                         <div>
                                             <h1 className="text-xl font-black tracking-tight text-black">Loka Protocol</h1>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Intelligent Yield Engine</p>
+                                            <p className="text-[10px] text-gray-400 font-bold  tracking-[0.2em]">Intelligent Yield Engine</p>
                                         </div>
                                     </div>
 
@@ -290,16 +382,16 @@ const Chat: React.FC = () => {
 
                                     <div className="space-y-6 pt-6 border-t border-gray-100">
                                         <ul className="grid grid-cols-2 gap-x-8 gap-y-4 px-4">
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold uppercase tracking-wider">
+                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
                                                 <div className="w-1 h-1 bg-black rounded-full"></div> AI-driven trading
                                             </li>
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold uppercase tracking-wider">
+                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
                                                 <div className="w-1 h-1 bg-black rounded-full"></div> Optimized routing
                                             </li>
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold uppercase tracking-wider">
+                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
                                                 <div className="w-1 h-1 bg-black rounded-full"></div> Over-collateralized
                                             </li>
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold uppercase tracking-wider">
+                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
                                                 <div className="w-1 h-1 bg-black rounded-full"></div> Instant liquidity
                                             </li>
                                         </ul>
@@ -342,12 +434,12 @@ const Chat: React.FC = () => {
                                                                 </div>
                                                                 <div>
                                                                     <h2 className="text-base font-black">{msg.asset} Summary</h2>
-                                                                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Real-time Overview</p>
+                                                                    <p className="text-[9px] text-gray-400 font-bold  tracking-widest">Real-time Overview</p>
                                                                 </div>
                                                             </div>
                                                             {msg.asset === 'AIUSD' && (
                                                                 <div className="text-right">
-                                                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Current APY</p>
+                                                                    <p className="text-[10px] text-gray-400 font-black  tracking-widest">Current APY</p>
                                                                     <p className="text-2xl font-black text-green-500">{msg.data.apy}</p>
                                                                 </div>
                                                             )}
@@ -361,7 +453,7 @@ const Chat: React.FC = () => {
                                                                             <h4 className="text-sm font-black text-black">{asset.title}</h4>
                                                                             <span className="text-xs font-black text-green-500">{asset.apy} APY</span>
                                                                         </div>
-                                                                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">
+                                                                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold  tracking-widest mb-4">
                                                                             <span>Target: <span className="text-black">{asset.target}</span></span>
                                                                             <span>Term: <span className="text-black">{asset.term}</span></span>
                                                                         </div>
@@ -369,14 +461,14 @@ const Chat: React.FC = () => {
                                                                             <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                                                                 <div className="h-full bg-green-500 rounded-full" style={{ width: `${asset.progress}%` }}></div>
                                                                             </div>
-                                                                            <div className="flex justify-between text-[9px] font-black uppercase tracking-tighter text-gray-400">
+                                                                            <div className="flex justify-between text-[9px] font-black  tracking-tighter text-gray-400">
                                                                                 <span>Progress</span>
                                                                                 <span>{asset.progress}% Funded</span>
                                                                             </div>
                                                                         </div>
                                                                         <button
                                                                             onClick={() => handleProjectClick(asset.title)}
-                                                                            className="w-full py-2.5 bg-black text-white text-[10px] font-black rounded-lg hover:bg-gray-800 transition-all uppercase tracking-widest"
+                                                                            className="w-full py-2.5 bg-black text-white text-[10px] font-black rounded-lg hover:bg-gray-800 transition-all  tracking-widest"
                                                                         >
                                                                             View Details
                                                                         </button>
@@ -393,7 +485,7 @@ const Chat: React.FC = () => {
                                                                         { label: 'Collateral Ratio', value: msg.data.collateral },
                                                                     ].map((stat, idx) => (
                                                                         <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+                                                                            <p className="text-[8px] font-black text-gray-400  tracking-widest mb-1">{stat.label}</p>
                                                                             <p className="text-xs font-bold text-black">{stat.value}</p>
                                                                         </div>
                                                                     ))}
@@ -406,9 +498,9 @@ const Chat: React.FC = () => {
                                                         <div className="flex flex-col gap-1 pb-4 border-b border-gray-100">
                                                             <div className="flex items-center gap-3">
                                                                 <h2 className="text-xl font-black text-black">{msg.data.title}</h2>
-                                                                <span className="px-2 py-0.5 bg-black text-[8px] font-black text-white rounded uppercase tracking-tighter">Verified</span>
+                                                                <span className="px-2 py-0.5 bg-black text-[8px] font-black text-white rounded  tracking-tighter">Verified</span>
                                                             </div>
-                                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{msg.data.registration}</p>
+                                                            <p className="text-[10px] text-gray-400 font-bold  tracking-widest">{msg.data.registration}</p>
                                                         </div>
 
                                                         <p className="text-sm text-gray-700 leading-relaxed font-medium mt-4">{msg.content}</p>
@@ -418,7 +510,7 @@ const Chat: React.FC = () => {
                                                                 <div key={sIdx} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${sIdx * 100}ms` }}>
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="h-4 w-1 bg-black rounded-full"></div>
-                                                                        <h3 className="text-xs font-black text-black uppercase tracking-widest">{section.title}</h3>
+                                                                        <h3 className="text-xs font-black text-black  tracking-widest">{section.title}</h3>
                                                                     </div>
 
                                                                     {section.content && (
@@ -428,7 +520,7 @@ const Chat: React.FC = () => {
                                                                             </p>
                                                                             {section.objective && (
                                                                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 italic">
-                                                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Primary Funding Objective</p>
+                                                                                    <p className="text-[9px] font-black text-gray-400  tracking-widest mb-1">Primary Funding Objective</p>
                                                                                     <p className="text-sm text-black font-semibold">{section.objective}</p>
                                                                                 </div>
                                                                             )}
@@ -439,7 +531,7 @@ const Chat: React.FC = () => {
                                                                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pl-4">
                                                                             {section.items.map((item: any, iIdx: number) => (
                                                                                 <div key={iIdx} className="p-3 bg-gray-50/80 rounded-xl border border-gray-100 flex flex-col gap-1">
-                                                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
+                                                                                    <p className="text-[9px] font-black text-gray-400  tracking-widest">{item.label}</p>
                                                                                     <p className="text-xs font-black text-black">{item.value}</p>
                                                                                 </div>
                                                                             ))}
@@ -452,8 +544,8 @@ const Chat: React.FC = () => {
                                                                                         {member.name?.[0]}
                                                                                     </div>
                                                                                     <div className="space-y-1">
-                                                                                        <p className="text-xs font-black text-black uppercase">{member.name}</p>
-                                                                                        <p className="text-[9px] font-bold text-blue-500 uppercase tracking-tighter">{member.role}</p>
+                                                                                        <p className="text-xs font-black text-black ">{member.name}</p>
+                                                                                        <p className="text-[9px] font-bold text-blue-500  tracking-tighter">{member.role}</p>
                                                                                         <p className="text-[10px] text-gray-500 leading-tight">{member.bio}</p>
                                                                                     </div>
                                                                                 </div>
@@ -467,7 +559,7 @@ const Chat: React.FC = () => {
                                                                                 <div key={subIdx} className={`p-4 rounded-xl border ${sub.isHighlight ? 'bg-black text-white border-black shadow-lg shadow-black/10' : 'bg-gray-50/50 border-gray-100'}`}>
                                                                                     <div className="flex items-center gap-2 mb-2">
                                                                                         {sub.isHighlight && <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>}
-                                                                                        <p className={`text-[9px] font-black uppercase tracking-widest ${sub.isHighlight ? 'text-gray-400' : 'text-gray-400'}`}>{sub.label}</p>
+                                                                                        <p className={`text-[9px] font-black  tracking-widest ${sub.isHighlight ? 'text-gray-400' : 'text-gray-400'}`}>{sub.label}</p>
                                                                                     </div>
                                                                                     <p className={`text-sm leading-relaxed font-medium ${sub.isHighlight ? 'text-white/90' : 'text-gray-600'}`}>
                                                                                         {sub.text}
@@ -558,7 +650,7 @@ const Chat: React.FC = () => {
                                                         <p className="text-[12px] font-bold mb-1 text-black truncate">{a.label}</p>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[11px] font-black text-green-500">{a.apy}</span>
-                                                            <span className="text-[9px] font-bold uppercase text-gray-500 bg-gray-200/50 px-1.5 py-0.5 rounded-md">{a.tag}</span>
+                                                            <span className="text-[9px] font-bold  text-gray-500 bg-gray-200/50 px-1.5 py-0.5 rounded-md">{a.tag}</span>
                                                         </div>
                                                         {activeForm === 'sell' && (
                                                             <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-200/50">
@@ -573,7 +665,7 @@ const Chat: React.FC = () => {
                                                             handleProjectClick(a.id);
                                                             setActiveForm(null);
                                                         }}
-                                                        className={`shrink-0 text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg border transition-all mt-0.5 ${formAsset === a.id ? 'bg-black text-white border-black hover:bg-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-black hover:text-black'}`}
+                                                        className={`shrink-0 text-[10px]  font-bold px-3 py-1.5 rounded-lg border transition-all mt-0.5 ${formAsset === a.id ? 'bg-black text-white border-black hover:bg-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-black hover:text-black'}`}
                                                     >
                                                         Detail
                                                     </button>
@@ -586,7 +678,16 @@ const Chat: React.FC = () => {
                                                 {['25%', '50%', '75%', '100%'].map((pct) => (
                                                     <button
                                                         key={pct}
-                                                        onClick={() => setFormAmount(pct.replace('%', ''))}
+                                                        onClick={() => {
+                                                            const rawBal = {
+                                                                'AIUSD': '1250',
+                                                                'ComputeDAO - GPU Expansion': '5000',
+                                                                'Shopify Merchant Cluster X': '2500',
+                                                                'Vercel Enterprise Flow': '3000'
+                                                            }[formAsset || ''] || '0';
+                                                            const bal = parseFloat(rawBal);
+                                                            setFormAmount((bal * parseInt(pct) / 100).toFixed(2).replace(/\.00$/, ''));
+                                                        }}
                                                         className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:border-black hover:text-black transition-all"
                                                     >
                                                         {pct}
@@ -599,12 +700,12 @@ const Chat: React.FC = () => {
                                             <div className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 flex items-center focus-within:border-black transition-colors">
                                                 <input
                                                     type="number"
-                                                    placeholder={activeForm === 'sell' ? "Enter percentage or amount to sell" : "Enter USDC amount"}
+                                                    placeholder="Enter exact USDC amount"
                                                     value={formAmount}
                                                     onChange={(e) => setFormAmount(e.target.value)}
                                                     className="bg-transparent border-none outline-none font-medium text-sm w-full"
                                                 />
-                                                <span className="text-xs font-bold text-gray-400 ml-2">{activeForm === 'sell' ? '%' : 'USDC'}</span>
+                                                <span className="text-xs font-bold text-gray-400 ml-2">USDC</span>
                                             </div>
                                             <button
                                                 onClick={handleActionSubmit}
@@ -664,13 +765,13 @@ const Chat: React.FC = () => {
                         <div className="bg-gray-100/80 p-1 rounded-2xl flex gap-1">
                             <button
                                 onClick={() => setSidebarTab('recommend')}
-                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-xl ${sidebarTab === 'recommend' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 py-2 text-[10px] font-black  tracking-widest transition-all rounded-xl ${sidebarTab === 'recommend' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                             >
                                 Recommend
                             </button>
                             <button
                                 onClick={() => setSidebarTab('portfolio')}
-                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-xl ${sidebarTab === 'portfolio' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 py-2 text-[10px] font-black  tracking-widest transition-all rounded-xl ${sidebarTab === 'portfolio' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                             >
                                 Portfolio
                             </button>
@@ -703,10 +804,10 @@ const Chat: React.FC = () => {
                                     {/* Cash Flow Section */}
                                     <div className="flex-1 flex flex-col min-h-0 animate-in fade-in slide-in-from-right-4 duration-500 delay-100">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Cash Flow</h3>
+                                            <h3 className="text-[10px] font-bold text-gray-400  tracking-[0.2em]">Cash Flow</h3>
                                             <div className="flex items-center gap-1">
                                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                                <span className="text-[9px] font-bold text-green-600 uppercase">Live Pulse</span>
+                                                <span className="text-[9px] font-bold text-green-600 ">Live Pulse</span>
                                             </div>
                                         </div>
                                         <div className="flex-1 overflow-y-auto space-y-4 pr-2 -mr-2">
@@ -724,7 +825,7 @@ const Chat: React.FC = () => {
                                                         <p className="text-[11px] font-bold text-black truncate pr-2 group-hover:text-black transition-colors">{item.title}</p>
                                                         <div className="flex items-center gap-1 shrink-0">
                                                             <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
-                                                            <span className="text-[7px] font-bold text-green-600 uppercase tracking-tighter">Live</span>
+                                                            <span className="text-[7px] font-bold text-green-600  tracking-tighter">Live</span>
                                                         </div>
                                                     </div>
 
@@ -741,7 +842,7 @@ const Chat: React.FC = () => {
                                                                 style={{ width: `${item.progress}%` }}
                                                             ></div>
                                                         </div>
-                                                        <div className="flex justify-between items-center text-[8px] font-bold text-gray-400 uppercase tracking-tighter">
+                                                        <div className="flex justify-between items-center text-[8px] font-bold text-gray-400  tracking-tighter">
                                                             <span>{item.pledged} / {item.progress}%</span>
                                                             <span>{item.backers} Backers</span>
                                                         </div>
@@ -755,16 +856,16 @@ const Chat: React.FC = () => {
                                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                                     {/* Portfolio Summary */}
                                     <div className="p-5 bg-gray-50 rounded-[2rem] border border-gray-100">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Portfolio Value</p>
+                                        <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-1">Total Portfolio Value</p>
                                         <h2 className="text-3xl font-black text-black mb-3">$15,240.50</h2>
                                         <div className="flex items-center gap-4">
                                             <div className="flex flex-col">
-                                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Total Profit</p>
+                                                <p className="text-[8px] font-black text-gray-400  tracking-tighter">Total Profit</p>
                                                 <p className="text-xs font-black text-green-500">+$166.30</p>
                                             </div>
                                             <div className="w-px h-6 bg-gray-200"></div>
                                             <div className="flex flex-col">
-                                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Profit Rate</p>
+                                                <p className="text-[8px] font-black text-gray-400  tracking-tighter">Profit Rate</p>
                                                 <p className="text-xs font-black text-green-500">+1.09%</p>
                                             </div>
                                         </div>
@@ -773,21 +874,24 @@ const Chat: React.FC = () => {
                                     {/* Holdings List */}
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between px-1">
-                                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Holdings</h3>
+                                            <h3 className="text-[10px] font-black text-gray-400  tracking-widest">Current Holdings</h3>
                                             <Icons.TrendingUp className="w-3 h-3 text-gray-400" />
                                         </div>
                                         <div className="space-y-3">
                                             {[
                                                 { name: 'AIUSD Assets', balance: '$10,240.50', profit: '+$124.20', rate: '+1.21%', icon: 'AI' },
-                                                { name: 'ComputeDAO - GPU Expansion', balance: '$5,000.00', profit: '+$42.10', rate: '+0.84%', icon: <Icons.TrendingUp className="w-3 h-3" /> }
+                                                { name: 'ComputeDAO - GPU Expansion', balance: '$5,000.00', profit: '+$42.10', rate: '+0.84%', icon: <Icons.TrendingUp className="w-3 h-3" />, status: 'Funded' }
                                             ].map((holding, idx) => (
                                                 <div key={idx} className="p-4 bg-white border border-gray-100 rounded-2xl hover:border-black/10 hover:shadow-lg transition-all group">
                                                     <div className="flex items-center justify-between mb-3">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-[9px] font-black group-hover:scale-110 transition-transform">
+                                                            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-[9px] font-black group-hover:scale-110 transition-transform shrink-0">
                                                                 {holding.icon}
                                                             </div>
-                                                            <p className="text-xs font-bold text-black truncate max-w-[120px]">{holding.name}</p>
+                                                            <div className="flex flex-col">
+                                                                <p className="text-xs font-bold text-black truncate max-w-[120px]">{holding.name}</p>
+                                                                {holding.status && <p className="text-[8px] font-bold text-green-600 bg-green-50 px-1 py-0.5 rounded-md w-fit mt-0.5">{holding.status}</p>}
+                                                            </div>
                                                         </div>
                                                         <p className="text-xs font-black text-black">{holding.balance}</p>
                                                     </div>

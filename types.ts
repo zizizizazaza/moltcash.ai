@@ -51,5 +51,6 @@ export enum Page {
   MARKET = 'MARKET',
   PORTFOLIO = 'PORTFOLIO',
   AGENT = 'AGENT',
-  CHAT = 'CHAT'
+  CHAT = 'CHAT',
+  SETTINGS = 'SETTINGS'
 }

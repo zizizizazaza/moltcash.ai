@@ -46,7 +46,7 @@ const MOCK_ASSETS: MarketAsset[] = [
     apy: 8.9,
     durationDays: 30,
     creditScore: 780,
-    status: 'Ending Soon',
+    status: 'Fundraising',
     targetAmount: 200000,
     raisedAmount: 185000,
     backersCount: 89,
@@ -204,12 +204,13 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-        {/* Badges */}
-        <div className="absolute top-4 left-4">
-          <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg ${asset.status === 'Ending Soon' ? 'bg-orange-500 text-white' : asset.status === 'Funded' ? 'bg-green-500 text-white' : asset.status === 'Failed' ? 'bg-red-500 text-white' : 'bg-white text-black'
-            }`}>
-            {asset.status === 'Fundraising' ? '🔥 Fundraising' : asset.status === 'Ending Soon' ? '⏳ Ending Soon' : asset.status === 'Funded' ? '✅ Funded' : asset.status === 'Failed' ? '❌ Failed' : asset.status}
+        {/* Top Badges */}
+        <div className="absolute top-4 left-4 z-10">
+          <div className="bg-white/95 backdrop-blur-lg px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-wide shadow-xl border border-white/40 text-black">
+            {asset.status === 'Fundraising' ? '🔥 Fundraising' :
+              asset.status === 'Funded' ? '✅ Funded' :
+                asset.status === 'Failed' ? '🔒 Failed' :
+                  asset.status}
           </div>
         </div>
       </div>
@@ -223,7 +224,7 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
             alt={asset.issuer}
             className="w-5 h-5 rounded-full object-cover border border-gray-100"
           />
-          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">{asset.issuer}</span>
+          <span className="text-[9px] font-bold text-gray-400  tracking-widest truncate">{asset.issuer}</span>
         </div>
 
         <div className="mb-4">
@@ -234,15 +235,15 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-            <p className="text-[7px] font-bold text-gray-400 uppercase tracking-widest mb-1">Target</p>
+            <p className="text-[7px] font-bold text-gray-400  tracking-widest mb-1">Target</p>
             <p className="text-[10px] font-bold text-black">${(asset.targetAmount / 1000).toFixed(0)}k</p>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-            <p className="text-[7px] font-bold text-gray-400 uppercase tracking-widest mb-1">APY</p>
+            <p className="text-[7px] font-bold text-gray-400  tracking-widest mb-1">APY</p>
             <p className="text-[10px] font-bold text-[#00E676]">{asset.apy}%</p>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-            <p className="text-[7px] font-bold text-gray-400 uppercase tracking-widest mb-1">Term</p>
+            <p className="text-[7px] font-bold text-gray-400  tracking-widest mb-1">Term</p>
             <p className="text-[10px] font-bold text-black">{asset.durationDays}d</p>
           </div>
         </div>
@@ -257,13 +258,10 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
           </div>
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-[9px] font-bold text-black">${asset.raisedAmount.toLocaleString()} <span className="text-gray-400 font-medium">pledged</span></p>
-              <p className="text-[8px] text-gray-400 font-medium uppercase tracking-tighter">{progress.toFixed(0)}% &bull; {asset.backersCount} backers</p>
+              <p className="text-[10px] font-bold text-black">${asset.raisedAmount.toLocaleString()} <span className="text-gray-400 font-medium tracking-wide">pledged</span></p>
             </div>
             <div className="text-right">
-              <div className="w-5 h-5 bg-gray-50 rounded-md flex items-center justify-center text-gray-300 group-hover:text-black transition-colors">
-                <Icons.Shield />
-              </div>
+              <p className="text-[10px] font-bold text-gray-400 tracking-tighter">{progress.toFixed(0)}% <span className="text-gray-300">&bull;</span> {asset.backersCount} backers</p>
             </div>
           </div>
         </div>
@@ -288,7 +286,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
         {/* Left Content Area - High Fidelity Information */}
         <div className="flex-1 space-y-8">
           <header className="space-y-6">
-            <nav className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <nav className="flex items-center gap-2 text-[10px] font-bold  tracking-widest text-gray-400">
               <button onClick={onClose} className="hover:text-black transition-colors">Cash Flow</button>
               <span>/</span>
               <span className="text-gray-300">{asset.category}</span>
@@ -298,8 +296,8 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
 
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <span className="px-3 py-1 bg-black text-white rounded-full text-[9px] font-black uppercase tracking-widest">Verified by Loka</span>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-l border-gray-200 pl-4">{asset.verifiedSource} Verified</span>
+                <span className="px-3 py-1 bg-black text-white rounded-full text-[9px] font-black  tracking-widest">Verified by Loka</span>
+                <span className="text-[10px] font-bold text-gray-400  tracking-widest border-l border-gray-200 pl-4">{asset.verifiedSource} Verified</span>
               </div>
               <h2 className="font-serif text-4xl md:text-6xl italic text-black leading-tight max-w-2xl">{asset.title}</h2>
               <p className="text-lg text-gray-500 font-light max-w-2xl leading-relaxed">{asset.subtitle}</p>
@@ -336,11 +334,11 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                     <div className="flex items-center gap-4">
                       <img src={asset.issuerLogo} className="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm" />
                       <div>
-                        <h4 className="text-base font-black uppercase tracking-widest text-black flex items-center gap-2">
+                        <h4 className="text-base font-black  tracking-widest text-black flex items-center gap-2">
                           {asset.issuer}
                           <div className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[7px] text-white italic shadow-sm">✓</div>
                         </h4>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Singapore (ACRA ID: 20230812X) • Founded 2023</p>
+                        <p className="text-[10px] text-gray-400 font-bold  tracking-tighter">Singapore (ACRA ID: 20230812X) • Founded 2023</p>
                       </div>
                     </div>
                     <div className="flex gap-3">
@@ -349,7 +347,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         { label: 'LinkedIn', icon: '🔗' },
                         { label: 'GitHub', icon: '💻' }
                       ].map(social => (
-                        <div key={social.label} className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-gray-500 border border-gray-100/50 cursor-pointer">
+                        <div key={social.label} className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl text-[9px] font-black  tracking-widest flex items-center gap-2 text-gray-500 border border-gray-100/50 cursor-pointer">
                           <span>{social.icon}</span>
                           {social.label}
                           <span className="text-[#00E676] text-[8px]">✓</span>
@@ -358,21 +356,21 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                     </div>
                   </div>
                   <div className="p-6 bg-black text-white rounded-3xl space-y-4 shadow-xl">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 flex justify-between">
+                    <p className="text-[9px] font-black  tracking-widest text-gray-500 flex justify-between">
                       Loka Credit History
                       <span className="text-[#00E676] italic">Verified Entity</span>
                     </p>
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-1">
                         <p className="text-2xl font-serif italic text-white">$1.5M</p>
-                        <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Total Funding Raised</p>
+                        <p className="text-[9px] font-bold text-gray-500  tracking-tighter">Total Funding Raised</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-end gap-1">
                           <p className="text-2xl font-serif italic text-[#00E676]">100%</p>
                           <span className="text-[10px] text-[#00E676] mb-1">↑</span>
                         </div>
-                        <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">On-time Repayment</p>
+                        <p className="text-[9px] font-bold text-gray-500  tracking-tighter">On-time Repayment</p>
                       </div>
                     </div>
                   </div>
@@ -421,9 +419,9 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                           {member.name[0]}
                         </div>
                         <div>
-                          <p className="text-[12px] font-black uppercase text-black">{member.name}</p>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mb-1">{member.role}</p>
-                          <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest mb-2">{member.extra}</p>
+                          <p className="text-[12px] font-black  text-black">{member.name}</p>
+                          <p className="text-[10px] font-bold text-gray-400  tracking-tighter mb-1">{member.role}</p>
+                          <p className="text-[9px] text-blue-500 font-bold  tracking-widest mb-2">{member.extra}</p>
                           <p className="text-[11px] text-gray-500 font-light leading-relaxed">{member.bio}</p>
                         </div>
                       </div>
@@ -450,10 +448,10 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         {/* Step 1 */}
                         <div className="flex flex-col items-center w-1/3 text-center space-y-3">
                           <div className="w-5 h-5 rounded-full bg-white border-4 border-gray-200 shadow-sm relative">
-                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">Start</span>
+                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black  tracking-widest text-gray-400 whitespace-nowrap">Start</span>
                           </div>
                           <div>
-                            <h4 className="text-[11px] font-black uppercase tracking-widest text-black mb-1">Fundraising</h4>
+                            <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">Fundraising</h4>
                             <p className="text-[10px] text-gray-500 font-medium px-2 leading-relaxed">Freely deposit or withdraw USDC.</p>
                           </div>
                         </div>
@@ -461,10 +459,10 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         {/* Step 2 */}
                         <div className="flex flex-col items-center w-1/3 text-center space-y-3">
                           <div className="w-5 h-5 rounded-full bg-white border-4 border-black shadow-sm relative">
-                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-black whitespace-nowrap">${((asset.targetAmount * 0.5) / 1000).toFixed(0)}k</span>
+                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black  tracking-widest text-black whitespace-nowrap">${((asset.targetAmount * 0.5) / 1000).toFixed(0)}k</span>
                           </div>
                           <div>
-                            <h4 className="text-[11px] font-black uppercase tracking-widest text-black mb-1">Success Point</h4>
+                            <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">Success Point</h4>
                             <p className="text-[10px] text-gray-500 font-medium px-2 leading-relaxed">Goal met. Campaign secures funding.</p>
                           </div>
                         </div>
@@ -472,10 +470,10 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         {/* Step 3 */}
                         <div className="flex flex-col items-center w-1/3 text-center space-y-3">
                           <div className="w-5 h-5 rounded-full bg-white border-4 border-gray-200 shadow-sm relative">
-                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">${(asset.targetAmount / 1000).toFixed(0)}k</span>
+                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black  tracking-widest text-gray-400 whitespace-nowrap">${(asset.targetAmount / 1000).toFixed(0)}k</span>
                           </div>
                           <div>
-                            <h4 className="text-[11px] font-black uppercase tracking-widest text-black mb-1">Lock & Deploy</h4>
+                            <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">Lock & Deploy</h4>
                             <p className="text-[10px] text-gray-500 font-medium px-2 leading-relaxed">Pool locked immediately. Yield begins.</p>
                           </div>
                         </div>
@@ -487,14 +485,14 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                       <div className="flex gap-4 p-5 bg-green-50/50 rounded-2xl border border-green-100/50">
                         <div className="text-xl" style={{ marginTop: '2px' }}>💸</div>
                         <div>
-                          <h4 className="text-[11px] font-black uppercase tracking-widest text-black mb-1">If Campaign Succeeds</h4>
+                          <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">If Campaign Succeeds</h4>
                           <p className="text-[10px] text-gray-500 leading-relaxed font-medium">Funds are locked. Guaranteed payout rules execute to distribute principal and yield (e.g., monthly) direct to wallet.</p>
                         </div>
                       </div>
                       <div className="flex gap-4 p-5 bg-red-50/40 rounded-2xl border border-red-100/50">
                         <div className="text-xl" style={{ marginTop: '2px' }}>↩️</div>
                         <div>
-                          <h4 className="text-[11px] font-black uppercase tracking-widest text-black mb-1">If Campaign Fails</h4>
+                          <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">If Campaign Fails</h4>
                           <p className="text-[10px] text-gray-500 leading-relaxed font-medium">Should the soft cap be missed before deadline, smart contracts auto-refund 100% of participants' capital safety.</p>
                         </div>
                       </div>
@@ -516,7 +514,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         <div className="relative group">
                           <div className={`px-4 py-3 rounded-2xl border shadow-sm transition-all duration-500 flex items-center justify-center min-w-[100px] ${i === 6 ? 'bg-black text-white border-black' : 'bg-white text-black border-gray-100 group-hover:border-black'
                             }`}>
-                            <p className="text-[9px] font-black uppercase tracking-widest">{step}</p>
+                            <p className="text-[9px] font-black  tracking-widest">{step}</p>
                           </div>
                           <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap font-bold text-gray-300 italic">Step 0{i + 1}</div>
                         </div>
@@ -563,14 +561,14 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         <div className="space-y-3">
                           <div className="text-2xl">{item.icon}</div>
                           <div>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">{item.title}</p>
+                            <p className="text-[11px] font-bold text-gray-400  tracking-tight">{item.title}</p>
                             <p className="text-sm font-black text-black leading-tight mt-1">{item.badge}</p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-1.5 pt-2 border-t border-gray-50">
                           <div className="w-1.5 h-1.5 rounded-full bg-[#00E676]" />
-                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active Protection</span>
+                          <span className="text-[9px] font-bold text-gray-400  tracking-widest">Active Protection</span>
                         </div>
 
                         {/* Hover State - Explanation */}
@@ -638,9 +636,9 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                       { label: 'Avg Customer LTV', value: '$42,000', sub: 'Enterprise Focus', trend: 'up' }
                     ].map((stat, i) => (
                       <div key={i} className="p-8 bg-white glass rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">{stat.label}</p>
+                        <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-4">{stat.label}</p>
                         <p className="text-3xl font-serif italic text-black mb-1">{stat.value}</p>
-                        <p className="text-[10px] font-bold text-[#00E676] uppercase tracking-tighter flex items-center gap-1">
+                        <p className="text-[10px] font-bold text-[#00E676]  tracking-tighter flex items-center gap-1">
                           {stat.trend === 'up' && '▲'} {stat.sub}
                         </p>
                       </div>
@@ -770,11 +768,11 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
             <header className="space-y-4">
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 mb-1">Campaign Progress</p>
+                  <p className="text-[9px] font-black  tracking-[0.3em] text-gray-400 mb-1">Campaign Progress</p>
                   <h3 className="text-3xl font-serif italic text-black leading-none">${asset.raisedAmount.toLocaleString()}</h3>
                 </div>
                 <div className="text-right">
-                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Goal</p>
+                  <p className="text-[8px] font-bold text-gray-400  tracking-widest mb-0.5">Goal</p>
                   <p className="text-xs font-bold text-black">${(asset.targetAmount / 1000).toFixed(0)}k</p>
                 </div>
               </div>
@@ -786,7 +784,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
+                <div className="flex justify-between text-[9px] font-black  tracking-widest">
                   <span className="text-black">{progress.toFixed(0)}% funded</span>
                   <span className={asset.status === 'Funded' ? "text-green-500" : asset.status === 'Failed' ? "text-red-500" : "text-orange-500"}>{asset.status === 'Funded' ? 'Successfully Funded' : asset.status === 'Failed' ? 'Campaign Failed' : '12 Days to go'}</span>
                 </div>
@@ -799,7 +797,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                   ))}
                   <div className="w-6 h-6 rounded-full border-2 border-white bg-black text-[7px] text-white flex items-center justify-center font-bold">+{asset.backersCount}</div>
                 </div>
-                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Backers pledged</p>
+                <p className="text-[8px] font-bold text-gray-400  tracking-tighter">Backers pledged</p>
               </div>
             </header>
 
@@ -813,7 +811,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                 </div>
                 {/* Show user's investment if this is the ComputeDAO asset */}
                 <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Your Position</p>
+                  <p className="text-[9px] font-black  tracking-widest text-gray-400">Your Position</p>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] font-bold text-gray-500">Initial Investment</span>
                     <span className="text-[13px] font-black text-black">{asset.title.includes('ComputeDAO') ? '$5,000.00' : '$0.00'}</span>
@@ -831,7 +829,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                   <p className="text-[10px] text-gray-500 leading-relaxed font-medium">This campaign did not reach its soft cap target within the specified timeframe. All locked collateral is being returned.</p>
                 </div>
                 <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Your Position</p>
+                  <p className="text-[9px] font-black  tracking-widest text-gray-400">Your Position</p>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] font-bold text-gray-500">Initial Escrow</span>
                     <span className="text-[13px] font-black text-black">$0.00</span>
@@ -847,14 +845,14 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                 <div className="flex bg-gray-100 p-1 rounded-full mb-4">
                   <button
                     onClick={() => setTxTab('buy')}
-                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-full transition-all ${txTab === 'buy' ? 'bg-black text-white shadow-sm' : 'text-gray-400 hover:text-black'
+                    className={`flex-1 py-2 text-[10px] font-bold  tracking-widest rounded-full transition-all ${txTab === 'buy' ? 'bg-black text-white shadow-sm' : 'text-gray-400 hover:text-black'
                       }`}
                   >
                     Deposit
                   </button>
                   <button
                     onClick={() => setTxTab('sell')}
-                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-full transition-all ${txTab === 'sell' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-black'
+                    className={`flex-1 py-2 text-[10px] font-bold  tracking-widest rounded-full transition-all ${txTab === 'sell' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-black'
                       }`}
                   >
                     Withdraw
@@ -864,7 +862,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                 <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent focus-within:border-black transition-all shadow-inner relative overflow-hidden group">
                   <div className="relative z-10">
                     <div className="flex justify-between items-center mb-3">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">{txTab === 'buy' ? 'Deposit to Escrow' : 'Withdraw from Escrow'}</span>
+                      <span className="text-[8px] font-black  tracking-widest text-gray-400">{txTab === 'buy' ? 'Deposit to Escrow' : 'Withdraw from Escrow'}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-serif italic text-gray-300">USDC</span>
@@ -883,7 +881,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                 {txTab === 'sell' && (
                   <div className="px-2 space-y-3">
                     <div className="flex justify-between items-center text-[10px]">
-                      <span className="font-bold text-gray-400 uppercase tracking-widest">Available Balance</span>
+                      <span className="font-bold text-gray-400  tracking-widest">Available Balance</span>
                       <span className="font-black text-black text-[11px]">$0.00 USDC</span>
                     </div>
                     <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl flex gap-3 items-start">

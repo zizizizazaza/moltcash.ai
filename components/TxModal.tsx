@@ -46,6 +46,18 @@ const TxModal: React.FC = () => {
                     </button>
                 </div>
 
+                {modalAction === 'withdraw' && (
+                    <div className="flex justify-between items-center mb-5 px-1 pb-1">
+                        <span className="text-[13px] text-gray-400 font-medium">Available balance</span>
+                        <span
+                            className="text-xl font-black text-black cursor-pointer hover:opacity-70 transition-opacity"
+                            onClick={() => setFormAmount('12300')}
+                        >
+                            12,300.00 <span className="text-sm font-bold text-gray-400">USDC</span>
+                        </span>
+                    </div>
+                )}
+
                 {/* Fiat / Crypto Toggle */}
                 <div className="flex gap-2 p-1 bg-gray-50 border border-gray-100 rounded-xl mb-4">
                     <button onClick={() => setFormAsset('USD')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${['USD', 'EUR', 'CNY'].includes(formAsset) ? 'bg-white shadow-sm text-black border border-gray-100' : 'text-gray-500 hover:text-black border border-transparent'}`}>
@@ -192,15 +204,6 @@ const TxModal: React.FC = () => {
                             )}
                         </div>
 
-                        {modalAction === 'withdraw' && (
-                            <div className="flex justify-between items-center text-[10px] px-2">
-                                <span className="text-gray-400 font-bold">Available USDC balance</span>
-                                <span className="font-bold text-black border-b border-black cursor-pointer hover:bg-gray-100 px-1 rounded-sm transition-colors py-0.5" onClick={() => setFormAmount('12300')}>
-                                    12,300.00 USDC
-                                </span>
-                            </div>
-                        )}
-
                         <button onClick={handleModalSubmit} disabled={!formAmount} className="w-full py-3 bg-black text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all tracking-wide disabled:opacity-40 disabled:cursor-not-allowed mt-1">
                             {modalAction === 'deposit' ? `Pay with ${fiatProvider === 'swapped' ? 'Swapped.com' : fiatProvider === 'paybis' ? 'Paybis' : fiatProvider === 'alchemypay' ? 'AlchemyPay' : 'Banxa'}` : `Withdraw via ${fiatProvider === 'swapped' ? 'Swapped.com' : fiatProvider === 'paybis' ? 'Paybis' : fiatProvider === 'alchemypay' ? 'AlchemyPay' : 'Banxa'}`}
                         </button>
@@ -271,10 +274,6 @@ const TxModal: React.FC = () => {
                                 <div className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center"><span className="text-white text-[8px] font-bold">⟠</span></div>
                                 <span className="text-[11px] font-bold text-gray-500">Base Network</span>
                             </div>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] px-2">
-                            <span className="text-gray-400 font-bold">Available USDC balance</span>
-                            <span className="font-bold text-black border-b border-black cursor-pointer hover:bg-gray-100 px-1 rounded-sm transition-colors py-0.5" onClick={() => setFormAmount('12300')}>12,300.00 USDC</span>
                         </div>
                         <button onClick={handleModalSubmit} disabled={!formAmount} className="w-full py-3 bg-black text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all tracking-wide disabled:opacity-40 disabled:cursor-not-allowed">
                             Submit Withdrawal

@@ -147,7 +147,7 @@ const Landing: React.FC = () => {
                                                 <span className="text-yellow-400">&nbsp;|&nbsp;</span>
                                                 <span className="text-[#00E676]">bash</span>
                                             </div>
-                                            <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-gray-400 hover:text-white transition-all border border-white/10 ml-4 whitespace-nowrap uppercase tracking-widest">
+                                            <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-gray-400 hover:text-white transition-all border border-white/10 ml-4 whitespace-nowrap  tracking-widest">
                                                 {copied ? '✓ Copied' : 'Copy'}
                                             </div>
                                         </div>
@@ -160,7 +160,7 @@ const Landing: React.FC = () => {
                                                 { num: '03', label: 'START', desc: 'Runtime restarts and connects to the settlement layer.' },
                                             ].map((step, i) => (
                                                 <div key={i} className="flex flex-col gap-2 relative group/step" style={{ animationDelay: `${i * 100}ms` }}>
-                                                    <div className="text-[#FF4525] font-black text-sm tracking-widest uppercase mb-1 flex items-center gap-2">
+                                                    <div className="text-[#FF4525] font-black text-sm tracking-widest  mb-1 flex items-center gap-2">
                                                         <span className="bg-[#FF4525]/10 rounded-md px-2 py-0.5">{step.num}</span>
                                                         <span>{step.label}</span>
                                                         {i < 2 && <div className="h-px bg-white/10 flex-1 hidden sm:block"></div>}
@@ -184,7 +184,7 @@ const Landing: React.FC = () => {
                                     </div>
                                     <div className="relative z-10 flex flex-col items-center gap-6">
                                         <p className="text-gray-500 font-medium max-w-[280px] mx-auto leading-relaxed text-sm">Experience the MoltCash protocol manually through our natural language gateway.</p>
-                                        <button className="px-8 py-3 bg-black text-white rounded-full text-sm font-bold shadow-xl transition-all flex items-center gap-2 group-hover:bg-gray-800 tracking-widest uppercase hover:scale-105">
+                                        <button className="px-8 py-3 bg-black text-white rounded-full text-sm font-bold shadow-xl transition-all flex items-center gap-2 group-hover:bg-gray-800 tracking-widest  hover:scale-105">
                                             start to chat <Icons.Flash />
                                         </button>
                                     </div>
@@ -209,7 +209,7 @@ const Landing: React.FC = () => {
                         </p>
                         <div className="mt-10 flex items-center justify-center gap-4">
                             <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1 max-w-[100px]"></div>
-                            <p className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-600 to-gray-900 uppercase tracking-widest">— Protocol Vision</p>
+                            <p className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-600 to-gray-900  tracking-widest">— Protocol Vision</p>
                             <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1 max-w-[100px]"></div>
                         </div>
                     </div>
@@ -298,7 +298,7 @@ const Landing: React.FC = () => {
                                 <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-black rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
                                     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-4">SKILL Framework</h4>
+                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">SKILL Framework</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">Plonky2 + Groth16 Native Proofs</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Local runtime compiling dynamic exposure limits into deployable zero-knowledge circuits directly within the agent workflow.</p>
                                     </div>
@@ -309,7 +309,7 @@ const Landing: React.FC = () => {
                             <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:text-right md:pr-12 text-left mb-6 md:mb-0 md:order-1 order-3 w-[calc(100%-4rem)]">
                                     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-4">Execution Environment</h4>
+                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Execution Environment</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">AWS Nitro Enclaves Hub</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Hardware-level CPU segregation guarantees absolute data confidentiality, rendering proprietary strategies completely opaque to hosts and operators.</p>
                                     </div>
@@ -330,7 +330,7 @@ const Landing: React.FC = () => {
                                 <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-gray-200 rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
                                     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-4">Programmable Assets</h4>
+                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Programmable Assets</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">Native Yield & RWA Discounting</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>
                                     </div>

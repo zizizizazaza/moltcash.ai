@@ -12,6 +12,7 @@ import RiskModal from './components/RiskModal';
 import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import Landing from './components/Landing';
+import Settings from './components/Settings';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.LANDING);
@@ -19,6 +20,7 @@ const App: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     const hasSeenRisk = localStorage.getItem('loka_risk_accepted');
@@ -69,7 +71,7 @@ const App: React.FC = () => {
         }`}>
         <div className="bg-black text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
           <span className="text-sm">⏳</span>
-          <p className="text-xs font-bold tracking-widest uppercase">Coming soon</p>
+          <p className="text-xs font-bold tracking-widest ">Coming soon</p>
         </div>
       </div>
 
@@ -108,7 +110,6 @@ const App: React.FC = () => {
               onClick={() => setCurrentPage(Page.MARKET)}
               label="Cash Flow"
             />
-
             <NavButton
               active={currentPage === Page.PORTFOLIO}
               onClick={() => setCurrentPage(Page.PORTFOLIO)}
@@ -127,24 +128,46 @@ const App: React.FC = () => {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m0 0l-4-4m4 4l4-4" /></svg>
             Deposit
           </button>
-          <button
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'withdraw' }));
-            }}
-            className="px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all border border-gray-200 bg-white text-gray-600 hover:border-black hover:text-black hover:shadow-sm flex items-center gap-1.5"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 20V4m0 0l-4 4m4-4l4 4" /></svg>
-            Withdraw
-          </button>
-          <button
-            onClick={connectWallet}
-            className={`px-6 py-2 rounded-full text-xs font-bold tracking-widest transition-all border ${isWalletConnected
-              ? 'bg-gray-50 text-gray-500 border-gray-200'
-              : 'bg-black text-white hover:bg-gray-800 shadow-md'
-              }`}
-          >
-            {isWalletConnected ? '0x71C...8e29' : 'Connect'}
-          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (!isWalletConnected) {
+                  connectWallet();
+                } else {
+                  setShowDropdown(!showDropdown);
+                }
+              }}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold tracking-widest transition-all border flex items-center justify-between gap-2.5 ${isWalletConnected
+                ? 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-black cursor-pointer'
+                : 'bg-black text-white hover:bg-gray-800 shadow-md'
+                }`}
+            >
+              {isWalletConnected ? (
+                <>
+                  <span>0x71C...8e29</span>
+                  <svg className={`w-3.5 h-3.5 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+                </>
+              ) : 'Connect'}
+            </button>
+
+            {/* Dropdown Menu */}
+            {isWalletConnected && showDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden py-1.5 z-50 animate-in fade-in slide-in-from-top-2">
+                <button
+                  onClick={() => {
+                    setIsWalletConnected(false);
+                    setShowDropdown(false);
+                    if (currentPage === Page.PORTFOLIO || currentPage === Page.SETTINGS) setCurrentPage(Page.LANDING);
+                  }}
+                  className="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                  Log Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -158,16 +181,14 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main className={`flex-1 overflow-y-auto ${isChatPage ? 'p-0' : 'container mx-auto px-6 py-12'}`}>
-        {currentPage !== Page.PORTFOLIO && currentPage !== Page.MARKET && currentPage !== Page.CHAT && currentPage !== Page.LANDING && (
+        {currentPage !== Page.PORTFOLIO && currentPage !== Page.MARKET && currentPage !== Page.SWAP && currentPage !== Page.CHAT && currentPage !== Page.LANDING && currentPage !== Page.SETTINGS && (
           <div className="mb-12">
             <h1 className="font-serif text-5xl md:text-7xl mb-4 text-black">
               {currentPage === Page.DASHBOARD && "MoltCash Protocol"}
-              {currentPage === Page.SWAP && "Mint & Redeem."}
               {currentPage === Page.AGENT && "Agentic Stack."}
             </h1>
             <p className="text-gray-500 text-lg max-w-2xl">
               {currentPage === Page.DASHBOARD && "The on-chain liquidity protocol backed by US Treasuries and powered by verified AI cash flows."}
-              {currentPage === Page.SWAP && "Convert stable liquidity into treasury-backed AIUSD seamlessly."}
               {currentPage === Page.AGENT && "Enabling machine-to-machine economy with the x402 protocol."}
             </p>
           </div>
@@ -177,7 +198,8 @@ const App: React.FC = () => {
         {currentPage === Page.SWAP && <Swap />}
         {currentPage === Page.MARKET && <Market />}
         {currentPage === Page.AGENT && <AgentMode />}
-        {currentPage === Page.PORTFOLIO && <Portfolio />}
+        {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} />}
+        {currentPage === Page.SETTINGS && <Settings onBack={() => setCurrentPage(Page.PORTFOLIO)} />}
         {currentPage === Page.CHAT && <Chat />}
         {currentPage === Page.LANDING && <Landing />}
       </main>
@@ -188,11 +210,11 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center gap-4">
             <button
               onClick={() => setShowRiskModal(true)}
-              className="text-gray-400 text-[9px] uppercase tracking-[0.4em] font-bold hover:text-black transition-colors"
+              className="text-gray-400 text-[9px]  tracking-[0.4em] font-bold hover:text-black transition-colors"
             >
               Terms & Disclaimer
             </button>
-            <p className="text-gray-300 text-[10px] uppercase tracking-[0.4em] font-medium">
+            <p className="text-gray-300 text-[10px]  tracking-[0.4em] font-medium">
               Powered by Setu Infrastructure &bull; 2026 MoltCash Protocol
             </p>
           </div>
