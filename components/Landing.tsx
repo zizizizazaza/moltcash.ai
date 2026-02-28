@@ -95,10 +95,17 @@ const Landing: React.FC = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
                 {/* ─── Hero Section ─── */}
-                <section className="text-center space-y-6 pt-8 md:pt-14 relative animate-fadeIn">
-                    <h1 className="text-5xl md:text-7xl font-outfit font-black text-black tracking-[-0.03em] max-w-5xl mx-auto leading-[1.1] md:leading-[1.05] relative z-20">
+                <section className="text-center space-y-4 pt-4 md:pt-6 relative animate-fadeIn">
+                    <div className="flex justify-center mb-2">
+                        <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/60 border border-gray-200/50 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:scale-105 hover:bg-white/80 transition-all duration-500 cursor-default hover:shadow-[0_5px_15px_rgba(0,0,0,0.05)]">
+                            <span className="text-xs sm:text-sm font-bold text-gray-700 tracking-wide">
+                                MoltCash <span className="text-gray-400 font-medium mx-1">powered by</span> Loka
+                            </span>
+                        </div>
+                    </div>
+                    <h1 className="text-5xl md:text-7xl font-outfit font-black text-black tracking-[-0.03em] max-w-5xl mx-auto leading-[1.1] md:leading-[1.05] relative z-20 transition-transform duration-700 hover:scale-[1.02]">
                         The Agentic <br className="hidden md:block" />
-                        <span className="text-black">Payment Engine</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-black via-gray-700 to-black bg-[length:200%_auto] hover:bg-right transition-all duration-1000">Payment Engine</span>
                     </h1>
                     <p className="text-base md:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed font-medium">
                         A decentralized settlement infrastructure built for autonomous AI agents. Zero-fee microtransactions, absolute ZK privacy, and instant stablecoin liquidity.
@@ -109,7 +116,7 @@ const Landing: React.FC = () => {
                         <div className="flex bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl mb-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border border-gray-200/50 max-w-sm mx-auto">
                             <button
                                 onClick={() => setHeroTab('agent')}
-                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 ${heroTab === 'agent' ? 'bg-black text-white shadow-lg' : 'text-gray-400 hover:text-black'}`}
+                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'agent' ? 'bg-black text-white shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
                             >
                                 <span className="flex items-center gap-2 mb-0.5">
                                     <Icons.Code /> For Agent
@@ -118,7 +125,7 @@ const Landing: React.FC = () => {
                             </button>
                             <button
                                 onClick={() => setHeroTab('human')}
-                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 ${heroTab === 'human' ? 'bg-black text-white shadow-lg' : 'text-gray-400 hover:text-black'}`}
+                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'human' ? 'bg-black text-white shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
                             >
                                 <span className="flex items-center gap-2 mb-0.5">
                                     <Icons.User /> For Human
@@ -137,15 +144,15 @@ const Landing: React.FC = () => {
                                         {/* Terminal Command Banner */}
                                         <div
                                             onClick={handleCopy}
-                                            className="w-full bg-[#0D0D0D] font-mono rounded-2xl p-4 md:p-5 shadow-inner border border-white/10 flex items-center justify-between cursor-pointer hover:border-white/20 transition-all group/cmd relative overflow-hidden"
+                                            className="w-full bg-[#0D0D0D] font-mono rounded-2xl p-4 md:p-5 shadow-inner border border-white/10 flex items-center justify-between cursor-pointer hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] transition-all duration-300 group/cmd relative overflow-hidden active:scale-[0.98]"
                                         >
                                             <div className="text-xs md:text-sm tracking-wide text-gray-300 flex flex-wrap gap-2 items-center leading-relaxed">
-                                                <span className="text-gray-500 select-none">$</span>
-                                                <span className="text-[#00E676]">curl</span>
+                                                <span className="text-gray-500 select-none group-hover/cmd:text-white transition-colors duration-300">$</span>
+                                                <span className="text-[#00E676] group-hover/cmd:opacity-80 transition-opacity">curl</span>
                                                 <span>-sL</span>
                                                 <span className="text-white break-all">https://docs.openclaw.com/install.sh</span>
                                                 <span className="text-yellow-400">&nbsp;|&nbsp;</span>
-                                                <span className="text-[#00E676]">bash</span>
+                                                <span className="text-[#00E676] group-hover/cmd:opacity-80 transition-opacity">bash</span>
                                             </div>
                                             <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-gray-400 hover:text-white transition-all border border-white/10 ml-4 whitespace-nowrap  tracking-widest">
                                                 {copied ? '✓ Copied' : 'Copy'}
@@ -297,7 +304,7 @@ const Landing: React.FC = () => {
                                 </div>
                                 <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-black rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
+                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
                                         <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">SKILL Framework</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">Plonky2 + Groth16 Native Proofs</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Local runtime compiling dynamic exposure limits into deployable zero-knowledge circuits directly within the agent workflow.</p>
@@ -308,7 +315,7 @@ const Landing: React.FC = () => {
                             {/* Layer 2 */}
                             <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:text-right md:pr-12 text-left mb-6 md:mb-0 md:order-1 order-3 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
+                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
                                         <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Execution Environment</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">AWS Nitro Enclaves Hub</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Hardware-level CPU segregation guarantees absolute data confidentiality, rendering proprietary strategies completely opaque to hosts and operators.</p>
@@ -329,7 +336,7 @@ const Landing: React.FC = () => {
                                 </div>
                                 <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-gray-200 rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
+                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
                                         <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Programmable Assets</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">Native Yield & RWA Discounting</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>

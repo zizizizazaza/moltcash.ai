@@ -27,6 +27,8 @@ const MOCK_ASSETS: MarketAsset[] = [
     description: 'We are ComputeDAO, operating over 500 GPUs in Singapore. This funding batch will be used to prepay electricity and bandwidth expansion for our next month of generative AI rendering contracts.',
     useOfFunds: 'Prepaying electricity and bandwidth expansion for H100 clusters.',
     monthlyRevenue: [
+      { month: 'Aug', amount: 700000 },
+      { month: 'Sep', amount: 760000 },
       { month: 'Oct', amount: 850000 },
       { month: 'Nov', amount: 920000 },
       { month: 'Dec', amount: 1100000 },
@@ -56,6 +58,8 @@ const MOCK_ASSETS: MarketAsset[] = [
     description: 'Financing future receivables for a top-tier collection of Shopify merchants. Proven track record with over $10M in processed volume.',
     useOfFunds: 'Inventory financing for seasonal peak demand.',
     monthlyRevenue: [
+      { month: 'Aug', amount: 350000 },
+      { month: 'Sep', amount: 410000 },
       { month: 'Oct', amount: 450000 },
       { month: 'Nov', amount: 620000 },
       { month: 'Dec', amount: 950000 },
@@ -85,6 +89,8 @@ const MOCK_ASSETS: MarketAsset[] = [
     description: 'CloudScale provides enterprise-grade Vercel integrations. We are raising to bridge the gap between monthly hosting costs and annual contract payments.',
     useOfFunds: 'Infrastructure scaling and developer headcount.',
     monthlyRevenue: [
+      { month: 'Aug', amount: 280000 },
+      { month: 'Sep', amount: 295000 },
       { month: 'Oct', amount: 300000 },
       { month: 'Nov', amount: 310000 },
       { month: 'Dec', amount: 325000 },
@@ -114,6 +120,8 @@ const MOCK_ASSETS: MarketAsset[] = [
     description: 'ArtBot is a leading generative AI platform for digital artists. This batch secures future subscription revenue from our pro tier users.',
     useOfFunds: 'R&D for new diffusion models.',
     monthlyRevenue: [
+      { month: 'Aug', amount: 110000 },
+      { month: 'Sep', amount: 125000 },
       { month: 'Oct', amount: 150000 },
       { month: 'Nov', amount: 170000 },
       { month: 'Dec', amount: 190000 },
@@ -614,10 +622,10 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
             )}
 
             {activeTab === 'FINANCIALS' && (
-              <div className="space-y-12 animate-fadeIn">
+              <div className="space-y-8 animate-fadeIn">
                 {/* 1. Live Monitor */}
-                <section className="space-y-8">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <section className="space-y-6">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <div className="flex items-center gap-3">
                       <h3 className="text-base font-bold text-black">Stripe Connect API Monitor</h3>
                       <div className="bg-blue-50 text-blue-600 text-[9px] font-bold px-3 py-1 rounded-full italic">Read-Only Access</div>
@@ -629,14 +637,14 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                   </div>
 
                   {/* High Level Metrics */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
                       { label: '30d Gross Flow', value: `$1,245,600`, sub: 'Up 11.2% MoM', trend: 'up' },
                       { label: 'Coverage Ratio', value: '2.49x', sub: 'Calculated at Maturity', trend: 'safe' },
-                      { label: 'Avg Customer LTV', value: '$42,000', sub: 'Enterprise Focus', trend: 'up' }
+                      { label: 'MRR', value: '$42,000', sub: 'Enterprise Focus', trend: 'up' }
                     ].map((stat, i) => (
-                      <div key={i} className="p-8 bg-white glass rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                        <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-4">{stat.label}</p>
+                      <div key={i} className="p-6 bg-white glass rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                        <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-3">{stat.label}</p>
                         <p className="text-3xl font-serif italic text-black mb-1">{stat.value}</p>
                         <p className="text-[10px] font-bold text-[#00E676]  tracking-tighter flex items-center gap-1">
                           {stat.trend === 'up' && '▲'} {stat.sub}
@@ -646,9 +654,9 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                   </div>
 
                   {/* Detailed Analysis Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Revenue History */}
-                    <div className="p-8 bg-white glass rounded-3xl border border-gray-100 shadow-sm space-y-6">
+                    <div className="p-6 bg-white glass rounded-3xl border border-gray-100 shadow-sm space-y-4">
                       <div className="flex justify-between items-center">
                         <p className="text-sm font-bold text-black">Revenue Timeline (6mo)</p>
                         <p className="text-[10px] font-bold text-gray-400">Verifiably Accurate</p>
@@ -680,9 +688,9 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                     </div>
 
                     {/* Concentration Analysis */}
-                    <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100 space-y-6">
+                    <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 space-y-4">
                       <p className="text-sm font-bold text-black">Customer Concentration Analysis</p>
-                      <div className="space-y-5">
+                      <div className="space-y-4">
                         {[
                           { label: 'Top 1 Customer', value: '15%', color: 'bg-black' },
                           { label: 'Top 5 Customers', value: '42%', color: 'bg-gray-400' },
@@ -705,14 +713,14 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                 </section>
 
                 {/* 2. AI Risk Report */}
-                <section className="space-y-6">
+                <section className="space-y-4">
                   <div className="flex items-center gap-4">
                     <h3 className="text-base font-bold text-black">Loka AI Risk scoring</h3>
                     <div className="h-px flex-1 bg-gray-100" />
                   </div>
-                  <div className="p-10 bg-purple-50 rounded-[40px] border-2 border-purple-100/50 relative overflow-hidden group">
+                  <div className="p-8 bg-purple-50 rounded-[40px] border-2 border-purple-100/50 relative overflow-hidden group">
                     <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-purple-200/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
-                    <div className="relative z-10 space-y-8">
+                    <div className="relative z-10 space-y-6">
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <div className="p-2 bg-purple-600 rounded-lg w-fit text-white text-xs">Loka AI v2.4</div>
@@ -724,10 +732,10 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                          <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-2">Key Strengths</p>
-                          <ul className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-1">Key Strengths</p>
+                          <ul className="space-y-2">
                             {[
                               'Market Fit: AI computing demand is in a phase of exponential growth.',
                               'Cash Flow Quality: Stripe lock-box account with mandatory repayment mechanism.',
@@ -739,9 +747,9 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                             ))}
                           </ul>
                         </div>
-                        <div className="space-y-4">
-                          <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-2">Risk Observations</p>
-                          <ul className="space-y-3">
+                        <div className="space-y-3">
+                          <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-1">Risk Observations</p>
+                          <ul className="space-y-2">
                             {[
                               'Geopolitics: Data center electricity rates in Tokyo impacted by energy price volatility.',
                               'Obsolescence: Risk of H100 computing power facing depreciation after 24 months.'
@@ -807,7 +815,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                 <div className="p-6 bg-[#00E676]/5 border border-[#00E676]/20 rounded-2xl text-center space-y-2">
                   <p className="text-[#00E676] text-2xl mb-2">🎉</p>
                   <h4 className="text-[14px] font-bold text-black">Campaign Successful</h4>
-                  <p className="text-[10px] text-gray-500 leading-relaxed font-medium">This asset has been fully funded and is now generating yield. Trading is available on the secondary market.</p>
+                  <p className="text-[10px] text-gray-500 leading-relaxed font-medium">This asset has been fully funded and is now generating yield.</p>
                 </div>
                 {/* Show user's investment if this is the ComputeDAO asset */}
                 <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
