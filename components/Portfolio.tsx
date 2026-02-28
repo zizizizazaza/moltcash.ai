@@ -110,7 +110,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                     )}
                   </button>
                 </div>
-                <p className="text-[11px] font-medium text-gray-400">Joined Nov {new Date().getFullYear()} <span className="mx-1">•</span> Web3 Investor</p>
+                <p className="text-[11px] font-medium text-gray-400">Joined Nov {new Date().getFullYear()}</p>
               </div>
             </div>
 
@@ -302,7 +302,6 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 />
                 <AllocationCard
                   title="ComputeDAO - GPU Expansion"
-                  desc="Active Yield Strategy"
                   statusBadge={<span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-[9px] font-black">Funded</span>}
                   apy="15.5% APY · 60d"
                   amount="$5,000.00"
@@ -386,7 +385,7 @@ const AllocationCard: React.FC<{
       <div>
         <div className="flex items-center gap-2">
           <h5 className="text-sm font-bold text-black">{title}</h5>
-          <span className="text-[9px] font-bold text-gray-400 tracking-tighter ">({desc})</span>
+          {desc && <span className="text-[9px] font-bold text-gray-400 tracking-tighter">({desc})</span>}
           {statusBadge}
         </div>
         <p className="text-[11px] text-gray-500 font-medium mt-0.5">{apy}</p>

@@ -805,10 +805,6 @@ const Chat: React.FC = () => {
                                     <div className="flex-1 flex flex-col min-h-0 animate-in fade-in slide-in-from-right-4 duration-500 delay-100">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-[10px] font-bold text-gray-400  tracking-[0.2em]">Cash Flow</h3>
-                                            <div className="flex items-center gap-1">
-                                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                                <span className="text-[9px] font-bold text-green-600 ">Live Pulse</span>
-                                            </div>
                                         </div>
                                         <div className="flex-1 overflow-y-auto space-y-4 pr-2 -mr-2">
                                             {[
@@ -823,10 +819,6 @@ const Chat: React.FC = () => {
                                                 >
                                                     <div className="flex items-center justify-between mb-2">
                                                         <p className="text-[11px] font-bold text-black truncate pr-2 group-hover:text-black transition-colors">{item.title}</p>
-                                                        <div className="flex items-center gap-1 shrink-0">
-                                                            <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
-                                                            <span className="text-[7px] font-bold text-green-600  tracking-tighter">Live</span>
-                                                        </div>
                                                     </div>
 
                                                     <div className="flex items-center gap-3 mb-2 text-[9px] text-gray-500 font-medium">
