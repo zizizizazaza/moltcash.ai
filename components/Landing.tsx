@@ -17,37 +17,85 @@ const useInView = (options?: IntersectionObserverInit) => {
     return { ref, isInView };
 };
 
-const CoinSVG = ({ symbol, side = 'left', className, style }: { symbol: string, side?: 'left' | 'right', className?: string, style?: React.CSSProperties }) => {
+// --- CoinSVG with pure dense dot-matrix rendering ---
+const CoinSVG = ({ symbol, side = 'left', className, style, delayOffset = 0 }: { symbol: string, side?: 'left' | 'right', className?: string, style?: React.CSSProperties, delayOffset?: number }) => {
     const isLong = symbol.length > 2;
-    // Scale up the font size to make it large enough:
-    const fontSize = isLong ? "36" : "90";
+    const fontSize = isLong ? "65" : "140";
 
-    // We adjust viewBox from "0 0 200 240" to "-20 10 240 220" so shapes aren't clipped
+    const width = 300;
+    const height = 300;
+    const spacing = 7; // Dense dots
+    const maskId = `mask-${symbol}`;
+
+    const backgroundBlackDots = [];
+    const foregroundGreenDots = [];
+
+    // Halftone generation
+    for (let x = 0; x <= width; x += spacing) {
+        for (let y = 0; y <= height; y += spacing) {
+            let dx = x - 150;
+            let dy = y - 150;
+            let d = Math.sqrt(dx * dx + dy * dy);
+
+            if (d <= 145) {
+                // Base layer of dots everywhere inside the coin, changed to grey
+                backgroundBlackDots.push(<circle key={`bg-${x}-${y}`} cx={x} cy={y} r={1.8} fill="#D1D5DB" opacity={0.6} />);
+
+                // Determine if this area should be bright green
+                let isBright = false;
+                if (d > 130) {
+                    isBright = false; // Outer dark ring
+                } else if (d > 105 && d <= 130) {
+                    isBright = true; // Outer bright ring
+                } else if (d > 95 && d <= 105) {
+                    isBright = false; // Inner dark ring
+                } else {
+                    isBright = true; // Inner bright fill
+                }
+
+                if (isBright) {
+                    const animDelay = `${(x + y) * 2 + delayOffset}ms`;
+                    foregroundGreenDots.push(
+                        <circle key={`fg-${x}-${y}`} cx={x} cy={y} r={2.8} fill="#c3ff00" className="coin-dot" style={{ animationDelay: animDelay }} />
+                    );
+                }
+            }
+        }
+    }
+
     return (
-        <svg viewBox="0 0 200 240" overflow="visible" fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.5" className={className} style={style}>
-            {side === 'left' ? (
-                <>
-                    <path d="M 85 30 A 70 90 0 0 0 85 210" />
-                    <line x1="85" y1="30" x2="110" y2="30" />
-                    <line x1="85" y1="210" x2="110" y2="210" />
-                    <ellipse cx="110" cy="120" rx="70" ry="90" />
-                    <ellipse cx="110" cy="120" rx="55" ry="75" strokeOpacity="0.4" />
-                    {/* Using dominantBaseline ensures perfectly centered text regardless of font line-height bugs */}
-                    <text x="110" y="125" fontSize={fontSize} fontWeight="bold" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="middle" strokeWidth="1.5" strokeOpacity="1" fill="none">{symbol}</text>
-                </>
-            ) : (
-                <>
-                    <path d="M 115 30 A 70 90 0 0 1 115 210" />
-                    <line x1="115" y1="30" x2="90" y2="30" />
-                    <line x1="115" y1="210" x2="90" y2="210" />
-                    <ellipse cx="90" cy="120" rx="70" ry="90" />
-                    <ellipse cx="90" cy="120" rx="55" ry="75" strokeOpacity="0.4" />
-                    <text x="90" y="125" fontSize={fontSize} fontWeight="bold" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="middle" strokeWidth="1.5" strokeOpacity="1" fill="none">{symbol}</text>
-                </>
-            )}
+        <svg viewBox="0 0 300 300" overflow="visible" className={className} style={style}>
+            <defs>
+                <style>
+                    {`
+                        @keyframes pulseDot {
+                            0%, 100% { opacity: 0.85; transform: scale(0.9); }
+                            50% { opacity: 1; transform: scale(1.05); }
+                        }
+                        .coin-dot {
+                            transform-origin: center;
+                            animation: pulseDot 4s infinite ease-in-out;
+                        }
+                    `}
+                </style>
+                <mask id={maskId}>
+                    {/* Use page background color #fafdf3 instead of white to avoid white borders */}
+                    <rect width="100%" height="100%" fill="#fafdf3" />
+                    {/* Punch a hole for the text, revealing the grey dots underneath */}
+                    <text x="150" y="155" fontSize={fontSize} fontWeight="900" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central" fill="black">{symbol}</text>
+                </mask>
+            </defs>
+
+            <g>
+                {backgroundBlackDots}
+            </g>
+            <g mask={`url(#${maskId})`}>
+                {foregroundGreenDots}
+            </g>
         </svg>
     );
 };
+
 
 const Landing: React.FC = () => {
     const [heroTab, setHeroTab] = useState<'agent' | 'human'>('agent');
@@ -64,30 +112,37 @@ const Landing: React.FC = () => {
     };
 
     return (
-        <div className="relative min-h-screen pb-24 overflow-hidden bg-[#FAFAFA]">
-            {/* Floating Outline Coins Background (DeBank style) */}
+        <div className="relative min-h-screen pb-24 overflow-hidden bg-[#fafdf3]"> {/* Updated background color to warm off-white */}
+            {/* Restored Floating Dot Matrix Coins Container */}
             <div className="absolute top-0 left-0 w-full h-screen pointer-events-none z-0 overflow-hidden flex justify-center">
+                <style>
+                    {`
+                        @keyframes float1 { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(3deg); } }
+                        @keyframes float2 { 0%, 100% { transform: translateY(0) rotate(-12deg); } 50% { transform: translateY(-25px) rotate(-8deg); } }
+                        @keyframes float3 { 0%, 100% { transform: translateY(0) rotate(15deg); } 50% { transform: translateY(-30px) rotate(10deg); } }
+                    `}
+                </style>
                 <div className="relative w-full max-w-[1400px] h-full">
                     {/* 1. $ - Top Left */}
-                    <div style={{ animation: 'float1 8s ease-in-out infinite' }} className="absolute top-[8vh] left-[-10%] md:left-[-2%]">
-                        <CoinSVG symbol="$" side="left" className="w-[200px] h-[200px] md:w-[320px] md:h-[320px] text-gray-300 opacity-60 transform -rotate-12 transition-transform duration-[6000ms] hover:scale-105" />
+                    <div style={{ animation: 'float1 12s ease-in-out infinite' }} className="absolute top-[2vh] left-[-8%] md:left-[-2%]">
+                        <CoinSVG symbol="$" side="left" delayOffset={0} className="w-[280px] h-[280px] md:w-[420px] md:h-[420px] opacity-90 transition-transform hover:scale-105" />
                     </div>
                     {/* 2. AIUSD - Bottom Left */}
-                    <div style={{ animation: 'float2 10s ease-in-out infinite 1.5s' }} className="absolute top-[55vh] left-[-5%] md:left-[5%]">
-                        <CoinSVG symbol="AIUSD" side="left" className="w-[140px] h-[140px] md:w-[220px] md:h-[220px] text-gray-300 opacity-40 transform rotate-12 transition-transform duration-[8000ms] hover:-translate-x-4" />
+                    <div style={{ animation: 'float2 14s ease-in-out infinite 2s' }} className="absolute top-[60vh] left-[-7%] md:left-[3%]">
+                        <CoinSVG symbol="AIUSD" side="left" delayOffset={1200} className="w-[180px] h-[180px] md:w-[260px] md:h-[260px] opacity-70 transition-transform hover:-translate-x-4" />
                     </div>
 
                     {/* 3. ¥ - Top Right */}
-                    <div style={{ animation: 'float2 9s ease-in-out infinite 0.5s' }} className="absolute top-[12vh] right-[-10%] md:right-[-2%]">
-                        <CoinSVG symbol="¥" side="right" className="w-[180px] h-[180px] md:w-[280px] md:h-[280px] text-gray-300 opacity-60 transform rotate-6 transition-transform duration-[7000ms]" />
+                    <div style={{ animation: 'float2 13s ease-in-out infinite 1s' }} className="absolute top-[8vh] right-[-10%] md:right-[-4%]">
+                        <CoinSVG symbol="¥" side="right" delayOffset={500} className="w-[220px] h-[220px] md:w-[350px] md:h-[350px] opacity-80 transition-transform hover:scale-105" />
                     </div>
                     {/* 4. USDC - Middle Right */}
-                    <div style={{ animation: 'float1 12s ease-in-out infinite 2s' }} className="absolute top-[38vh] right-[5%] md:right-[15%]">
-                        <CoinSVG symbol="USDC" side="right" className="w-[120px] h-[120px] md:w-[180px] md:h-[180px] text-gray-300 opacity-50 transform -rotate-3 transition-transform duration-[9000ms]" />
+                    <div style={{ animation: 'float3 15s ease-in-out infinite 3s' }} className="absolute top-[45vh] right-[1%] md:right-[15%]">
+                        <CoinSVG symbol="USDC" side="right" delayOffset={2000} className="w-[160px] h-[160px] md:w-[200px] md:h-[200px] opacity-80" />
                     </div>
                     {/* 5. € - Bottom Right */}
-                    <div style={{ animation: 'float1 11s ease-in-out infinite 3s' }} className="absolute top-[68vh] right-[-5%] md:right-[5%]">
-                        <CoinSVG symbol="€" side="right" className="w-[140px] h-[140px] md:w-[200px] md:h-[200px] text-gray-300 opacity-40 transform rotate-[15deg] transition-transform duration-[10000ms]" />
+                    <div style={{ animation: 'float1 16s ease-in-out infinite 4s' }} className="absolute top-[75vh] right-[2%] md:right-[8%]">
+                        <CoinSVG symbol="€" side="right" delayOffset={3200} className="w-[200px] h-[200px] md:w-[280px] md:h-[280px] opacity-70" />
                     </div>
                 </div>
             </div>
@@ -113,7 +168,7 @@ const Landing: React.FC = () => {
 
                     <div className="pt-4 max-w-2xl mx-auto">
                         {/* Toggle Buttons */}
-                        <div className="flex bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl mb-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border border-gray-200/50 max-w-sm mx-auto">
+                        <div className="flex bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl mb-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border border-gray-200/50 max-w-sm mx-auto relative z-20">
                             <button
                                 onClick={() => setHeroTab('agent')}
                                 className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'agent' ? 'bg-black text-white shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
@@ -135,9 +190,9 @@ const Landing: React.FC = () => {
                         </div>
 
                         {/* Dynamic Content Area */}
-                        <div className="min-h-[260px] flex items-center justify-center text-left" key={heroTab}>
+                        <div className="min-h-[260px] flex items-center justify-center text-left relative z-10" key={heroTab}>
                             {heroTab === 'agent' ? (
-                                <div className="w-full bg-[#1C1C1E] rounded-3xl p-6 md:p-8 shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/5 overflow-hidden relative group font-sans animate-fadeIn">
+                                <div className="w-full bg-[#111827] rounded-3xl p-6 md:p-8 shadow-[0_50px_100px_-20px_rgba(195,255,0,0.4)] border border-[#c3ff00]/40 overflow-hidden relative group font-sans animate-fadeIn">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-15 transition-opacity duration-500"><Icons.Shield /></div>
 
                                     <div className="space-y-8">
@@ -225,58 +280,84 @@ const Landing: React.FC = () => {
                 {/* ─── Features Showcase ─── */}
                 <section
                     ref={featuresRef.ref}
-                    className={`space-y-16 mt-32 transition-all duration-700 delay-200 ${featuresRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                    className={`space-y-16 mt-32 relative transition-all duration-700 delay-200 ${featuresRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                 >
-                    <div className="text-center space-y-4 mb-20 relative">
-                        <div className="inline-block relative">
-                            <h2 className="text-4xl md:text-5xl font-black text-black tracking-tight relative z-10">Ecosystem Architecture</h2>
-                        </div>
-                        <p className="text-gray-500 text-lg font-medium max-w-2xl mx-auto">Engineered from the ground up to eliminate friction in AI-driven commerce.</p>
+                    {/* Background Coins for this section */}
+                    <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
+                        <CoinSVG symbol="USDC" side="right" className="absolute top-0 right-[-10%] w-[400px] h-[400px] opacity-[0.03] rotate-12" />
+                        <CoinSVG symbol="AIUSD" side="left" className="absolute bottom-[-10%] left-[-15%] w-[500px] h-[500px] opacity-[0.04] -rotate-12" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Natural Language Flow */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-blue-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.Chat />
+                    <div className="md:flex md:items-end md:justify-between mb-16 relative">
+                        <div className="inline-block relative">
+                            <h2 className="text-4xl md:text-5xl font-black text-black tracking-tight relative z-10">Ecosystem <br className="hidden md:block" />Architecture</h2>
+                            <div className="absolute -left-6 top-0 bottom-0 w-2 bg-[#c3ff00] hidden md:block"></div>
+                        </div>
+                        <p className="text-gray-500 text-sm font-mono max-w-sm md:text-right mt-6 md:mt-0 uppercase tracking-widest leading-relaxed">Engineered from the ground up to eliminate friction in AI-driven commerce.</p>
+                    </div>
+
+                    <div className="flex flex-col border-t-2 border-black/10">
+                        {/* Item 1 */}
+                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
+                            {/* Hover accent line */}
+                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
+
+                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
+                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 01 ]</span>
+                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Conversational Settlement</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Execute payments, configure complex conditional logic, and orchestrate capital routing entirely through natural language commands natively optimized for multi-agent workflows.
-                            </p>
+
+                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
+                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Conversational Settlement</h3>
+                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
+                                    Execute payments, configure complex conditional logic, and orchestrate capital routing entirely through natural language commands natively optimized for multi-agent workflows.
+                                </p>
+                            </div>
                         </div>
 
-                        {/* ZK Privacy */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-indigo-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.Shield />
+                        {/* Item 2 */}
+                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
+                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
+                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
+                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 02 ]</span>
+                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Zero-Knowledge Autonomy</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Institutional-grade financial privacy. ZK proofs validate policy compliance and portfolio solvency instantly without ever exposing balances, counterparties, or proprietary strategies.
-                            </p>
+                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
+                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Zero-Knowledge Autonomy</h3>
+                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
+                                    Institutional-grade financial privacy. ZK proofs validate policy compliance and portfolio solvency instantly without ever exposing balances, counterparties, or proprietary strategies.
+                                </p>
+                            </div>
                         </div>
 
-                        {/* Trustless Credit & Identity */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-cyan-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.User />
+                        {/* Item 3 */}
+                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
+                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
+                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
+                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 03 ]</span>
+                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Programmable Reputation</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Dynamic deterministic credit scoring establishes behavioral identity on-chain. Progress from anonymous multi-sig wallets to trusted, measurable institutional agent relationships.
-                            </p>
+                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
+                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Programmable Reputation</h3>
+                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
+                                    Dynamic deterministic credit scoring establishes behavioral identity on-chain. Progress from anonymous multi-sig wallets to trusted, measurable institutional agent relationships.
+                                </p>
+                            </div>
                         </div>
 
-                        {/* Zero-fee infrastructure */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-violet-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.Swap />
+                        {/* Item 4 */}
+                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
+                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
+                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
+                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 04 ]</span>
+                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Absolute Zero-Fee Rail</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Engineered atop a custom sovereign layer enabling infinite friction-free microtransactions. Seamless T+0 finality deeply integrated alongside structural global fiat gateways.
-                            </p>
+                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
+                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Absolute Zero-Fee Rail</h3>
+                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
+                                    Engineered atop a custom sovereign layer enabling infinite friction-free microtransactions. Seamless T+0 finality deeply integrated alongside structural global fiat gateways.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -284,62 +365,68 @@ const Landing: React.FC = () => {
                 {/* ─── Deep Tech Architecture ─── */}
                 <section
                     ref={stackRef.ref}
-                    className={`space-y-16 pt-24 pb-12 transition-all duration-700 delay-300 ${stackRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                    className={`space-y-16 pt-24 pb-12 relative transition-all duration-700 delay-300 ${stackRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                 >
-                    <div className="text-center space-y-4 mb-20">
-                        <h2 className="text-4xl md:text-5xl font-black text-black tracking-tight">The Institutional Stack.</h2>
-                        <p className="text-gray-500 text-lg font-medium">Modular, secure components forged for enterprise-grade throughput.</p>
+                    {/* Background Coins for this section */}
+                    <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
+                        <CoinSVG symbol="€" side="left" className="absolute top-[20%] left-[-5%] w-[350px] h-[350px] opacity-[0.03] -rotate-[15deg]" />
+                        <CoinSVG symbol="¥" side="right" className="absolute bottom-[10%] right-[-8%] w-[450px] h-[450px] opacity-[0.04] rotate-[20deg]" />
+                    </div>
+
+                    <div className="md:flex md:items-end md:justify-between mb-24 relative">
+                        <div className="inline-block relative">
+                            <h2 className="text-4xl md:text-5xl font-black text-black tracking-tight relative z-10">The Institutional<br className="hidden md:block" /> Stack<span className="text-[#c3ff00]">.</span></h2>
+                            <div className="absolute -left-6 top-0 bottom-0 w-2 bg-[#c3ff00] hidden md:block"></div>
+                        </div>
+                        <p className="text-gray-500 text-sm font-mono max-w-sm md:text-right mt-6 md:mt-0 uppercase tracking-widest leading-relaxed">Modular, secure components forged for enterprise-grade throughput.</p>
                     </div>
 
                     <div className="relative max-w-5xl mx-auto">
-                        {/* Continuous vertical line */}
-                        <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-gray-200 via-gray-300 to-transparent transform md:-translate-x-1/2"></div>
-
-                        <div className="space-y-24">
+                        <div className="space-y-12 md:space-y-24">
                             {/* Layer 3 */}
                             <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
-                                <div className="md:w-5/12 ml-16 md:ml-0 md:text-right md:pr-12 text-left mb-6 md:mb-0">
-                                    <h3 className="text-2xl font-black text-black">Experience & SDK Layer</h3>
+                                <div className="md:w-[45%] pl-8 md:pl-0 md:text-right md:pr-16 text-left mb-4 md:mb-0">
+                                    <h3 className="text-2xl font-black text-black group-hover:text-gray-600 transition-colors">Experience & SDK Layer</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Turnkey integration suites for autonomous agents and decentralized businesses. Featuring automated gas sponsorships, isolated session keys, and comprehensive policy rule configurations.</p>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-black rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
-                                <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">SKILL Framework</h4>
-                                        <p className="text-sm font-semibold text-gray-800 mb-2">Plonky2 + Groth16 Native Proofs</p>
-                                        <p className="text-xs text-gray-500 leading-relaxed">Local runtime compiling dynamic exposure limits into deployable zero-knowledge circuits directly within the agent workflow.</p>
+                                <div className="absolute left-[-4px] md:left-1/2 w-2 h-2 bg-black/20 group-hover:bg-[#c3ff00] transform md:-translate-x-1/2 mt-2 transition-colors duration-300"></div>
+                                <div className="md:w-[45%] pl-8 md:pl-16 w-full">
+                                    <div className="bg-transparent group-hover:bg-black/[0.02] transition-colors p-6 relative">
+                                        <h4 className="text-[10px] font-mono font-bold text-gray-400 tracking-wider mb-2 uppercase">SKILL Framework</h4>
+                                        <p className="text-xl font-black text-black mb-3">Plonky2 + Groth16 Native Proofs</p>
+                                        <p className="text-sm text-gray-500 leading-relaxed font-medium">Local runtime compiling dynamic exposure limits into deployable zero-knowledge circuits directly within the agent workflow.</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Layer 2 */}
                             <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
-                                <div className="md:w-5/12 ml-16 md:ml-0 md:text-right md:pr-12 text-left mb-6 md:mb-0 md:order-1 order-3 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Execution Environment</h4>
-                                        <p className="text-sm font-semibold text-gray-800 mb-2">AWS Nitro Enclaves Hub</p>
-                                        <p className="text-xs text-gray-500 leading-relaxed">Hardware-level CPU segregation guarantees absolute data confidentiality, rendering proprietary strategies completely opaque to hosts and operators.</p>
+                                <div className="md:w-[45%] pl-8 md:pl-0 md:text-right md:pr-16 text-left mb-4 md:mb-0 md:order-1 order-3 w-full">
+                                    <div className="bg-transparent group-hover:bg-black/[0.02] transition-colors p-6 relative md:text-right">
+                                        <h4 className="text-[10px] font-mono font-bold text-gray-400 tracking-wider mb-2 uppercase">Execution Environment</h4>
+                                        <p className="text-xl font-black text-black mb-3">AWS Nitro Enclaves Hub</p>
+                                        <p className="text-sm text-gray-500 leading-relaxed font-medium">Hardware-level CPU segregation guarantees absolute data confidentiality, rendering proprietary strategies completely opaque to hosts and operators.</p>
                                     </div>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-gray-300 rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 md:order-2 order-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
-                                <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 md:order-3 order-1 mb-6 md:mb-0 text-left">
-                                    <h3 className="text-2xl font-black text-black">Computation & Risk Engine</h3>
+                                <div className="absolute left-[-4px] md:left-1/2 w-2 h-2 bg-black/20 group-hover:bg-[#c3ff00] transform md:-translate-x-1/2 mt-2 md:order-2 order-2 transition-colors duration-300"></div>
+                                <div className="md:w-[45%] pl-8 md:pl-16 md:order-3 order-1 mb-4 md:mb-0 text-left">
+                                    <h3 className="text-2xl font-black text-black group-hover:text-gray-600 transition-colors">Computation & Risk Engine</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">The invisible processing powerhouse safely driving compliance frameworks, multi-tenant agent logical routing, and rigorous fraud deterrence inside restricted boundaries.</p>
                                 </div>
                             </div>
 
                             {/* Layer 1 */}
                             <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
-                                <div className="md:w-5/12 ml-16 md:ml-0 md:text-right md:pr-12 text-left mb-6 md:mb-0">
-                                    <h3 className="text-2xl font-black text-black">Ledger & Securitization</h3>
+                                <div className="md:w-[45%] pl-8 md:pl-0 md:text-right md:pr-16 text-left mb-4 md:mb-0">
+                                    <h3 className="text-2xl font-black text-black group-hover:text-gray-600 transition-colors">Ledger & Securitization</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Algorithmic capital utilization mechanisms capturing risk-free US Treasury yields to fund network emission mechanics, enabling continuous capital creation via AIUSD stablecoins.</p>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-gray-200 rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
-                                <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Programmable Assets</h4>
-                                        <p className="text-sm font-semibold text-gray-800 mb-2">Native Yield & RWA Discounting</p>
-                                        <p className="text-xs text-gray-500 leading-relaxed">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>
+                                <div className="absolute left-[-4px] md:left-1/2 w-2 h-2 bg-black/20 group-hover:bg-[#c3ff00] transform md:-translate-x-1/2 mt-2 transition-colors duration-300"></div>
+                                <div className="md:w-[45%] pl-8 md:pl-16 w-full">
+                                    <div className="bg-transparent group-hover:bg-black/[0.02] transition-colors p-6 relative">
+                                        <h4 className="text-[10px] font-mono font-bold text-gray-400 tracking-wider mb-2 uppercase">Programmable Assets</h4>
+                                        <p className="text-xl font-black text-black mb-3">Native Yield & RWA Discounting</p>
+                                        <p className="text-sm text-gray-500 leading-relaxed font-medium">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>
                                     </div>
                                 </div>
                             </div>

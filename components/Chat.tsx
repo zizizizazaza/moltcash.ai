@@ -333,68 +333,72 @@ const Chat: React.FC = () => {
                 </button>
 
                 {/* Main Chat Area */}
-                <main className="flex-1 flex flex-col relative bg-[#fafafa]">
+                <main className="flex-1 flex flex-col relative bg-[#f4f4f4]" style={{ backgroundImage: 'radial-gradient(#e5e5e5 1px, transparent 1px)', backgroundSize: '12px 12px' }}>
                     <div className="flex-1 overflow-y-auto">
                         {messages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center px-12 py-12">
-                                <div className="w-full max-w-2xl bg-white rounded-[2rem] p-8 border border-gray-100 shadow-2xl">
-                                    <div className="flex items-center gap-5 mb-8">
-                                        <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
-                                            <div className="scale-110"><Icons.Chat /></div>
-                                        </div>
-                                        <div>
-                                            <h1 className="text-xl font-black tracking-tight text-black">Loka Protocol</h1>
-                                            <p className="text-[10px] text-gray-400 font-bold  tracking-[0.2em]">Intelligent Yield Engine</p>
-                                        </div>
+                                <div className="relative w-full max-w-2xl mt-4 px-2 md:px-0">
+                                    {/* Outer Neon Green Dot Matrix Border */}
+                                    <div className="absolute inset-[-0.75rem] md:inset-[-1.25rem] rounded-[2rem] md:rounded-[2.5rem] bg-[#c3ff00] overflow-hidden" style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.05)' }}>
+                                        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(0,0,0,0.4) 1.5px, transparent 1.5px)', backgroundSize: '8px 8px', backgroundPosition: '0 0' }}></div>
                                     </div>
 
-                                    <div className="space-y-6 mb-8">
-                                        <p className="text-sm text-gray-600 leading-tight text-center px-4 font-semibold">
-                                            Earn on-chain yields <span className="text-black font-black border-b-2 border-black/10">easily, safely, and stably</span>.
-                                        </p>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                                            <div
-                                                onClick={() => handleAssetClick('AIUSD')}
-                                                className="flex flex-col p-5 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-black/20 hover:bg-white hover:shadow-xl transition-all cursor-pointer"
-                                            >
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-[10px] font-black group-hover:scale-110 transition-transform">AI</div>
-                                                    <h3 className="text-[11px] font-black text-black">AIUSD Assets</h3>
+                                    {/* Inner Card Container */}
+                                    <div className="relative bg-gradient-to-b from-white to-[#f4f8f0] rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-10 border border-black/10 shadow-[0_10px_40px_rgba(0,0,0,0.1)]">
+                                        <div className="flex flex-col items-center justify-center mb-6 md:mb-8">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-6 h-6 rounded bg-black text-[#c3ff00] flex items-center justify-center shadow-sm relative overflow-hidden group">
+                                                    <span className="text-[12px] font-black leading-none font-sans relative z-10 scale-x-125">L</span>
                                                 </div>
-                                                <p className="text-[10px] text-gray-500 leading-relaxed font-semibold flex-1">Institutional stablecoin capturing cross-chain yields via smart algorithms.</p>
+                                                <span className="text-xs font-bold text-gray-800 tracking-wide font-sans">Loka Protocol</span>
                                             </div>
+                                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-black mt-2">Intelligent Yield Engine</h1>
+                                        </div>
 
-                                            <div
-                                                onClick={() => handleAssetClick('Cash Flow')}
-                                                className="flex flex-col p-5 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-black/20 hover:bg-white hover:shadow-xl transition-all cursor-pointer"
-                                            >
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                                                        <div className="scale-75"><Icons.TrendingUp /></div>
-                                                    </div>
-                                                    <h3 className="text-[11px] font-black text-black">Cash Flow Assets</h3>
+                                        <div className="space-y-6 mb-8 mt-2">
+                                            <p className="text-[15px] text-gray-600 leading-tight text-center px-4 font-medium">
+                                                Earn on-chain yields easily, safely, and stably.
+                                            </p>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-stretch pt-2 px-0 md:px-4">
+                                                <div
+                                                    onClick={() => handleAssetClick('AIUSD')}
+                                                    className="flex flex-col relative p-5 bg-gray-50/50 rounded-xl group hover:bg-white transition-all cursor-pointer"
+                                                >
+                                                    {/* Dotted border wrapper */}
+                                                    <div className="absolute inset-0 border-[1.5px] border-dotted border-gray-400/80 rounded-xl group-hover:border-black pointer-events-none transition-colors"></div>
+                                                    <h3 className="text-[13px] font-black text-black mb-2 select-none">AIUSD Assets</h3>
+                                                    <p className="text-[11px] text-gray-500 leading-relaxed font-medium flex-1 select-none pr-2">Institutional stablecoin solutions, under-collateralized chain architecture.</p>
                                                 </div>
-                                                <p className="text-[10px] text-gray-500 leading-relaxed font-semibold flex-1">Securitized real-world AI compute and SaaS enterprise cash flow notes.</p>
+
+                                                <div
+                                                    onClick={() => handleAssetClick('Cash Flow')}
+                                                    className="flex flex-col relative p-5 bg-gray-50/50 rounded-xl group hover:bg-white transition-all cursor-pointer"
+                                                >
+                                                    {/* Dotted border wrapper */}
+                                                    <div className="absolute inset-0 border-[1.5px] border-dotted border-gray-400/80 rounded-xl group-hover:border-black pointer-events-none transition-colors"></div>
+                                                    <h3 className="text-[13px] font-black text-black mb-2 select-none">Cash Flow Assets</h3>
+                                                    <p className="text-[11px] text-gray-500 leading-relaxed font-medium flex-1 select-none pr-2">Securitized real-world AI investments, for growth and achievements.</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="space-y-6 pt-6 border-t border-gray-100">
-                                        <ul className="grid grid-cols-2 gap-x-8 gap-y-4 px-4">
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
-                                                <div className="w-1 h-1 bg-black rounded-full"></div> AI-driven trading
-                                            </li>
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
-                                                <div className="w-1 h-1 bg-black rounded-full"></div> Optimized routing
-                                            </li>
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
-                                                <div className="w-1 h-1 bg-black rounded-full"></div> Over-collateralized
-                                            </li>
-                                            <li className="text-[10px] text-gray-400 flex items-center gap-3 font-bold  tracking-wider">
-                                                <div className="w-1 h-1 bg-black rounded-full"></div> Instant liquidity
-                                            </li>
-                                        </ul>
+                                        <div className="pt-4 mt-4">
+                                            <ul className="grid grid-cols-2 gap-x-6 gap-y-4 px-4 md:px-8">
+                                                <li className="text-[13px] text-gray-700 flex items-center gap-3 font-medium">
+                                                    <div className="w-[5px] h-[5px] bg-black rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.1)]"></div> AI-driven trading
+                                                </li>
+                                                <li className="text-[13px] text-gray-700 flex items-center gap-3 font-medium">
+                                                    <div className="w-[5px] h-[5px] bg-black rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.1)]"></div> Optimized routing
+                                                </li>
+                                                <li className="text-[13px] text-gray-700 flex items-center gap-3 font-medium">
+                                                    <div className="w-[5px] h-[5px] bg-black rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.1)]"></div> Over-collateralized
+                                                </li>
+                                                <li className="text-[13px] text-gray-700 flex items-center gap-3 font-medium">
+                                                    <div className="w-[5px] h-[5px] bg-black rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.1)]"></div> Instant liquidity
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -828,10 +832,14 @@ const Chat: React.FC = () => {
                                                     </div>
 
                                                     <div className="space-y-1">
-                                                        <div className="w-full h-1 bg-gray-50 rounded-full overflow-hidden">
+                                                        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden relative">
                                                             <div
-                                                                className="h-full bg-green-500 rounded-full"
-                                                                style={{ width: `${item.progress}%` }}
+                                                                className="h-full rounded-full bg-[#c3ff00]"
+                                                                style={{
+                                                                    width: `${item.progress}%`,
+                                                                    backgroundImage: 'radial-gradient(rgba(0,0,0,0.6) 1.5px, transparent 1.5px)',
+                                                                    backgroundSize: '5px 5px'
+                                                                }}
                                                             ></div>
                                                         </div>
                                                         <div className="flex justify-between items-center text-[8px] font-bold text-gray-400  tracking-tighter">
@@ -847,18 +855,35 @@ const Chat: React.FC = () => {
                             ) : (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                                     {/* Portfolio Summary */}
-                                    <div className="p-5 bg-gray-50 rounded-[2rem] border border-gray-100">
-                                        <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-1">Total Portfolio Value</p>
-                                        <h2 className="text-3xl font-black text-black mb-3">$15,240.50</h2>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex flex-col">
-                                                <p className="text-[8px] font-black text-gray-400  tracking-tighter">Total Profit</p>
-                                                <p className="text-xs font-black text-green-500">+$166.30</p>
+                                    <div className="p-6 bg-white rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                        <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 uppercase">Total Portfolio Value</p>
+                                        <h2 className="text-[32px] font-black text-black mb-6 tracking-tight leading-none">$15,240.50</h2>
+
+                                        <div className="flex items-end gap-6">
+                                            <div className="flex flex-col gap-1.5">
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Total Profit</p>
+                                                <p className="text-[13px] font-black text-[#85b000] bg-[#c3ff00]/15 w-fit px-2.5 py-1 rounded-md">+$166.30</p>
                                             </div>
-                                            <div className="w-px h-6 bg-gray-200"></div>
-                                            <div className="flex flex-col">
-                                                <p className="text-[8px] font-black text-gray-400  tracking-tighter">Profit Rate</p>
-                                                <p className="text-xs font-black text-green-500">+1.09%</p>
+                                            <div className="flex flex-col gap-1.5">
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Profit Rate</p>
+                                                <div className="flex items-center gap-3">
+                                                    <p className="text-[13px] font-black text-[#85b000] bg-[#c3ff00]/15 px-2.5 py-1 rounded-md">+1.09%</p>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setActiveForm('deposit')}
+                                                            className="px-4 py-[5px] text-[11px] font-bold bg-white text-black border border-gray-200 rounded-full shadow-sm hover:border-black hover:shadow-md transition-all active:scale-95"
+                                                        >
+                                                            Deposit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setActiveForm('withdraw')}
+                                                            className="px-4 py-[5px] text-[11px] font-bold bg-white text-black border border-gray-200 rounded-full shadow-sm hover:border-black hover:shadow-md transition-all active:scale-95"
+                                                        >
+                                                            Withdraw
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -96,24 +96,14 @@ const App: React.FC = () => {
 
           <div className="hidden lg:flex items-center gap-10">
             <NavButton
+              active={currentPage === Page.LANDING}
+              onClick={() => setCurrentPage(Page.LANDING)}
+              label="Home"
+            />
+            <NavButton
               active={currentPage === Page.CHAT}
               onClick={() => setCurrentPage(Page.CHAT)}
               label="Chat"
-            />
-            <NavButton
-              active={currentPage === Page.SWAP}
-              onClick={() => setCurrentPage(Page.SWAP)}
-              label="AIUSD"
-            />
-            <NavButton
-              active={currentPage === Page.MARKET}
-              onClick={() => setCurrentPage(Page.MARKET)}
-              label="Cash Flow"
-            />
-            <NavButton
-              active={currentPage === Page.PORTFOLIO}
-              onClick={() => setCurrentPage(Page.PORTFOLIO)}
-              label="Portfolio"
             />
           </div>
         </div>
@@ -173,14 +163,12 @@ const App: React.FC = () => {
 
       {/* Mobile Nav */}
       <div className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 z-50 glass rounded-full p-2 flex gap-1 shadow-2xl bg-white/90">
+        <MobileNavButton active={currentPage === Page.LANDING} onClick={() => setCurrentPage(Page.LANDING)} icon={<Icons.Dashboard />} />
         <MobileNavButton active={currentPage === Page.CHAT} onClick={() => setCurrentPage(Page.CHAT)} icon={<Icons.Chat />} />
-        <MobileNavButton active={currentPage === Page.SWAP} onClick={() => setCurrentPage(Page.SWAP)} icon={<Icons.Swap />} />
-        <MobileNavButton active={currentPage === Page.MARKET} onClick={() => setCurrentPage(Page.MARKET)} icon={<Icons.Market />} />
-        <MobileNavButton active={currentPage === Page.PORTFOLIO} onClick={() => setCurrentPage(Page.PORTFOLIO)} icon={<Icons.Portfolio />} />
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto ${isChatPage ? 'p-0' : 'container mx-auto px-6 py-12'}`}>
+      <main className={`flex-1 overflow-y-auto ${isChatPage || currentPage === Page.LANDING ? 'p-0' : 'container mx-auto px-6 py-12'}`}>
         {currentPage !== Page.PORTFOLIO && currentPage !== Page.MARKET && currentPage !== Page.SWAP && currentPage !== Page.CHAT && currentPage !== Page.LANDING && currentPage !== Page.SETTINGS && (
           <div className="mb-12">
             <h1 className="font-serif text-5xl md:text-7xl mb-4 text-black">
