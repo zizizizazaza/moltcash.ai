@@ -15,7 +15,7 @@ import Landing from './components/Landing';
 import Settings from './components/Settings';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>(Page.LANDING);
+  const [currentPage, setCurrentPage] = useState<Page>(Page.MARKET);
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
@@ -65,7 +65,7 @@ const App: React.FC = () => {
   const isChatPage = currentPage === Page.CHAT;
 
   return (
-    <div className="min-h-screen flex flex-col selection:bg-black selection:text-white overflow-x-hidden bg-[#fafafa]">
+    <div className="h-screen w-screen flex overflow-hidden selection:bg-black selection:text-white" style={{ backgroundColor: '#F5F0E6' }}>
       {/* Toast Notification */}
       <div className={`fixed top-6 right-6 z-[100] transition-all duration-500 transform ${showComingSoon ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0 pointer-events-none'
         }`}>
@@ -76,91 +76,62 @@ const App: React.FC = () => {
       </div>
 
       {showRiskModal && <RiskModal onAccept={acceptRisk} onClose={() => setShowRiskModal(false)} />}
-
-      {showAuthModal && (
-        <AuthModal
-          onLogin={handleLogin}
-          onClose={() => setShowAuthModal(false)}
-        />
-      )}
-
+      {showAuthModal && <AuthModal onLogin={handleLogin} onClose={() => setShowAuthModal(false)} />}
       <TxModal />
 
-      {/* Navbar - Refined Light Mode */}
-      <nav className="sticky top-0 z-40 py-6 px-6 md:px-12 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="flex items-center gap-12">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setCurrentPage(Page.LANDING)}>
-            <div className="w-8 h-8 bg-black rounded flex items-center justify-center font-black text-white group-hover:rotate-12 transition-transform">M</div>
-            <span className="text-xl font-bold tracking-tight text-black">MoltCash</span>
+      {/* Far-Left App Navigation */}
+      <nav className="w-20 bg-white border-r border-gray-100 flex flex-col items-center py-6 shrink-0 z-50 shadow-sm relative">
+        <div className="flex flex-col items-center gap-8 w-full">
+          {/* Logo */}
+          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center font-black text-white hover:rotate-12 transition-transform cursor-pointer mb-2" onClick={() => setCurrentPage(Page.MARKET)}>
+            L
           </div>
 
-          <div className="hidden lg:flex items-center gap-10">
-            <NavButton
+          {/* Primary Nav Links */}
+          <div className="flex flex-col gap-6 w-full px-3">
+            <SideNavButton
               active={currentPage === Page.CHAT}
               onClick={() => setCurrentPage(Page.CHAT)}
+              icon={<Icons.Chat />}
               label="Chat"
             />
-            <NavButton
-              active={currentPage === Page.SWAP}
-              onClick={() => setCurrentPage(Page.SWAP)}
-              label="AIUSD"
-            />
-            <NavButton
+            <SideNavButton
               active={currentPage === Page.MARKET}
               onClick={() => setCurrentPage(Page.MARKET)}
-              label="Cash Flow"
-            />
-            <NavButton
-              active={currentPage === Page.PORTFOLIO}
-              onClick={() => setCurrentPage(Page.PORTFOLIO)}
-              label="Portfolio"
+              icon={<svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" /></svg>}
+              label="Discover"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }));
-            }}
-            className="px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all border border-gray-200 bg-white text-gray-600 hover:border-black hover:text-black hover:shadow-sm flex items-center gap-1.5"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m0 0l-4-4m4 4l4-4" /></svg>
-            Deposit
-          </button>
-
+        {/* Bottom Nav Links */}
+        <div className="mt-auto flex flex-col gap-6 w-full px-3 relative">
+          <SideNavButton
+            active={currentPage === Page.SETTINGS}
+            onClick={() => setCurrentPage(Page.SETTINGS)}
+            icon={<svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+            label="Settings"
+          />
           <div className="relative">
-            <button
+            <SideNavButton
+              active={false}
               onClick={() => {
-                if (!isWalletConnected) {
-                  connectWallet();
-                } else {
-                  setShowDropdown(!showDropdown);
-                }
+                if (!isWalletConnected) connectWallet();
+                else setShowDropdown(!showDropdown);
               }}
-              className={`px-5 py-2.5 rounded-full text-xs font-bold tracking-widest transition-all border flex items-center justify-between gap-2.5 ${isWalletConnected
-                ? 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-black cursor-pointer'
-                : 'bg-black text-white hover:bg-gray-800 shadow-md'
-                }`}
-            >
-              {isWalletConnected ? (
-                <>
-                  <span>0x71C...8e29</span>
-                  <svg className={`w-3.5 h-3.5 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
-                </>
-              ) : 'Connect'}
-            </button>
-
-            {/* Dropdown Menu */}
+              icon={<Icons.User />}
+              label={isWalletConnected ? "Profile" : "Sign in"}
+              customClass={isWalletConnected ? "text-green-500" : ""}
+            />
             {isWalletConnected && showDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden py-1.5 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="absolute left-full bottom-0 ml-4 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden py-1.5 z-50 animate-in fade-in slide-in-from-left-2">
                 <button
                   onClick={() => {
                     setIsWalletConnected(false);
                     setShowDropdown(false);
-                    if (currentPage === Page.PORTFOLIO || currentPage === Page.SETTINGS) setCurrentPage(Page.LANDING);
+                    setCurrentPage(Page.MARKET);
                   }}
-                  className="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
+                  className="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors flex items-center gap-3"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                   Log Out
@@ -171,76 +142,28 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* Mobile Nav */}
-      <div className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 z-50 glass rounded-full p-2 flex gap-1 shadow-2xl bg-white/90">
-        <MobileNavButton active={currentPage === Page.CHAT} onClick={() => setCurrentPage(Page.CHAT)} icon={<Icons.Chat />} />
-        <MobileNavButton active={currentPage === Page.SWAP} onClick={() => setCurrentPage(Page.SWAP)} icon={<Icons.Swap />} />
-        <MobileNavButton active={currentPage === Page.MARKET} onClick={() => setCurrentPage(Page.MARKET)} icon={<Icons.Market />} />
-        <MobileNavButton active={currentPage === Page.PORTFOLIO} onClick={() => setCurrentPage(Page.PORTFOLIO)} icon={<Icons.Portfolio />} />
-      </div>
-
-      {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto ${isChatPage ? 'p-0' : 'container mx-auto px-6 py-12'}`}>
-        {currentPage !== Page.PORTFOLIO && currentPage !== Page.MARKET && currentPage !== Page.SWAP && currentPage !== Page.CHAT && currentPage !== Page.LANDING && currentPage !== Page.SETTINGS && (
-          <div className="mb-12">
-            <h1 className="font-serif text-5xl md:text-7xl mb-4 text-black">
-              {currentPage === Page.DASHBOARD && "MoltCash Protocol"}
-              {currentPage === Page.AGENT && "Agentic Stack."}
-            </h1>
-            <p className="text-gray-500 text-lg max-w-2xl">
-              {currentPage === Page.DASHBOARD && "The on-chain liquidity protocol backed by US Treasuries and powered by verified AI cash flows."}
-              {currentPage === Page.AGENT && "Enabling machine-to-machine economy with the x402 protocol."}
-            </p>
-          </div>
-        )}
-
-        {currentPage === Page.DASHBOARD && <Dashboard />}
-        {currentPage === Page.SWAP && <Swap />}
-        {currentPage === Page.MARKET && <Market />}
-        {currentPage === Page.AGENT && <AgentMode />}
-        {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} />}
-        {currentPage === Page.SETTINGS && <Settings onBack={() => setCurrentPage(Page.PORTFOLIO)} />}
-        {currentPage === Page.CHAT && <Chat />}
-        {currentPage === Page.LANDING && <Landing />}
+      <main className="flex-1 flex flex-col overflow-hidden h-full relative">
+        <div className="flex-1 overflow-y-auto">
+          {currentPage === Page.DASHBOARD && <Dashboard />}
+          {currentPage === Page.SWAP && <Swap />}
+          {currentPage === Page.MARKET && <Market />}
+          {currentPage === Page.AGENT && <AgentMode />}
+          {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} />}
+          {currentPage === Page.SETTINGS && <Settings onBack={() => setCurrentPage(Page.PORTFOLIO)} />}
+          {currentPage === Page.CHAT && <Chat />}
+        </div>
       </main>
-
-      {/* Footer with Manual Trigger */}
-      {currentPage !== Page.CHAT && (
-        <footer className="py-12 border-t border-gray-100 text-center px-6">
-          <div className="flex flex-col items-center gap-4">
-            <button
-              onClick={() => setShowRiskModal(true)}
-              className="text-gray-400 text-[9px]  tracking-[0.4em] font-bold hover:text-black transition-colors"
-            >
-              Terms & Disclaimer
-            </button>
-            <p className="text-gray-300 text-[10px]  tracking-[0.4em] font-medium">
-              Powered by Setu Infrastructure &bull; 2026 MoltCash Protocol
-            </p>
-          </div>
-        </footer>
-      )}
     </div>
   );
 };
 
-const NavButton: React.FC<{ active: boolean; label: string; onClick: () => void }> = ({ active, label, onClick }) => (
+const SideNavButton: React.FC<{ active: boolean; label: string; icon: React.ReactNode; onClick: () => void; customClass?: string }> = ({ active, label, icon, onClick, customClass = '' }) => (
   <button
     onClick={onClick}
-    className={`text-sm font-bold tracking-wide transition-all py-1 border-b-2 ${active ? 'text-black border-black' : 'text-gray-400 hover:text-black border-transparent'
-      }`}
+    className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-2xl w-full transition-all group ${active ? 'bg-gray-100 text-black' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
   >
-    {label}
-  </button>
-);
-
-const MobileNavButton: React.FC<{ active: boolean; icon: React.ReactNode; onClick: () => void }> = ({ active, icon, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`p-3 rounded-full transition-all ${active ? 'bg-black text-white' : 'text-gray-400 hover:text-black'
-      }`}
-  >
-    {icon}
+    <div className={`transition-transform group-hover:scale-110 ${customClass}`}>{icon}</div>
+    <span className="text-[9px] font-bold tracking-widest">{label}</span>
   </button>
 );
 

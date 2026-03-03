@@ -161,7 +161,7 @@ const Market: React.FC = () => {
   }
 
   return (
-    <div className="space-y-12 animate-fadeIn pb-24">
+    <div className="space-y-12 animate-fadeIn pb-24 p-8 md:p-12 lg:p-16 max-w-[1600px] mx-auto w-full bg-white min-h-full">
       {/* 1. Header & Filters */}
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -188,7 +188,24 @@ const Market: React.FC = () => {
           <AssetCard
             key={asset.id}
             asset={asset}
-            onClick={() => setSelectedAsset(asset)}
+            onClick={() => {
+              let targetAgent = asset.title;
+              if (asset.title.includes('ComputeDAO')) targetAgent = 'ComputeDAO GPU';
+              else if (asset.title.includes('Shopify')) targetAgent = 'Shopify Merchant';
+              else if (asset.title.includes('Vercel')) targetAgent = 'Vercel SaaS Pool';
+              else if (asset.title.includes('AWS')) targetAgent = 'AWS Cloud Note';
+              else if (asset.title.includes('Stripe')) targetAgent = 'Stripe Escrow Pool';
+              else if (asset.title.includes('Cloudflare')) targetAgent = 'Cloudflare Capacity';
+              else if (asset.title.includes('Amazon')) targetAgent = 'Amazon FBA Sellers';
+              else if (asset.title.includes('DigitalOcean')) targetAgent = 'DigitalOcean Tier';
+              else if (asset.title.includes('ArtBot')) targetAgent = 'ArtBot AI';
+              else if (asset.title.includes('CloudScale')) targetAgent = 'CloudScale SaaS';
+              else if (asset.title.includes('DropStream')) targetAgent = 'DropStream LLC';
+
+              sessionStorage.setItem('pending_chat_agent', targetAgent);
+              window.dispatchEvent(new CustomEvent('loka-nav-chat'));
+              window.dispatchEvent(new CustomEvent('loka-set-chat-agent', { detail: targetAgent }));
+            }}
           />
         ))}
       </div>

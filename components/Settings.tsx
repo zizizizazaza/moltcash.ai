@@ -33,7 +33,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                 {/* Connected Accounts Session */}
                 <section className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
                     <h2 className="text-lg font-bold text-black mb-1">Connected Accounts</h2>
-                    <p className="text-xs font-medium text-gray-500 mb-6">Manage how you sign in to MoltCash.</p>
+                    <p className="text-xs font-medium text-gray-500 mb-6">Manage how you sign in to Loka.</p>
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">

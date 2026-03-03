@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icons } from '../constants';
 
 // Intersection Observer hook for scroll animations
@@ -17,35 +17,205 @@ const useInView = (options?: IntersectionObserverInit) => {
     return { ref, isInView };
 };
 
-const CoinSVG = ({ symbol, side = 'left', className, style }: { symbol: string, side?: 'left' | 'right', className?: string, style?: React.CSSProperties }) => {
-    const isLong = symbol.length > 2;
-    // Scale up the font size to make it large enough:
-    const fontSize = isLong ? "36" : "90";
+// ── Dot Matrix Canvas Background ──
+const DotMatrixBackground: React.FC = () => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // We adjust viewBox from "0 0 200 240" to "-20 10 240 220" so shapes aren't clipped
+    const draw = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+
+        const DOT_SPACING = 7;
+        const DOT_RADIUS = 2.8;
+        const COLOR = '#5a9a18'; // vivid green for dots
+
+        // Helper: draw dots inside a shape defined by a hit-test function
+        const drawDotShape = (
+            cx: number, cy: number, radius: number,
+            hitTest: (dx: number, dy: number, r: number) => boolean,
+            opacity: number = 0.55,
+            dotColor: string = COLOR,
+            dotSpacing: number = DOT_SPACING,
+            dotRadius: number = DOT_RADIUS
+        ) => {
+            ctx.fillStyle = dotColor;
+            ctx.globalAlpha = opacity;
+            for (let x = cx - radius; x <= cx + radius; x += dotSpacing) {
+                for (let y = cy - radius; y <= cy + radius; y += dotSpacing) {
+                    if (hitTest(x - cx, y - cy, radius)) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            ctx.globalAlpha = 1;
+        };
+
+        // Circle hit test
+        const circleHit = (dx: number, dy: number, r: number) =>
+            dx * dx + dy * dy <= r * r;
+
+        // Hexagon hit test
+        const hexHit = (dx: number, dy: number, r: number) => {
+            const ax = Math.abs(dx);
+            const ay = Math.abs(dy);
+            return ay <= r * 0.866 && ax <= r - ay * 0.577;
+        };
+
+        // Dollar sign as overlapping circles with a vertical bar excluded
+        const drawDollarDot = (cx: number, cy: number, size: number, opacity: number) => {
+            const s = size;
+            ctx.fillStyle = COLOR;
+            ctx.globalAlpha = opacity;
+
+            // Draw the S shape using dot-filled arcs
+            // Top curve
+            for (let x = cx - s; x <= cx + s; x += DOT_SPACING) {
+                for (let y = cy - s; y <= cy + s * 0.1; y += DOT_SPACING) {
+                    const dx = x - cx;
+                    const dy = y - (cy - s * 0.35);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= s * 0.65 && dist >= s * 0.35 && dx <= s * 0.2) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            // Bottom curve
+            for (let x = cx - s; x <= cx + s; x += DOT_SPACING) {
+                for (let y = cy - s * 0.1; y <= cy + s; y += DOT_SPACING) {
+                    const dx = x - cx;
+                    const dy = y - (cy + s * 0.35);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= s * 0.65 && dist >= s * 0.35 && dx >= -s * 0.2) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            // Vertical bars
+            for (let y = cy - s * 0.9; y <= cy + s * 0.9; y += DOT_SPACING) {
+                ctx.beginPath();
+                ctx.arc(cx, y, DOT_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.globalAlpha = 1;
+        };
+
+        // Draw large coin-like circle with $ inside
+        const drawDotCoin = (cx: number, cy: number, outerR: number, opacity: number) => {
+            // Outer ring
+            ctx.fillStyle = COLOR;
+            ctx.globalAlpha = opacity;
+            for (let x = cx - outerR; x <= cx + outerR; x += DOT_SPACING) {
+                for (let y = cy - outerR; y <= cy + outerR; y += DOT_SPACING) {
+                    const dx = x - cx;
+                    const dy = y - cy;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= outerR && dist >= outerR * 0.82) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            ctx.globalAlpha = 1;
+            // Inner $ symbol
+            drawDollarDot(cx, cy, outerR * 0.55, opacity);
+        };
+
+        // ── Responsive positions ──
+        const isMd = w >= 768;
+
+        // 1. Large $ coin — top-left
+        drawDotCoin(
+            isMd ? w * 0.08 : w * -0.05,
+            isMd ? h * 0.18 : h * 0.12,
+            isMd ? 200 : 120,
+            0.7
+        );
+
+        // 2. Hexagon cluster — top-right
+        const hx = isMd ? w * 0.88 : w * 1.0;
+        const hy = isMd ? h * 0.12 : h * 0.08;
+        drawDotShape(hx, hy, isMd ? 175 : 100, hexHit, 0.6);
+        drawDotShape(hx - (isMd ? 100 : 55), hy + (isMd ? 140 : 80), isMd ? 130 : 70, hexHit, 0.5);
+
+        // 3. Small circle — mid-right
+        drawDotShape(
+            isMd ? w * 0.92 : w * 0.95,
+            isMd ? h * 0.42 : h * 0.38,
+            isMd ? 90 : 50,
+            circleHit, 0.5
+        );
+
+        // 4. Large $ coin — bottom-right
+        drawDotCoin(
+            isMd ? w * 0.9 : w * 1.05,
+            isMd ? h * 0.72 : h * 0.68,
+            isMd ? 170 : 100,
+            0.6
+        );
+
+        // 5. Scattered small circles — left side
+        drawDotShape(
+            isMd ? w * 0.12 : w * 0.05,
+            isMd ? h * 0.55 : h * 0.5,
+            isMd ? 80 : 45,
+            circleHit, 0.45
+        );
+
+        // 6. Bottom-left hexagon
+        drawDotShape(
+            isMd ? w * 0.05 : w * -0.02,
+            isMd ? h * 0.78 : h * 0.75,
+            isMd ? 145 : 80,
+            hexHit, 0.55
+        );
+
+        // 7. Tiny decorative dots scattered
+        const scatterPoints = [
+            { x: w * 0.3, y: h * 0.08, r: 25 },
+            { x: w * 0.7, y: h * 0.06, r: 20 },
+            { x: w * 0.6, y: h * 0.85, r: 30 },
+            { x: w * 0.2, y: h * 0.9, r: 25 },
+            { x: w * 0.75, y: h * 0.35, r: 18 },
+        ];
+        scatterPoints.forEach(p => {
+            drawDotShape(p.x, p.y, p.r, circleHit, 0.35);
+        });
+
+    }, []);
+
+    useEffect(() => {
+        draw();
+        const handleResize = () => {
+            requestAnimationFrame(draw);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [draw]);
+
     return (
-        <svg viewBox="0 0 200 240" overflow="visible" fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.5" className={className} style={style}>
-            {side === 'left' ? (
-                <>
-                    <path d="M 85 30 A 70 90 0 0 0 85 210" />
-                    <line x1="85" y1="30" x2="110" y2="30" />
-                    <line x1="85" y1="210" x2="110" y2="210" />
-                    <ellipse cx="110" cy="120" rx="70" ry="90" />
-                    <ellipse cx="110" cy="120" rx="55" ry="75" strokeOpacity="0.4" />
-                    {/* Using dominantBaseline ensures perfectly centered text regardless of font line-height bugs */}
-                    <text x="110" y="125" fontSize={fontSize} fontWeight="bold" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="middle" strokeWidth="1.5" strokeOpacity="1" fill="none">{symbol}</text>
-                </>
-            ) : (
-                <>
-                    <path d="M 115 30 A 70 90 0 0 1 115 210" />
-                    <line x1="115" y1="30" x2="90" y2="30" />
-                    <line x1="115" y1="210" x2="90" y2="210" />
-                    <ellipse cx="90" cy="120" rx="70" ry="90" />
-                    <ellipse cx="90" cy="120" rx="55" ry="75" strokeOpacity="0.4" />
-                    <text x="90" y="125" fontSize={fontSize} fontWeight="bold" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="middle" strokeWidth="1.5" strokeOpacity="1" fill="none">{symbol}</text>
-                </>
-            )}
-        </svg>
+        <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none z-0"
+            style={{ opacity: 1 }}
+        />
     );
 };
 
@@ -64,42 +234,18 @@ const Landing: React.FC = () => {
     };
 
     return (
-        <div className="relative min-h-screen pb-24 overflow-hidden bg-[#FAFAFA]">
-            {/* Floating Outline Coins Background (DeBank style) */}
-            <div className="absolute top-0 left-0 w-full h-screen pointer-events-none z-0 overflow-hidden flex justify-center">
-                <div className="relative w-full max-w-[1400px] h-full">
-                    {/* 1. $ - Top Left */}
-                    <div style={{ animation: 'float1 8s ease-in-out infinite' }} className="absolute top-[8vh] left-[-10%] md:left-[-2%]">
-                        <CoinSVG symbol="$" side="left" className="w-[200px] h-[200px] md:w-[320px] md:h-[320px] text-gray-300 opacity-60 transform -rotate-12 transition-transform duration-[6000ms] hover:scale-105" />
-                    </div>
-                    {/* 2. AIUSD - Bottom Left */}
-                    <div style={{ animation: 'float2 10s ease-in-out infinite 1.5s' }} className="absolute top-[55vh] left-[-5%] md:left-[5%]">
-                        <CoinSVG symbol="AIUSD" side="left" className="w-[140px] h-[140px] md:w-[220px] md:h-[220px] text-gray-300 opacity-40 transform rotate-12 transition-transform duration-[8000ms] hover:-translate-x-4" />
-                    </div>
-
-                    {/* 3. ¥ - Top Right */}
-                    <div style={{ animation: 'float2 9s ease-in-out infinite 0.5s' }} className="absolute top-[12vh] right-[-10%] md:right-[-2%]">
-                        <CoinSVG symbol="¥" side="right" className="w-[180px] h-[180px] md:w-[280px] md:h-[280px] text-gray-300 opacity-60 transform rotate-6 transition-transform duration-[7000ms]" />
-                    </div>
-                    {/* 4. USDC - Middle Right */}
-                    <div style={{ animation: 'float1 12s ease-in-out infinite 2s' }} className="absolute top-[38vh] right-[5%] md:right-[15%]">
-                        <CoinSVG symbol="USDC" side="right" className="w-[120px] h-[120px] md:w-[180px] md:h-[180px] text-gray-300 opacity-50 transform -rotate-3 transition-transform duration-[9000ms]" />
-                    </div>
-                    {/* 5. € - Bottom Right */}
-                    <div style={{ animation: 'float1 11s ease-in-out infinite 3s' }} className="absolute top-[68vh] right-[-5%] md:right-[5%]">
-                        <CoinSVG symbol="€" side="right" className="w-[140px] h-[140px] md:w-[200px] md:h-[200px] text-gray-300 opacity-40 transform rotate-[15deg] transition-transform duration-[10000ms]" />
-                    </div>
-                </div>
-            </div>
+        <div className="relative min-h-screen pb-24 overflow-hidden" style={{ backgroundColor: '#F5F0E6' }}>
+            {/* Dot Matrix Canvas Background */}
+            <DotMatrixBackground />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
                 {/* ─── Hero Section ─── */}
                 <section className="text-center space-y-4 pt-4 md:pt-6 relative animate-fadeIn">
                     <div className="flex justify-center mb-2">
-                        <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/60 border border-gray-200/50 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:scale-105 hover:bg-white/80 transition-all duration-500 cursor-default hover:shadow-[0_5px_15px_rgba(0,0,0,0.05)]">
+                        <div className="inline-flex items-center px-4 py-1.5 rounded-full border backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:scale-105 transition-all duration-500 cursor-default" style={{ backgroundColor: 'rgba(245,240,230,0.7)', borderColor: 'rgba(0,0,0,0.08)' }}>
                             <span className="text-xs sm:text-sm font-bold text-gray-700 tracking-wide">
-                                MoltCash <span className="text-gray-400 font-medium mx-1">powered by</span> Loka
+                                Loka <span className="text-gray-400 font-medium mx-1">powered by</span> Loka
                             </span>
                         </div>
                     </div>
@@ -107,30 +253,32 @@ const Landing: React.FC = () => {
                         The Agentic <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-black via-gray-700 to-black bg-[length:200%_auto] hover:bg-right transition-all duration-1000">Payment Engine</span>
                     </h1>
-                    <p className="text-base md:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed font-medium">
+                    <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed font-medium">
                         A decentralized settlement infrastructure built for autonomous AI agents. Zero-fee microtransactions, absolute ZK privacy, and instant stablecoin liquidity.
                     </p>
 
                     <div className="pt-4 max-w-2xl mx-auto">
                         {/* Toggle Buttons */}
-                        <div className="flex bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl mb-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border border-gray-200/50 max-w-sm mx-auto">
+                        <div className="flex p-1.5 rounded-2xl mb-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border max-w-sm mx-auto" style={{ backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(0,0,0,0.06)' }}>
                             <button
                                 onClick={() => setHeroTab('agent')}
-                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'agent' ? 'bg-black text-white shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
+                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'agent' ? 'text-black shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-white/50'}`}
+                                style={heroTab === 'agent' ? { backgroundColor: '#BAFF29', color: '#1a1a00' } : {}}
                             >
                                 <span className="flex items-center gap-2 mb-0.5">
                                     <Icons.Code /> For Agent
                                 </span>
-                                <span className={`text-[10px] font-normal ${heroTab === 'agent' ? 'text-gray-300' : 'text-gray-400'}`}>Integrate SKILL</span>
+                                <span className={`text-[10px] font-normal ${heroTab === 'agent' ? 'text-gray-700' : 'text-gray-400'}`}>Integrate SKILL</span>
                             </button>
                             <button
                                 onClick={() => setHeroTab('human')}
-                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'human' ? 'bg-black text-white shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
+                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'human' ? 'text-black shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-white/50'}`}
+                                style={heroTab === 'human' ? { backgroundColor: '#BAFF29', color: '#1a1a00' } : {}}
                             >
                                 <span className="flex items-center gap-2 mb-0.5">
                                     <Icons.User /> For Human
                                 </span>
-                                <span className={`text-[10px] font-normal ${heroTab === 'human' ? 'text-gray-300' : 'text-gray-400'}`}>Enter Portal</span>
+                                <span className={`text-[10px] font-normal ${heroTab === 'human' ? 'text-gray-700' : 'text-gray-400'}`}>Enter Portal</span>
                             </button>
                         </div>
 
@@ -148,13 +296,13 @@ const Landing: React.FC = () => {
                                         >
                                             <div className="text-xs md:text-sm tracking-wide text-gray-300 flex flex-wrap gap-2 items-center leading-relaxed">
                                                 <span className="text-gray-500 select-none group-hover/cmd:text-white transition-colors duration-300">$</span>
-                                                <span className="text-[#00E676] group-hover/cmd:opacity-80 transition-opacity">curl</span>
+                                                <span className="group-hover/cmd:opacity-80 transition-opacity" style={{ color: '#BAFF29' }}>curl</span>
                                                 <span>-sL</span>
                                                 <span className="text-white break-all">https://docs.openclaw.com/install.sh</span>
-                                                <span className="text-yellow-400">&nbsp;|&nbsp;</span>
-                                                <span className="text-[#00E676] group-hover/cmd:opacity-80 transition-opacity">bash</span>
+                                                <span style={{ color: '#BAFF29' }}>&nbsp;|&nbsp;</span>
+                                                <span className="group-hover/cmd:opacity-80 transition-opacity" style={{ color: '#BAFF29' }}>bash</span>
                                             </div>
-                                            <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-gray-400 hover:text-white transition-all border border-white/10 ml-4 whitespace-nowrap  tracking-widest">
+                                            <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-gray-400 hover:text-white transition-all border border-white/10 ml-4 whitespace-nowrap tracking-widest">
                                                 {copied ? '✓ Copied' : 'Copy'}
                                             </div>
                                         </div>
@@ -167,8 +315,8 @@ const Landing: React.FC = () => {
                                                 { num: '03', label: 'START', desc: 'Runtime restarts and connects to the settlement layer.' },
                                             ].map((step, i) => (
                                                 <div key={i} className="flex flex-col gap-2 relative group/step" style={{ animationDelay: `${i * 100}ms` }}>
-                                                    <div className="text-[#FF4525] font-black text-sm tracking-widest  mb-1 flex items-center gap-2">
-                                                        <span className="bg-[#FF4525]/10 rounded-md px-2 py-0.5">{step.num}</span>
+                                                    <div className="font-black text-sm tracking-widest mb-1 flex items-center gap-2" style={{ color: '#BAFF29' }}>
+                                                        <span className="rounded-md px-2 py-0.5" style={{ backgroundColor: 'rgba(186,255,41,0.15)' }}>{step.num}</span>
                                                         <span>{step.label}</span>
                                                         {i < 2 && <div className="h-px bg-white/10 flex-1 hidden sm:block"></div>}
                                                     </div>
@@ -183,15 +331,16 @@ const Landing: React.FC = () => {
                             ) : (
                                 <div
                                     onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-chat'))}
-                                    className="w-full h-full bg-white rounded-3xl p-8 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-200/50 flex flex-col items-center justify-center text-center gap-5 group hover:border-black/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 cursor-pointer relative overflow-hidden animate-fadeIn"
+                                    className="w-full h-full rounded-3xl p-8 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border flex flex-col items-center justify-center text-center gap-5 group hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 cursor-pointer relative overflow-hidden animate-fadeIn"
+                                    style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-gray-50 via-white to-gray-50 opacity-50"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-[#F5F0E6]/50 via-white to-[#F5F0E6]/50 opacity-50"></div>
                                     <div className="relative z-10 w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform group-hover:-rotate-6 duration-300">
                                         <Icons.Chat />
                                     </div>
                                     <div className="relative z-10 flex flex-col items-center gap-6">
-                                        <p className="text-gray-500 font-medium max-w-[280px] mx-auto leading-relaxed text-sm">Experience the MoltCash protocol manually through our natural language gateway.</p>
-                                        <button className="px-8 py-3 bg-black text-white rounded-full text-sm font-bold shadow-xl transition-all flex items-center gap-2 group-hover:bg-gray-800 tracking-widest  hover:scale-105">
+                                        <p className="text-gray-600 font-medium max-w-[280px] mx-auto leading-relaxed text-sm">Experience the Loka protocol manually through our natural language gateway.</p>
+                                        <button className="px-8 py-3 text-black rounded-full text-sm font-bold shadow-xl transition-all flex items-center gap-2 hover:scale-105 tracking-widest" style={{ backgroundColor: '#BAFF29' }}>
                                             start to chat <Icons.Flash />
                                         </button>
                                     </div>
@@ -209,14 +358,14 @@ const Landing: React.FC = () => {
                     className={`max-w-4xl mx-auto mt-16 relative transition-all duration-700 delay-100 ${quoteRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                 >
 
-                    <div className="p-10 md:p-16 rounded-[3rem] bg-white/60 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden backdrop-blur-3xl text-center group hover:-translate-y-1 transition-transform duration-700">
+                    <div className="p-10 md:p-16 rounded-[3rem] border shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden backdrop-blur-3xl text-center group hover:-translate-y-1 transition-transform duration-700" style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderColor: 'rgba(255,255,255,0.5)' }}>
                         <div className="absolute -top-6 -left-2 text-[12rem] text-transparent bg-clip-text bg-gradient-to-br from-gray-300/50 to-transparent font-serif leading-none italic select-none pointer-events-none">"</div>
                         <p className="text-xl md:text-3xl font-serif italic text-gray-800 leading-relaxed relative z-10 px-4 md:px-10">
                             Capture sovereign yields completely on-chain. Transform rigid, real-world cash flows into highly programmable, liquid capital loops.
                         </p>
                         <div className="mt-10 flex items-center justify-center gap-4">
                             <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1 max-w-[100px]"></div>
-                            <p className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-600 to-gray-900  tracking-widest">— Protocol Vision</p>
+                            <p className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-600 to-gray-900 tracking-widest">— Protocol Vision</p>
                             <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1 max-w-[100px]"></div>
                         </div>
                     </div>
@@ -235,49 +384,43 @@ const Landing: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Natural Language Flow */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-blue-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.Chat />
+                        {/* Card style matching dot matrix theme */}
+                        {[
+                            {
+                                icon: <Icons.Chat />,
+                                iconColor: '#BAFF29',
+                                title: 'Conversational Settlement',
+                                desc: 'Execute payments, configure complex conditional logic, and orchestrate capital routing entirely through natural language commands natively optimized for multi-agent workflows.',
+                            },
+                            {
+                                icon: <Icons.Shield />,
+                                iconColor: '#BAFF29',
+                                title: 'Zero-Knowledge Autonomy',
+                                desc: 'Institutional-grade financial privacy. ZK proofs validate policy compliance and portfolio solvency instantly without ever exposing balances, counterparties, or proprietary strategies.',
+                            },
+                            {
+                                icon: <Icons.User />,
+                                iconColor: '#BAFF29',
+                                title: 'Programmable Reputation',
+                                desc: 'Dynamic deterministic credit scoring establishes behavioral identity on-chain. Progress from anonymous multi-sig wallets to trusted, measurable institutional agent relationships.',
+                            },
+                            {
+                                icon: <Icons.Swap />,
+                                iconColor: '#BAFF29',
+                                title: 'Absolute Zero-Fee Rail',
+                                desc: 'Engineered atop a custom sovereign layer enabling infinite friction-free microtransactions. Seamless T+0 finality deeply integrated alongside structural global fiat gateways.',
+                            },
+                        ].map((card, i) => (
+                            <div key={i} className="group p-10 md:p-12 rounded-[2.5rem] border backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 relative overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.35)', borderColor: 'rgba(255,255,255,0.5)' }}>
+                                <div className="w-14 h-14 shadow-lg rounded-2xl flex items-center justify-center mb-8 border group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 relative z-10" style={{ backgroundColor: '#BAFF29', borderColor: 'rgba(186,255,41,0.5)', color: '#1a1a00' }}>
+                                    {card.icon}
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">{card.title}</h3>
+                                <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
+                                    {card.desc}
+                                </p>
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Conversational Settlement</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Execute payments, configure complex conditional logic, and orchestrate capital routing entirely through natural language commands natively optimized for multi-agent workflows.
-                            </p>
-                        </div>
-
-                        {/* ZK Privacy */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-indigo-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.Shield />
-                            </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Zero-Knowledge Autonomy</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Institutional-grade financial privacy. ZK proofs validate policy compliance and portfolio solvency instantly without ever exposing balances, counterparties, or proprietary strategies.
-                            </p>
-                        </div>
-
-                        {/* Trustless Credit & Identity */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-cyan-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.User />
-                            </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Programmable Reputation</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Dynamic deterministic credit scoring establishes behavioral identity on-chain. Progress from anonymous multi-sig wallets to trusted, measurable institutional agent relationships.
-                            </p>
-                        </div>
-
-                        {/* Zero-fee infrastructure */}
-                        <div className="group bg-white/40 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgb(0,0,0,0.08)] hover:bg-white/70 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                            <div className="w-14 h-14 bg-white shadow-lg text-violet-500 rounded-2xl flex items-center justify-center mb-8 border border-white/50 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 relative z-10">
-                                <Icons.Swap />
-                            </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Absolute Zero-Fee Rail</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed relative z-10 font-medium">
-                                Engineered atop a custom sovereign layer enabling infinite friction-free microtransactions. Seamless T+0 finality deeply integrated alongside structural global fiat gateways.
-                            </p>
-                        </div>
+                        ))}
                     </div>
                 </section>
 
@@ -293,7 +436,7 @@ const Landing: React.FC = () => {
 
                     <div className="relative max-w-5xl mx-auto">
                         {/* Continuous vertical line */}
-                        <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-gray-200 via-gray-300 to-transparent transform md:-translate-x-1/2"></div>
+                        <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-gray-300 via-gray-400 to-transparent transform md:-translate-x-1/2"></div>
 
                         <div className="space-y-24">
                             {/* Layer 3 */}
@@ -302,10 +445,10 @@ const Landing: React.FC = () => {
                                     <h3 className="text-2xl font-black text-black">Experience & SDK Layer</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Turnkey integration suites for autonomous agents and decentralized businesses. Featuring automated gas sponsorships, isolated session keys, and comprehensive policy rule configurations.</p>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-black rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
+                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#F5F0E6] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150" style={{ backgroundColor: '#BAFF29' }}></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">SKILL Framework</h4>
+                                    <div className="p-6 rounded-3xl border shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}>
+                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest mb-4">SKILL Framework</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">Plonky2 + Groth16 Native Proofs</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Local runtime compiling dynamic exposure limits into deployable zero-knowledge circuits directly within the agent workflow.</p>
                                     </div>
@@ -315,13 +458,13 @@ const Landing: React.FC = () => {
                             {/* Layer 2 */}
                             <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:text-right md:pr-12 text-left mb-6 md:mb-0 md:order-1 order-3 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Execution Environment</h4>
+                                    <div className="p-6 rounded-3xl border shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}>
+                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest mb-4">Execution Environment</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">AWS Nitro Enclaves Hub</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Hardware-level CPU segregation guarantees absolute data confidentiality, rendering proprietary strategies completely opaque to hosts and operators.</p>
                                     </div>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-gray-300 rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 md:order-2 order-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
+                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#F5F0E6] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 md:order-2 order-2 transition-transform group-hover:scale-150" style={{ backgroundColor: 'rgba(186,255,41,0.6)' }}></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 md:order-3 order-1 mb-6 md:mb-0 text-left">
                                     <h3 className="text-2xl font-black text-black">Computation & Risk Engine</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">The invisible processing powerhouse safely driving compliance frameworks, multi-tenant agent logical routing, and rigorous fraud deterrence inside restricted boundaries.</p>
@@ -334,10 +477,10 @@ const Landing: React.FC = () => {
                                     <h3 className="text-2xl font-black text-black">Ledger & Securitization</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Algorithmic capital utilization mechanisms capturing risk-free US Treasury yields to fund network emission mechanics, enabling continuous capital creation via AIUSD stablecoins.</p>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 bg-gray-200 rounded-full border-4 border-white shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150 group-hover:bg-green-500"></div>
+                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#F5F0E6] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150" style={{ backgroundColor: 'rgba(186,255,41,0.35)' }}></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:border-gray-200">
-                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest  mb-4">Programmable Assets</h4>
+                                    <div className="p-6 rounded-3xl border shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}>
+                                        <h4 className="text-[10px] font-bold text-gray-400 tracking-widest mb-4">Programmable Assets</h4>
                                         <p className="text-sm font-semibold text-gray-800 mb-2">Native Yield & RWA Discounting</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>
                                     </div>
