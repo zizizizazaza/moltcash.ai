@@ -234,7 +234,7 @@ const Landing: React.FC = () => {
     };
 
     return (
-        <div className="relative min-h-screen pb-24 overflow-hidden" style={{ backgroundColor: '#F5F0E6' }}>
+        <div className="relative min-h-screen pb-24 overflow-hidden" style={{ backgroundColor: '#FFFFFF' }}>
             {/* Dot Matrix Canvas Background */}
             <DotMatrixBackground />
 
@@ -334,7 +334,7 @@ const Landing: React.FC = () => {
                                     className="w-full h-full rounded-3xl p-8 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border flex flex-col items-center justify-center text-center gap-5 group hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 cursor-pointer relative overflow-hidden animate-fadeIn"
                                     style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-[#F5F0E6]/50 via-white to-[#F5F0E6]/50 opacity-50"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-[#FFFFFF]/50 via-white to-[#FFFFFF]/50 opacity-50"></div>
                                     <div className="relative z-10 w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform group-hover:-rotate-6 duration-300">
                                         <Icons.Chat />
                                     </div>
@@ -445,7 +445,7 @@ const Landing: React.FC = () => {
                                     <h3 className="text-2xl font-black text-black">Experience & SDK Layer</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Turnkey integration suites for autonomous agents and decentralized businesses. Featuring automated gas sponsorships, isolated session keys, and comprehensive policy rule configurations.</p>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#F5F0E6] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150" style={{ backgroundColor: '#BAFF29' }}></div>
+                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#FFFFFF] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150" style={{ backgroundColor: '#BAFF29' }}></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
                                     <div className="p-6 rounded-3xl border shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}>
                                         <h4 className="text-[10px] font-bold text-gray-400 tracking-widest mb-4">SKILL Framework</h4>
@@ -464,7 +464,7 @@ const Landing: React.FC = () => {
                                         <p className="text-xs text-gray-500 leading-relaxed">Hardware-level CPU segregation guarantees absolute data confidentiality, rendering proprietary strategies completely opaque to hosts and operators.</p>
                                     </div>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#F5F0E6] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 md:order-2 order-2 transition-transform group-hover:scale-150" style={{ backgroundColor: 'rgba(186,255,41,0.6)' }}></div>
+                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#FFFFFF] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 md:order-2 order-2 transition-transform group-hover:scale-150" style={{ backgroundColor: 'rgba(186,255,41,0.6)' }}></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 md:order-3 order-1 mb-6 md:mb-0 text-left">
                                     <h3 className="text-2xl font-black text-black">Computation & Risk Engine</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">The invisible processing powerhouse safely driving compliance frameworks, multi-tenant agent logical routing, and rigorous fraud deterrence inside restricted boundaries.</p>
@@ -477,7 +477,7 @@ const Landing: React.FC = () => {
                                     <h3 className="text-2xl font-black text-black">Ledger & Securitization</h3>
                                     <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Algorithmic capital utilization mechanisms capturing risk-free US Treasury yields to fund network emission mechanics, enabling continuous capital creation via AIUSD stablecoins.</p>
                                 </div>
-                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#F5F0E6] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150" style={{ backgroundColor: 'rgba(186,255,41,0.35)' }}></div>
+                                <div className="absolute left-6 md:left-1/2 w-4 h-4 rounded-full border-4 border-[#FFFFFF] shadow-md transform -translate-x-1/2 mt-1.5 md:mt-2 transition-transform group-hover:scale-150" style={{ backgroundColor: 'rgba(186,255,41,0.35)' }}></div>
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
                                     <div className="p-6 rounded-3xl border shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}>
                                         <h4 className="text-[10px] font-bold text-gray-400 tracking-widest mb-4">Programmable Assets</h4>

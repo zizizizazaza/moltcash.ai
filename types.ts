@@ -52,5 +52,6 @@ export enum Page {
   PORTFOLIO = 'PORTFOLIO',
   AGENT = 'AGENT',
   CHAT = 'CHAT',
+  GROUPS = 'GROUPS',
   SETTINGS = 'SETTINGS'
 }

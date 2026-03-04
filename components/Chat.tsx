@@ -13,6 +13,52 @@ const Chat: React.FC = () => {
     const [formAsset, setFormAsset] = useState('AIUSD');
     const [activeAssetTab, setActiveAssetTab] = useState<'Background' | 'Financial Health' | 'Rules'>('Background');
     const [projectCardExpanded, setProjectCardExpanded] = useState(false);
+    const [typedPlaceholder, setTypedPlaceholder] = useState('');
+    const [isInputFocused, setIsInputFocused] = useState(false);
+
+    useEffect(() => {
+        const phrases = [
+            'Ask about any asset or start a transaction...',
+            'Compare yields across all active pools...',
+            'Show me the top performing assets...',
+            'Analyze ComputeDAO risk profile...',
+            'How much can I earn with $5,000?',
+        ];
+        let phraseIdx = 0;
+        let charIdx = 0;
+        let isDeleting = false;
+        let timeout: ReturnType<typeof setTimeout>;
+
+        const tick = () => {
+            if (isInputFocused || inputText) {
+                timeout = setTimeout(tick, 200);
+                return;
+            }
+            const current = phrases[phraseIdx];
+            if (!isDeleting) {
+                charIdx++;
+                setTypedPlaceholder(current.slice(0, charIdx));
+                if (charIdx >= current.length) {
+                    isDeleting = true;
+                    timeout = setTimeout(tick, 2000);
+                    return;
+                }
+                timeout = setTimeout(tick, 60 + Math.random() * 40);
+            } else {
+                charIdx--;
+                setTypedPlaceholder(current.slice(0, charIdx));
+                if (charIdx <= 0) {
+                    isDeleting = false;
+                    phraseIdx = (phraseIdx + 1) % phrases.length;
+                    timeout = setTimeout(tick, 400);
+                    return;
+                }
+                timeout = setTimeout(tick, 25);
+            }
+        };
+        tick();
+        return () => clearTimeout(timeout);
+    }, [isInputFocused, inputText]);
     useEffect(() => {
         const pendingProject = sessionStorage.getItem('pending_chat_project');
         if (pendingProject) {
@@ -171,14 +217,12 @@ const Chat: React.FC = () => {
         setInputText('');
     };
 
-    const handleActionSubmit = () => {
+    const handleInlineActionSubmit = () => {
         if (!formAmount) return;
 
-        let actionStr = '';
-        if (activeForm === 'buy') actionStr = 'Buy';
-        if (activeForm === 'sell') actionStr = 'Sell';
-
-        const userMsgText = `I want to ${actionStr.toLowerCase()} ${formAmount} USDC of ${formAsset}.`;
+        const actionStr = activeForm === 'buy' ? 'buy' : 'sell';
+        const assetName = activeAgent;
+        const userMsgText = `I want to ${actionStr} ${formAmount} USDC of ${assetName}.`;
         const userMsg = { role: 'user', content: userMsgText, timestamp: new Date().toLocaleTimeString() };
         setMessages(prev => [...prev, userMsg]);
         setActiveForm(null);
@@ -187,7 +231,7 @@ const Chat: React.FC = () => {
         setTimeout(() => {
             const aiMsg = {
                 role: 'assistant',
-                content: `I've prepared the intentional transaction for you: ${actionStr} ${formAmount} USDC of ${formAsset}. Please confirm.`,
+                content: `I've prepared the intentional transaction for you: ${activeForm === 'buy' ? 'Buy' : 'Sell'} ${formAmount} USDC of ${assetName}. Please confirm.`,
                 type: 'action',
                 actionCompleted: false,
                 timestamp: new Date().toLocaleTimeString()
@@ -228,13 +272,14 @@ const Chat: React.FC = () => {
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Left Sidebar - Chat History */}
                 <aside
-                    className={`border-r border-gray-100 flex flex-col bg-white transition-all duration-300 ease-in-out relative ${leftSidebarCollapsed ? 'w-0 opacity-0 -translate-x-full overflow-hidden border-0' : 'w-72 opacity-100 translate-x-0'
+                    className={`border-r border-gray-100 flex flex-col bg-white transition-all duration-300 ease-in-out relative shrink-0 ${leftSidebarCollapsed ? 'w-0 opacity-0 -translate-x-full overflow-hidden border-0' : 'w-80 opacity-100 translate-x-0'
                         }`}
                 >
-                    <div className="flex-1 overflow-y-auto w-full pt-4">
-                        <div className="px-6 mb-4 mt-2">
-                            <h4 className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Cash Flow Assets</h4>
-                        </div>
+                    <div className="p-5 border-b border-gray-100 shrink-0">
+                        <h2 className="text-lg font-black text-black tracking-tight">Assets</h2>
+                        <p className="text-[11px] text-gray-400 font-medium mt-1">Cash flow investment opportunities</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto w-full pt-2">
                         {cashFlowAssets.map((asset) => (
                             <div
                                 key={asset.title}
@@ -550,32 +595,73 @@ const Chat: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="bg-white border border-gray-100 shadow-[0_15px_60px_-15px_rgba(0,0,0,0.05)] rounded-[2.5rem] p-4 w-full flex flex-col max-w-4xl mx-auto mb-16 relative hover:border-black/5 transition-all">
-                                        <div className="flex items-center w-full">
-                                            <input
-                                                type="text"
-                                                value={inputText}
-                                                onChange={(e) => setInputText(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                                placeholder="What should we start with?"
-                                                className="flex-1 bg-transparent border-none outline-none text-black text-2xl px-10 py-8 placeholder:text-gray-300 font-medium"
-                                            />
-                                            <button
-                                                onClick={handleSend}
-                                                className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center hover:bg-green-200 transition-all shrink-0 mr-2"
-                                            >
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                                            </button>
-                                        </div>
+                                    <div className={`bg-white border rounded-2xl p-4 w-full flex flex-col max-w-3xl mx-auto mb-12 relative transition-all duration-500 group/input ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : isInputFocused ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200/80 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] hover:border-green-200 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] idle-input-glow'}`}>
+                                        {/* Input Row — switches between normal input and inline sentence */}
+                                        {activeForm ? (
+                                            <div className="flex items-center w-full px-6 py-5 gap-2 flex-wrap">
+                                                <span className="text-base font-medium text-black whitespace-nowrap">I want to {activeForm}</span>
+                                                <input
+                                                    type="number"
+                                                    value={formAmount}
+                                                    onChange={(e) => setFormAmount(e.target.value)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleInlineActionSubmit()}
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                    className="w-28 bg-transparent border-b-2 border-green-400 outline-none text-base font-bold text-green-600 text-center py-1 placeholder:text-green-300/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                                <span className="text-base font-medium text-black whitespace-nowrap">USDC of</span>
+                                                <span className="text-base font-bold text-black bg-gray-100 px-3 py-1 rounded-lg">{activeAgent}</span>
+                                                <span className="text-base font-medium text-black">.</span>
+                                                <div className="flex items-center gap-2 ml-auto">
+                                                    <button
+                                                        onClick={() => { setActiveForm(null); setFormAmount(''); }}
+                                                        className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-all"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={handleInlineActionSubmit}
+                                                        className="w-12 h-12 bg-green-500 text-white rounded-xl flex items-center justify-center hover:bg-green-600 transition-all shadow-lg shadow-green-500/30"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center w-full relative">
+                                                {!inputText && !isInputFocused && (
+                                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+                                                        <span className="text-gray-400 text-base font-medium">{typedPlaceholder}</span>
+                                                        <span className="inline-block w-[2px] h-5 bg-green-400 ml-[1px] animate-[cursorBlink_1s_steps(2)_infinite]" />
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="text"
+                                                    value={inputText}
+                                                    onChange={(e) => setInputText(e.target.value)}
+                                                    onFocus={() => setIsInputFocused(true)}
+                                                    onBlur={() => setIsInputFocused(false)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                                    placeholder=""
+                                                    className="flex-1 bg-transparent border-none outline-none text-black text-base px-6 py-6 font-medium relative z-10"
+                                                />
+                                                <button
+                                                    onClick={handleSend}
+                                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white'}`}
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                                </button>
+                                            </div>
+                                        )}
 
-                                        {/* Embedded Quick Actions in initial view */}
-                                        <div className="flex gap-4 px-8 pb-4 pt-2">
-                                            <button onClick={() => { setActiveForm('buy'); setFormAsset('AIUSD'); }} className="px-5 py-2.5 bg-gray-50 border border-gray-100 rounded-full text-xs font-bold text-gray-600 hover:border-black hover:text-black hover:shadow-sm transition-all flex items-center gap-2">
-                                                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                        {/* Quick Actions — always visible */}
+                                        <div className={`flex gap-3 px-5 pb-2 pt-2 border-t transition-colors duration-500 ${activeForm || isInputFocused ? 'border-gray-100' : 'border-transparent'}`}>
+                                            <button onClick={() => { setActiveForm('buy'); setFormAmount(''); }} className={`px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 hover:scale-105 active:scale-95 ${activeForm === 'buy' ? 'bg-green-50 border-green-300 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm'}`}>
+                                                <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                                 Buy Asset
                                             </button>
-                                            <button onClick={() => { setActiveForm('sell'); setFormAsset('AIUSD'); }} className="px-5 py-2.5 bg-gray-50 border border-gray-100 rounded-full text-xs font-bold text-gray-600 hover:border-black hover:text-black hover:shadow-sm transition-all flex items-center gap-2">
-                                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                            <button onClick={() => { setActiveForm('sell'); setFormAmount(''); }} className={`px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 hover:scale-105 active:scale-95 ${activeForm === 'sell' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm'}`}>
+                                                <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
                                                 Sell Asset
                                             </button>
                                         </div>
@@ -717,19 +803,19 @@ const Chat: React.FC = () => {
 
                                         <div className="w-full transition-all">
                                             {/* Content Grid */}
-                                            <div className="flex flex-col gap-12 pt-4">
+                                            <div className="flex flex-col gap-8 pt-2">
                                                 {/* Details */}
 
                                                 {activeAssetTab === 'Background' && (
-                                                    <div className="w-full space-y-12 animate-fadeIn pb-10">
+                                                    <div className="w-full space-y-8 animate-fadeIn pb-10">
 
                                                         {/* Issuer Profile & Socials */}
-                                                        <div className="flex flex-col lg:flex-row items-center justify-between bg-gray-50/40 p-5 rounded-[2.5rem] border border-gray-100/50 gap-6">
+                                                        <div className="flex flex-col lg:flex-row items-center justify-between bg-gray-50/40 p-4 rounded-2xl border border-gray-100/50 gap-4">
                                                             <div className="flex items-center gap-6 w-full">
-                                                                <div className="w-16 h-16 bg-white rounded-3xl border border-gray-100 shadow-sm flex items-center justify-center text-2xl font-bold text-black shrink-0">
+                                                                <div className="w-12 h-12 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center text-lg font-bold text-black shrink-0">
                                                                     {selectedCurrent.title.charAt(0)}
                                                                 </div>
-                                                                <div className="flex flex-col gap-4">
+                                                                <div className="flex flex-col gap-2">
                                                                     <div>
                                                                         <div className="flex items-center gap-2">
                                                                             <h3 className="font-bold text-black text-lg">{selectedCurrent.title} LLC</h3>
@@ -790,34 +876,34 @@ const Chat: React.FC = () => {
                                                             <p className="text-sm text-gray-500 leading-loose font-medium max-w-4xl">
                                                                 We are operating over 500 GPUs in Singapore. This funding batch will be used to prepay electricity and bandwidth expansion for our next month of generative AI rendering contracts. Over the past 12 months, we have maintained a 99.9% uptime and generated consistent cash flows from our enterprise clients.
                                                             </p>
-                                                            <div className="bg-[#fcfbf9] p-8 rounded-[2rem] border-l-4 border-green-500 italic text-sm text-gray-600 shadow-sm">
+                                                            <div className="bg-[#fcfbf9] p-5 rounded-xl border-l-4 border-green-500 italic text-sm text-gray-600 shadow-sm">
                                                                 "Purchasing 8 additional H100 GPUs and pre-paying data center rack fees in Tokyo to expand computing rental capacity."
                                                             </div>
                                                         </div>
 
                                                         {/* Image Gallery from Screenshot */}
-                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm group">
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
                                                                 <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc51?q=80&w=800" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                                             </div>
-                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm group">
+                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
                                                                 <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=800" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                                             </div>
-                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm group">
+                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
                                                                 <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                                             </div>
                                                         </div>
 
                                                         {/* Leadership Section from Screenshot */}
-                                                        <div className="space-y-8">
+                                                        <div className="space-y-5">
                                                             <div className="flex items-center gap-4">
                                                                 <h3 className="text-base font-black text-black">Leadership & Backing</h3>
                                                                 <div className="h-px flex-1 bg-gray-50" />
                                                             </div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                 {/* CEO */}
-                                                                <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 flex items-start gap-6 shadow-sm hover:shadow-md transition-all">
-                                                                    <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center font-serif text-2xl text-gray-300 shrink-0">A</div>
+                                                                <div className="bg-white border border-gray-100 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-all">
+                                                                    <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center font-serif text-xl text-gray-300 shrink-0">A</div>
                                                                     <div className="space-y-1">
                                                                         <p className="font-black text-black text-base">Alex Chen</p>
                                                                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chief Executive Officer</p>
@@ -828,8 +914,8 @@ const Chat: React.FC = () => {
                                                                     </div>
                                                                 </div>
                                                                 {/* CTO */}
-                                                                <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 flex items-start gap-6 shadow-sm hover:shadow-md transition-all">
-                                                                    <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center font-serif text-2xl text-gray-300 shrink-0">S</div>
+                                                                <div className="bg-white border border-gray-100 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-all">
+                                                                    <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center font-serif text-xl text-gray-300 shrink-0">S</div>
                                                                     <div className="space-y-1">
                                                                         <p className="font-black text-black text-base">Sarah Li</p>
                                                                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chief Technology Officer</p>
@@ -1401,117 +1487,74 @@ const Chat: React.FC = () => {
                         })()}
                     </div>
 
-                    {activeForm && (
-                        <div
-                            className="absolute inset-0 z-40 bg-black/5 backdrop-blur-[3px] animate-in fade-in transition-all duration-500 rounded-lg"
-                            onClick={() => setActiveForm(null)}
-                        />
-                    )}
 
-                    {activeForm && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white border-0 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 rounded-[2rem] p-6 w-full max-w-2xl text-left animate-in zoom-in-[0.98] fade-in slide-in-from-bottom-4 duration-300">
-                            <div className="flex justify-between items-center mb-5 px-1">
-                                <h4 className="text-sm font-bold text-black tracking-widest">{
-                                    activeForm === 'buy' ? 'Buy Asset' : 'Sell Asset'
-                                }</h4>
-                                <button onClick={() => setActiveForm(null)} className="text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 transition-colors p-1.5 rounded-full">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-2">
-                                    {[
-                                        { id: 'AIUSD', label: 'AIUSD Treasury Stablecoin', apy: '12.4%', tag: 'Stable', balance: '1,250.00', profit: '+12.50' },
-                                        { id: 'ComputeDAO - GPU Expansion', label: 'ComputeDAO - GPU Expansion', apy: '15.5%', tag: 'Yield', balance: '5,000.00', profit: '+387.50' },
-                                        { id: 'Shopify Merchant Cluster X', label: 'Shopify Merchant Cluster X', apy: '8.9%', tag: 'Yield', balance: '2,500.00', profit: '+111.25' },
-                                        { id: 'Vercel Enterprise Flow', label: 'Vercel Enterprise Flow', apy: '10.2%', tag: 'Yield', balance: '3,000.00', profit: '+153.00' },
-                                        { id: 'Stripe SaaS Revenue Pool', label: 'Stripe SaaS Revenue Pool', apy: '11.8%', tag: 'Yield', balance: '0.00', profit: '0.00' },
-                                        { id: 'AWS Cloud Infrastructure', label: 'AWS Cloud Infrastructure', apy: '9.5%', tag: 'Yield', balance: '0.00', profit: '0.00' },
-                                    ].map(a => (
-                                        <div
-                                            key={a.id}
-                                            onClick={() => setFormAsset(a.id)}
-                                            className={`p-4 rounded-xl border cursor-pointer transition-all flex justify-between items-start ${formAsset === a.id ? 'border-black bg-white shadow-md ring-1 ring-black/5' : 'border-gray-100 bg-gray-50 hover:border-black/30 text-black'}`}
-                                        >
-                                            <div className="flex-1 min-w-0 pr-3">
-                                                <p className="text-[12px] font-bold mb-1 text-black truncate">{a.label}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[11px] font-black text-green-500">{a.apy}</span>
-                                                    <span className="text-[9px] font-bold  text-gray-500 bg-gray-200/50 px-1.5 py-0.5 rounded-md">{a.tag}</span>
-                                                </div>
-                                                {activeForm === 'sell' && (
-                                                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-200/50">
-                                                        <span className="text-[10px] text-gray-400">Bal: <span className="font-semibold text-gray-700">${a.balance}</span></span>
-                                                        <span className="text-[10px] text-gray-400">Pnl: <span className="font-bold text-green-500">{a.profit}</span></span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {activeForm === 'sell' && (
-                                    <div className="flex gap-2 justify-start mb-2">
-                                        {['25%', '50%', '75%', '100%'].map((pct) => (
-                                            <button
-                                                key={pct}
-                                                onClick={() => {
-                                                    const rawBal = {
-                                                        'AIUSD': '1250',
-                                                        'ComputeDAO - GPU Expansion': '5000',
-                                                        'Shopify Merchant Cluster X': '2500',
-                                                        'Vercel Enterprise Flow': '3000'
-                                                    }[formAsset || ''] || '0';
-                                                    const bal = parseFloat(rawBal);
-                                                    setFormAmount((bal * parseInt(pct) / 100).toFixed(2).replace(/\.00$/, ''));
-                                                }}
-                                                className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:border-black hover:text-black transition-all"
-                                            >
-                                                {pct}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <div className="flex gap-3 items-center">
-                                    <div className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 flex items-center focus-within:border-black transition-colors">
-                                        <input
-                                            type="number"
-                                            placeholder="Enter exact USDC amount"
-                                            value={formAmount}
-                                            onChange={(e) => setFormAmount(e.target.value)}
-                                            className="bg-transparent border-none outline-none font-medium text-sm w-full"
-                                        />
-                                        <span className="text-xs font-bold text-gray-400 ml-2">USDC</span>
-                                    </div>
-                                    <button
-                                        onClick={handleActionSubmit}
-                                        className="px-6 py-2.5 bg-black text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all  tracking-widest shrink-0"
-                                    >
-                                        Submit
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {messages.length > 0 && (
                         <div className="px-12 pb-8 pt-0 flex flex-col items-center relative z-50 mt-auto bg-gradient-to-t from-[#fafafa] via-[#fafafa] to-transparent shrink-0">
-                            <div className="bg-white border border-gray-200 rounded-[2.5rem] p-3 w-full max-w-4xl flex items-center shadow-2xl shadow-black/5 hover:border-black/10 transition-all">
-                                <input
-                                    type="text"
-                                    value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                    placeholder="Ask your assistant..."
-                                    className="flex-1 bg-transparent border-none outline-none text-black text-sm px-6 py-2 placeholder:text-gray-300 font-medium"
-                                />
-                                <button
-                                    onClick={handleSend}
-                                    className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center hover:bg-green-200 hover:scale-105 active:scale-95 transition-all shadow-lg shrink-0 mr-1"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                                </button>
+                            <div className={`bg-white border rounded-2xl p-3 w-full max-w-4xl flex flex-col shadow-2xl transition-all duration-500 group/bottominput ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200 shadow-black/5 hover:border-green-200 focus-within:border-green-400/50 focus-within:scale-[1.005] focus-within:shadow-[0_0_30px_-5px_rgba(74,222,128,0.15)]'}`}>
+                                {activeForm ? (
+                                    /* Inline sentence mode for bottom input */
+                                    <div className="flex items-center w-full px-4 py-3 gap-2 flex-wrap">
+                                        <span className="text-sm font-medium text-black whitespace-nowrap">I want to {activeForm}</span>
+                                        <input
+                                            type="number"
+                                            value={formAmount}
+                                            onChange={(e) => setFormAmount(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleInlineActionSubmit()}
+                                            placeholder="0.00"
+                                            autoFocus
+                                            className="w-24 bg-transparent border-b-2 border-green-400 outline-none text-sm font-bold text-green-600 text-center py-0.5 placeholder:text-green-300/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="text-sm font-medium text-black whitespace-nowrap">USDC of</span>
+                                        <span className="text-sm font-bold text-black bg-gray-100 px-2 py-0.5 rounded-lg">{activeAgent}</span>
+                                        <span className="text-sm font-medium text-black">.</span>
+                                        <div className="flex items-center gap-2 ml-auto">
+                                            <button
+                                                onClick={() => { setActiveForm(null); setFormAmount(''); }}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-all"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                            <button
+                                                onClick={handleInlineActionSubmit}
+                                                className="w-10 h-10 bg-green-500 text-white rounded-xl flex items-center justify-center hover:bg-green-600 transition-all shadow-lg shadow-green-500/30"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center w-full">
+                                            <input
+                                                type="text"
+                                                value={inputText}
+                                                onChange={(e) => setInputText(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                                placeholder="Ask your assistant..."
+                                                className="flex-1 bg-transparent border-none outline-none text-black text-sm px-6 py-3 placeholder:text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                                            />
+                                            <button
+                                                onClick={handleSend}
+                                                className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-600 hover:text-white active:scale-90 transition-all shadow-lg shadow-black/5 shrink-0 mr-1 group-focus-within/bottominput:bg-green-500 group-focus-within/bottominput:text-white"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                            </button>
+                                        </div>
+
+                                        {/* Simplified Buy/Sell shortcuts for bottom input */}
+                                        <div className="flex gap-2 px-4 pb-1 pt-1 border-t border-gray-100/50 mt-1">
+                                            <button onClick={() => { setActiveForm('buy'); setFormAmount(''); }} className="px-3 py-1 bg-gray-50/50 hover:bg-white border border-gray-100/80 hover:border-black rounded-full text-[10px] font-bold text-gray-500 hover:text-black transition-all flex items-center gap-1 hover:scale-105 active:scale-95">
+                                                <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                Buy
+                                            </button>
+                                            <button onClick={() => { setActiveForm('sell'); setFormAmount(''); }} className="px-3 py-1 bg-gray-50/50 hover:bg-white border border-gray-100/80 hover:border-black rounded-full text-[10px] font-bold text-gray-500 hover:text-black transition-all flex items-center gap-1 hover:scale-105 active:scale-95">
+                                                <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                Sell
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}

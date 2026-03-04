@@ -13,9 +13,10 @@ import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import Landing from './components/Landing';
 import Settings from './components/Settings';
+import Groups from './components/Groups';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>(Page.MARKET);
+  const [currentPage, setCurrentPage] = useState<Page>(Page.CHAT);
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
@@ -65,7 +66,7 @@ const App: React.FC = () => {
   const isChatPage = currentPage === Page.CHAT;
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden selection:bg-black selection:text-white" style={{ backgroundColor: '#F5F0E6' }}>
+    <div className="h-screen w-screen flex overflow-hidden selection:bg-black selection:text-white bg-white">
       {/* Toast Notification */}
       <div className={`fixed top-6 right-6 z-[100] transition-all duration-500 transform ${showComingSoon ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0 pointer-events-none'
         }`}>
@@ -83,7 +84,7 @@ const App: React.FC = () => {
       <nav className="w-20 bg-white border-r border-gray-100 flex flex-col items-center py-6 shrink-0 z-50 shadow-sm relative">
         <div className="flex flex-col items-center gap-8 w-full">
           {/* Logo */}
-          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center font-black text-white hover:rotate-12 transition-transform cursor-pointer mb-2" onClick={() => setCurrentPage(Page.MARKET)}>
+          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center font-black text-white hover:rotate-12 transition-transform cursor-pointer mb-2" onClick={() => setCurrentPage(Page.CHAT)}>
             L
           </div>
 
@@ -92,14 +93,14 @@ const App: React.FC = () => {
             <SideNavButton
               active={currentPage === Page.CHAT}
               onClick={() => setCurrentPage(Page.CHAT)}
-              icon={<Icons.Chat />}
-              label="Chat"
+              icon={<Icons.Assets />}
+              label="Assets"
             />
             <SideNavButton
-              active={currentPage === Page.MARKET}
-              onClick={() => setCurrentPage(Page.MARKET)}
-              icon={<svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" /></svg>}
-              label="Discover"
+              active={currentPage === Page.GROUPS}
+              onClick={() => setCurrentPage(Page.GROUPS)}
+              icon={<Icons.Groups />}
+              label="Groups"
             />
           </div>
         </div>
@@ -107,37 +108,22 @@ const App: React.FC = () => {
         {/* Bottom Nav Links */}
         <div className="mt-auto flex flex-col gap-6 w-full px-3 relative">
           <SideNavButton
-            active={currentPage === Page.SETTINGS}
-            onClick={() => setCurrentPage(Page.SETTINGS)}
-            icon={<svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
-            label="Settings"
+            active={false}
+            onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }))}
+            icon={<Icons.CreditCard />}
+            label="Deposit"
           />
           <div className="relative">
             <SideNavButton
-              active={false}
+              active={currentPage === Page.PORTFOLIO}
               onClick={() => {
                 if (!isWalletConnected) connectWallet();
-                else setShowDropdown(!showDropdown);
+                else setCurrentPage(Page.PORTFOLIO);
               }}
               icon={<Icons.User />}
               label={isWalletConnected ? "Profile" : "Sign in"}
               customClass={isWalletConnected ? "text-green-500" : ""}
             />
-            {isWalletConnected && showDropdown && (
-              <div className="absolute left-full bottom-0 ml-4 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden py-1.5 z-50 animate-in fade-in slide-in-from-left-2">
-                <button
-                  onClick={() => {
-                    setIsWalletConnected(false);
-                    setShowDropdown(false);
-                    setCurrentPage(Page.MARKET);
-                  }}
-                  className="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors flex items-center gap-3"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                  Log Out
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </nav>
@@ -148,9 +134,13 @@ const App: React.FC = () => {
           {currentPage === Page.SWAP && <Swap />}
           {currentPage === Page.MARKET && <Market />}
           {currentPage === Page.AGENT && <AgentMode />}
-          {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} />}
+          {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} onLogout={() => {
+            setIsWalletConnected(false);
+            setCurrentPage(Page.CHAT);
+          }} />}
           {currentPage === Page.SETTINGS && <Settings onBack={() => setCurrentPage(Page.PORTFOLIO)} />}
           {currentPage === Page.CHAT && <Chat />}
+          {currentPage === Page.GROUPS && <Groups />}
         </div>
       </main>
     </div>

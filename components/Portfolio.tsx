@@ -26,9 +26,10 @@ interface PortfolioProps {
   isWalletConnected?: boolean;
   onConnect?: () => void;
   onSettingsClick?: () => void;
+  onLogout?: () => void;
 }
 
-const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConnect, onSettingsClick }) => {
+const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConnect, onSettingsClick, onLogout }) => {
   const [balance] = useState(12450.88);
   const [yieldAccumulated, setYieldAccumulated] = useState(0.00012);
   const [isHidden, setIsHidden] = useState(false);
@@ -86,10 +87,19 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   }
 
   return (
-    <div className="max-w-7xl mx-auto animate-fadeIn pb-24 px-4 space-y-10">
+    <div className="max-w-7xl mx-auto animate-fadeIn pb-24 px-4 space-y-6">
+
+      {/* Page Title Section */}
+      <div className="pt-12 pb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Personal Dashboard</span>
+        </div>
+        <h1 className="text-4xl font-black text-black tracking-tighter">Profile</h1>
+      </div>
 
       {/* TWO COLUMN PORTFOLIO HERO LAYOUT */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-6 pb-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-0 pb-6">
 
         {/* --- Left Card: Profile & Overview --- */}
         <div className="md:col-span-5 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between space-y-6">
@@ -114,13 +124,22 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
               </div>
             </div>
 
-            <button
-              onClick={onSettingsClick}
-              className="p-2 text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors shrink-0"
-              title="Account Settings"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={onSettingsClick}
+                className="p-2 text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                title="Account Settings"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </button>
+              <button
+                onClick={onLogout}
+                className="p-2 text-red-400 hover:text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+                title="Log Out"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+              </button>
+            </div>
           </div>
 
           {/* Stats Grid */}
