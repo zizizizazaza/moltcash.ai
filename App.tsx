@@ -32,15 +32,18 @@ const App: React.FC = () => {
     const handleNav = () => setCurrentPage(Page.CHAT);
     const handleNavSwap = () => setCurrentPage(Page.SWAP);
     const handleNavMarket = () => setCurrentPage(Page.MARKET);
+    const handleNavGroups = () => setCurrentPage(Page.GROUPS);
 
     window.addEventListener('loka-nav-chat', handleNav);
     window.addEventListener('loka-nav-swap', handleNavSwap);
     window.addEventListener('loka-nav-market', handleNavMarket);
+    window.addEventListener('loka-nav-groups', handleNavGroups);
 
     return () => {
       window.removeEventListener('loka-nav-chat', handleNav);
       window.removeEventListener('loka-nav-swap', handleNavSwap);
       window.removeEventListener('loka-nav-market', handleNavMarket);
+      window.removeEventListener('loka-nav-groups', handleNavGroups);
     };
   }, []);
 

@@ -53,6 +53,33 @@ interface GroupChat {
 
 const mockGroups: GroupChat[] = [
     {
+        id: 'app_001',
+        projectName: 'Project Verification & Setup',
+        projectShort: 'Apply',
+        status: 'active',
+        fundedAmount: '-',
+        apy: '-',
+        unread: 1,
+        lastActivity: 'Just now',
+        members: [
+            { id: 'u3', name: 'You', role: 'issuer', avatar: '🧑‍💼', online: true },
+            { id: 'agent_onboard', name: 'Loka Launcher', role: 'agent', avatar: '🚀', online: true },
+            { id: 'kyc_verifier', name: 'KYC/AML Verifier', role: 'agent', avatar: '✅', online: true },
+            { id: 'risk_assessment', name: 'Risk Assessor', role: 'agent', avatar: '🛡️', online: true },
+            { id: 'contract_auditor', name: 'Contract Auditor', role: 'agent', avatar: '🔐', online: true },
+        ],
+        messages: [
+            {
+                id: `msg_${Date.now()}`,
+                senderId: 'agent_onboard',
+                senderName: 'Loka Launcher',
+                role: 'agent',
+                content: '👋 Welcome to the Loka Project Application Hub! Ready to launch your financing project? \n\nWe will guide you through our 2-step process:\n\n1️⃣ **Company Verification**: Upload your Business License -> UBO Check -> Mint Validated Issuer SBT.\n2️⃣ **Project Setup**: Provide your project details, connect revenue streams (Stripe/Web3), configure collateral, and set financing terms ($100k - $1M target, 60-day max duration).\n\nTo begin, please **upload your Business License** (PDF/Image) for Legal Entity Certification.',
+                timestamp: new Date()
+            }
+        ]
+    },
+    {
         id: 'g1',
         projectName: 'ComputeDAO - GPU Expansion',
         projectShort: 'ComputeDAO',
@@ -251,41 +278,6 @@ const Groups: React.FC = () => {
                 }
             }, 1200);
         }
-    };
-
-    // --- Apply for Project ---
-    const handleApply = () => {
-        const appId = `app_${Date.now()}`;
-        const newGroup: GroupChat = {
-            id: appId,
-            projectName: 'Project Verification & Setup',
-            projectShort: 'Apply',
-            status: 'active',
-            fundedAmount: '-',
-            apy: '-',
-            unread: 1,
-            lastActivity: 'Just now',
-            members: [
-                { id: 'u3', name: 'You', role: 'issuer', avatar: '🧑‍💼', online: true },
-                { id: 'agent_onboard', name: 'Loka Launcher', role: 'agent', avatar: '🚀', online: true },
-                { id: 'kyc_verifier', name: 'KYC/AML Verifier', role: 'agent', avatar: '✅', online: true },
-                { id: 'risk_assessment', name: 'Risk Assessor', role: 'agent', avatar: '🛡️', online: true },
-                { id: 'contract_auditor', name: 'Contract Auditor', role: 'agent', avatar: '🔐', online: true },
-            ],
-            messages: [
-                {
-                    id: `msg_${Date.now()}`,
-                    senderId: 'agent_onboard',
-                    senderName: 'Loka Launcher',
-                    role: 'agent',
-                    content: '👋 Welcome to the Loka Project Application Hub! Ready to launch your financing project? \n\nWe will guide you through our 2-step process:\n\n1️⃣ **Company Verification**: Upload your Business License -> UBO Check -> Mint Validated Issuer SBT.\n2️⃣ **Project Setup**: Provide your project details, connect revenue streams (Stripe/Web3), configure collateral, and set financing terms ($100k - $1M target, 60-day max duration).\n\nTo begin, please **upload your Business License** (PDF/Image) for Legal Entity Certification.',
-                    timestamp: new Date()
-                }
-            ]
-        };
-        setGroups(prev => [newGroup, ...prev]);
-        setLocalMessages(prev => ({ ...prev, [appId]: newGroup.messages }));
-        setSelectedGroup(appId);
     };
 
     // --- Poll ---
@@ -589,12 +581,6 @@ const Groups: React.FC = () => {
                         <h2 className="text-lg font-black text-black tracking-tight">Groups</h2>
                         <p className="text-[11px] text-gray-400 font-medium mt-1">Project stakeholder channels</p>
                     </div>
-                    <button
-                        onClick={handleApply}
-                        className="px-3.5 py-1.5 bg-black text-white text-[11px] font-bold rounded-lg hover:bg-gray-800 transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
-                    >
-                        Apply
-                    </button>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {groups.map(group => (

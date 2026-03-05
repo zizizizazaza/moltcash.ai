@@ -275,9 +275,17 @@ const Chat: React.FC = () => {
                     className={`border-r border-gray-100 flex flex-col bg-white transition-all duration-300 ease-in-out relative shrink-0 ${leftSidebarCollapsed ? 'w-0 opacity-0 -translate-x-full overflow-hidden border-0' : 'w-80 opacity-100 translate-x-0'
                         }`}
                 >
-                    <div className="p-5 border-b border-gray-100 shrink-0">
-                        <h2 className="text-lg font-black text-black tracking-tight">Assets</h2>
-                        <p className="text-[11px] text-gray-400 font-medium mt-1">Cash flow investment opportunities</p>
+                    <div className="p-5 border-b border-gray-100 shrink-0 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-lg font-black text-black tracking-tight">Assets</h2>
+                            <p className="text-[11px] text-gray-400 font-medium mt-1">Cash flow investment opportunities</p>
+                        </div>
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-groups'))}
+                            className="px-3.5 py-1.5 bg-black text-white text-[11px] font-bold rounded-lg hover:bg-gray-800 transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                        >
+                            Apply
+                        </button>
                     </div>
                     <div className="flex-1 overflow-y-auto w-full pt-2">
                         {cashFlowAssets.map((asset) => (
