@@ -170,6 +170,7 @@ const AVAILABLE_AGENTS: AvailableAgent[] = [
 ];
 
 const Groups: React.FC = () => {
+    const [groups, setGroups] = useState<GroupChat[]>(mockGroups);
     const [selectedGroup, setSelectedGroup] = useState<string>(mockGroups[0].id);
     const [inputValue, setInputValue] = useState('');
     const [localMessages, setLocalMessages] = useState<Record<string, GroupMessage[]>>(() => {
@@ -197,7 +198,7 @@ const Groups: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textInputRef = useRef<HTMLInputElement>(null);
 
-    const currentGroup = mockGroups.find(g => g.id === selectedGroup)!;
+    const currentGroup = groups.find(g => g.id === selectedGroup)!;
     const currentMessages = localMessages[selectedGroup] || [];
 
     useEffect(() => {
@@ -234,22 +235,57 @@ const Groups: React.FC = () => {
         setInputValue('');
         setImagePreview(null);
 
-        if (capturedInput) {
+        if (capturedInput || imagePreview) {
             setTimeout(() => {
-                const agentReply: GroupMessage = {
-                    id: `agent_${Date.now()}`,
-                    senderId: 'agent1',
-                    senderName: 'Loka Agent',
-                    role: 'agent',
-                    content: getAgentReply(capturedInput),
-                    timestamp: new Date(),
-                };
-                setLocalMessages(prev => ({
-                    ...prev,
-                    [selectedGroup]: [...(prev[selectedGroup] || []), agentReply],
-                }));
+                const replies = getAgentReplies(capturedInput, imagePreview !== null, selectedGroup);
+                if (replies.length > 0) {
+                    const newReplies = replies.map((r, idx) => ({
+                        ...r,
+                        id: `agent_${Date.now()}_${idx}`,
+                        timestamp: new Date(Date.now() + idx * 500)
+                    }));
+                    setLocalMessages(prev => ({
+                        ...prev,
+                        [selectedGroup]: [...(prev[selectedGroup] || []), ...newReplies],
+                    }));
+                }
             }, 1200);
         }
+    };
+
+    // --- Apply for Project ---
+    const handleApply = () => {
+        const appId = `app_${Date.now()}`;
+        const newGroup: GroupChat = {
+            id: appId,
+            projectName: 'Project Verification & Setup',
+            projectShort: 'Apply',
+            status: 'active',
+            fundedAmount: '-',
+            apy: '-',
+            unread: 1,
+            lastActivity: 'Just now',
+            members: [
+                { id: 'u3', name: 'You', role: 'issuer', avatar: '🧑‍💼', online: true },
+                { id: 'agent_onboard', name: 'Loka Launcher', role: 'agent', avatar: '🚀', online: true },
+                { id: 'kyc_verifier', name: 'KYC/AML Verifier', role: 'agent', avatar: '✅', online: true },
+                { id: 'risk_assessment', name: 'Risk Assessor', role: 'agent', avatar: '🛡️', online: true },
+                { id: 'contract_auditor', name: 'Contract Auditor', role: 'agent', avatar: '🔐', online: true },
+            ],
+            messages: [
+                {
+                    id: `msg_${Date.now()}`,
+                    senderId: 'agent_onboard',
+                    senderName: 'Loka Launcher',
+                    role: 'agent',
+                    content: '👋 Welcome to the Loka Project Application Hub! Ready to launch your financing project? \n\nWe will guide you through our 2-step process:\n\n1️⃣ **Company Verification**: Upload your Business License -> UBO Check -> Mint Validated Issuer SBT.\n2️⃣ **Project Setup**: Provide your project details, connect revenue streams (Stripe/Web3), configure collateral, and set financing terms ($100k - $1M target, 60-day max duration).\n\nTo begin, please **upload your Business License** (PDF/Image) for Legal Entity Certification.',
+                    timestamp: new Date()
+                }
+            ]
+        };
+        setGroups(prev => [newGroup, ...prev]);
+        setLocalMessages(prev => ({ ...prev, [appId]: newGroup.messages }));
+        setSelectedGroup(appId);
     };
 
     // --- Poll ---
@@ -308,13 +344,38 @@ const Groups: React.FC = () => {
         });
     };
 
-    const getAgentReply = (msg: string): string => {
+    const getAgentReplies = (msg: string, hasImage: boolean, groupId: string): Omit<GroupMessage, 'id' | 'timestamp'>[] => {
         const lower = msg.toLowerCase();
-        if (lower.includes('status') || lower.includes('update')) return '📊 Project Status: All milestones on track. Next payout in 12 days. No anomalies detected.';
-        if (lower.includes('risk') || lower.includes('safe')) return '🛡️ Risk Assessment: Current risk level is LOW. Collateral ratio at 1.35x. All compliance checks passed.';
-        if (lower.includes('revenue') || lower.includes('earning')) return '💰 Revenue Update: Estimated monthly revenue at $12,400. Running above projections by 8.2%.';
-        if (lower.includes('when') || lower.includes('payout')) return '📅 Next interest distribution: scheduled for March 15, 2026. Amount will be proportional to your holding.';
-        return '👋 Thanks for your message! I\'m monitoring this project 24/7. Feel free to ask about project status, risk assessment, revenue updates, or payout schedules.';
+
+        // Application Hub logic
+        if (groupId.startsWith('app_')) {
+            if (hasImage || lower.includes('license') || lower.includes('上传') || lower.includes('执照') || lower.includes('upload')) {
+                return [{ senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier', role: 'agent', content: '📄 **Business License received.** Proceeding with Ultimate Beneficial Owner (UBO) check.\n\nPlease declare all shareholders holding >25% and provide passport/ID scans for KYC verification.' }];
+            }
+            if (lower.includes('kyc') || lower.includes('护照') || lower.includes('passport') || lower.includes('shareholder') || lower.includes('id')) {
+                return [{ senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier', role: 'agent', content: '✅ **KYC & UBO Check Passed.** Third-party manual review completed. Minting **"Verified Issuer" SBT** to your wallet. You now have permission to create asset pools and initiate fundraising.\n\nLet\'s move to Step 2: **Project Details**.\nPlease provide your project name, description, website, and target financing parameters: Target Amount (e.g., $100,000 USDC), Minimum Start Amount (e.g. $50,000), Duration (7-90 days), and APY rate/Repayment cycle.' }];
+            }
+            if (lower.includes('amount') || lower.includes('100,000') || lower.includes('usdc') || lower.includes('项目') || lower.includes('target') || lower.includes('apy')) {
+                return [{ senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '📊 Project parameters logged. \n\nNext, we need to perform a **Revenue Review**. Please connect your Web2 (Stripe/PayPal/Shopify/AWS) or Web3 (Gnosis Safe/On-chain wallet) revenue accounts to provide the last 6 months of cash flow history.' }];
+            }
+            if (lower.includes('connect') || lower.includes('stripe') || lower.includes('paypal') || lower.includes('web3') || lower.includes('连接')) {
+                return [
+                    { senderId: 'contract_auditor', senderName: 'Contract Auditor', role: 'agent', content: '🔗 Revenue API securely connected. Web2 Partner API linked and Cash Flow Takeover agreement drafted. Validating 6-month cash flow...' },
+                    { senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '✅ Verification successful! Healthy cash flow detected.\n\nFinally, let\'s configure the **Collateral** (10-30% required). Please provide your on-chain assets or account receivables contract as collateral.' }
+                ];
+            }
+            if (lower.includes('collateral') || lower.includes('confirm') || lower.includes('确认') || lower.includes('抵押') || lower.includes('asset')) {
+                return [{ senderId: 'agent_onboard', senderName: 'Loka Launcher', role: 'agent', content: '🎉 **Project Application Complete!** \n\nCollateral locked. The smart contract has been deployed and the cash flow takeover agreement is active. Your project is now listed in the Market and available for investors. Good luck! 🚀' }];
+            }
+            return [{ senderId: 'agent_onboard', senderName: 'Loka Launcher', role: 'agent', content: 'I am here to help you apply. Please follow the steps: Upload License -> KYC -> Project Details -> Revenue Connect -> Collateral. What would you like to do next?' }];
+        }
+
+        // Default logic for other groups
+        if (lower.includes('status') || lower.includes('update')) return [{ senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '📊 Project Status: All milestones on track. Next payout in 12 days. No anomalies detected.' }];
+        if (lower.includes('risk') || lower.includes('safe')) return [{ senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '🛡️ Risk Assessment: Current risk level is LOW. Collateral ratio at 1.35x. All compliance checks passed.' }];
+        if (lower.includes('revenue') || lower.includes('earning')) return [{ senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '💰 Revenue Update: Estimated monthly revenue at $12,400. Running above projections by 8.2%.' }];
+        if (lower.includes('when') || lower.includes('payout')) return [{ senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '📅 Next interest distribution: scheduled for March 15, 2026. Amount will be proportional to your holding.' }];
+        return [{ senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '👋 Thanks for your message! I\'m monitoring this project 24/7. Feel free to ask about project status, risk assessment, revenue updates, or payout schedules.' }];
     };
 
     const formatTime = (date: Date) => {
@@ -523,12 +584,20 @@ const Groups: React.FC = () => {
 
             {/* --- Left: Group List --- */}
             <div className="w-80 border-r border-gray-100 flex flex-col bg-white shrink-0">
-                <div className="p-5 border-b border-gray-100">
-                    <h2 className="text-lg font-black text-black tracking-tight">Groups</h2>
-                    <p className="text-[11px] text-gray-400 font-medium mt-1">Project stakeholder channels</p>
+                <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-black text-black tracking-tight">Groups</h2>
+                        <p className="text-[11px] text-gray-400 font-medium mt-1">Project stakeholder channels</p>
+                    </div>
+                    <button
+                        onClick={handleApply}
+                        className="px-3.5 py-1.5 bg-black text-white text-[11px] font-bold rounded-lg hover:bg-gray-800 transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                    >
+                        Apply
+                    </button>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    {mockGroups.map(group => (
+                    {groups.map(group => (
                         <button
                             key={group.id}
                             onClick={() => setSelectedGroup(group.id)}
