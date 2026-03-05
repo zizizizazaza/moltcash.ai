@@ -282,9 +282,10 @@ const Chat: React.FC = () => {
                         </div>
                         <button
                             onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-groups'))}
-                            className="px-3.5 py-1.5 bg-black text-white text-[11px] font-bold rounded-lg hover:bg-gray-800 transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                            className="px-3.5 py-1.5 bg-gray-100 text-black text-[11px] font-bold rounded-lg hover:bg-gray-200 transition-all active:scale-95 flex items-center gap-1 border border-transparent hover:border-gray-300 shadow-sm"
                         >
-                            Apply
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                            Add
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto w-full pt-2">
@@ -306,19 +307,6 @@ const Chat: React.FC = () => {
                     </div>
                 </aside>
 
-                {/* Collapse Toggle Button */}
-                <button
-                    onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-                    className={`absolute top-6 z-10 p-2 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-all transition-colors group ${leftSidebarCollapsed ? 'left-4' : 'left-[17.2rem]'
-                        }`}
-                >
-                    <svg
-                        className={`w-3 h-3 text-gray-400 group-hover:text-black transition-transform duration-300 ${leftSidebarCollapsed ? 'rotate-180' : ''}`}
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
 
                 {/* Main Chat Area */}
                 <main className="flex-1 flex flex-col relative bg-white border-l border-gray-100">

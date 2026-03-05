@@ -74,7 +74,7 @@ const mockGroups: GroupChat[] = [
                 senderId: 'agent_onboard',
                 senderName: 'Loka Launcher',
                 role: 'agent',
-                content: '👋 Welcome to the Loka Project Application Hub! Ready to launch your financing project? \n\nWe will guide you through our 2-step process:\n\n1️⃣ **Company Verification**: Upload your Business License -> UBO Check -> Mint Validated Issuer SBT.\n2️⃣ **Project Setup**: Provide your project details, connect revenue streams (Stripe/Web3), configure collateral, and set financing terms ($100k - $1M target, 60-day max duration).\n\nTo begin, please **upload your Business License** (PDF/Image) for Legal Entity Certification.',
+                content: '👋 Welcome! I\'m your Loka Launcher agent. Let\'s get your project listed. Please complete the steps below to begin.',
                 timestamp: new Date()
             }
         ]
@@ -221,6 +221,7 @@ const Groups: React.FC = () => {
         mockGroups.forEach(g => { init[g.id] = []; });
         return init;
     });
+    const [applicationStep, setApplicationStep] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textInputRef = useRef<HTMLInputElement>(null);
@@ -393,6 +394,130 @@ const Groups: React.FC = () => {
         if (role === 'agent') return 'bg-gradient-to-br from-purple-50 to-blue-50 text-black border border-purple-100/50 rounded-2xl rounded-bl-md';
         if (role === 'issuer') return 'bg-blue-50 text-black border border-blue-100/50 rounded-2xl rounded-bl-md';
         return 'bg-gray-100 text-black rounded-2xl rounded-bl-md';
+    };
+
+    const isAppGroup = selectedGroup.startsWith('app_');
+
+    const APPLICATION_STEPS = [
+        { type: 'header', title: 'Company Verification', desc: 'Verify legal entity & Mint SBT' },
+        { title: 'Upload Business License', desc: 'Upload your company registration certificate and address proof.', icon: '📄', agent: 'KYC/AML Verifier' },
+        { title: 'UBO & KYC Verification', desc: 'Declare shareholders (>25%) and upload passport/ID for identity verification.', icon: '🪪', agent: 'KYC/AML Verifier' },
+        { title: 'Mint Verified Issuer SBT', desc: 'Third-party review complete. Minting your on-chain Verified Issuer credential.', icon: '🔗', agent: 'KYC/AML Verifier' },
+        { type: 'header', title: 'Project Application', desc: 'Configure project & connect revenue' },
+        { title: 'Project Details & Parameters', desc: 'Set financing terms: target amount, min start, duration (7-90d), APY, and repayment cycle.', icon: '📋', agent: 'Risk Assessor' },
+        { title: 'Revenue Account Verification', desc: 'Connect Stripe / PayPal / Shopify / Web3 wallet and provide 6-month cash flow history.', icon: '💳', agent: 'Contract Auditor' },
+        { title: 'Collateral & Cash Flow Takeover', desc: 'Provide 10-30% collateral value and configure revenue takeover via smart contract.', icon: '🔐', agent: 'Contract Auditor' },
+    ];
+
+    const handleStepAction = (stepIdx: number) => {
+        if (stepIdx !== applicationStep) return;
+        const step = APPLICATION_STEPS[stepIdx];
+        const agentMap: Record<string, { senderId: string; senderName: string }> = {
+            'KYC/AML Verifier': { senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier' },
+            'Risk Assessor': { senderId: 'risk_assessment', senderName: 'Risk Assessor' },
+            'Contract Auditor': { senderId: 'contract_auditor', senderName: 'Contract Auditor' },
+        };
+        const agent = agentMap[step.agent || ''] || { senderId: 'agent_onboard', senderName: 'Loka Launcher' };
+
+        // Map step string title to its response message to bypass header elements indexing issue
+        const stepMessages: Record<string, string> = {
+            'Upload Business License': '📄 Business License received and validated. Company name, registration country/region, and registration number recorded. Proceeding to UBO check.',
+            'UBO & KYC Verification': '🪪 Shareholder declarations and KYC documents received. Facial recognition verification passed. All controlling persons verified.',
+            'Mint Verified Issuer SBT': '🔗 Third-party manual review completed. Minting **Verified Issuer SBT** to your wallet address... ✅ SBT minted! You now have permission to create asset pools.',
+            'Project Details & Parameters': '📊 Project parameters saved. Target: $100,000 USDC | Min: $50,000 | Duration: 60 days | APY rate and repayment cycle recorded.',
+            'Revenue Account Verification': '💳 Revenue accounts connected. 6-month cash flow history validated. Healthy revenue pattern detected. Coverage ratio: 2.4x',
+            'Collateral & Cash Flow Takeover': '🎉 **Application Complete!** Collateral locked. Smart contract deployed. Cash flow takeover agreement active. Your project is now listed on the Market! 🚀',
+        };
+
+        const replyMsg: GroupMessage = {
+            id: `step_${Date.now()}`,
+            senderId: agent.senderId,
+            senderName: agent.senderName,
+            role: 'agent',
+            content: stepMessages[step.title] || 'Step completed.',
+            timestamp: new Date(),
+        };
+        setLocalMessages(prev => ({
+            ...prev,
+            [selectedGroup]: [...(prev[selectedGroup] || []), replyMsg],
+        }));
+        // Find next action step, skipping headers
+        let nextStep = stepIdx + 1;
+        while (nextStep < APPLICATION_STEPS.length && APPLICATION_STEPS[nextStep].type === 'header') {
+            nextStep++;
+        }
+        setApplicationStep(Math.min(nextStep, APPLICATION_STEPS.length));
+    };
+
+    const renderApplicationCard = () => {
+        if (!isAppGroup) return null;
+        const actionStepsOnly = APPLICATION_STEPS.filter(s => s.type !== 'header');
+        const currentActionProg = actionStepsOnly.indexOf(APPLICATION_STEPS[applicationStep]) > -1 ? actionStepsOnly.indexOf(APPLICATION_STEPS[applicationStep]) : actionStepsOnly.length;
+
+        return (
+            <div className="mx-6 mb-4 bg-gradient-to-br from-violet-50 via-white to-blue-50 border border-violet-100/60 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-base">🚀</span>
+                    <h3 className="text-sm font-black text-black">Application Progress</h3>
+                    <span className="ml-auto text-[10px] font-bold text-violet-500 bg-violet-100 px-2 py-0.5 rounded-full">{currentActionProg}/{actionStepsOnly.length}</span>
+                </div>
+
+                <div className="space-y-3 mt-4">
+                    {APPLICATION_STEPS.map((step, idx) => {
+                        if (step.type === 'header') {
+                            const isSectionUnlocked = idx === 0 || (idx === 4 && applicationStep >= 4);
+                            return (
+                                <div key={idx} className={`pt-2 pb-1 flex items-center gap-2 border-b ${isSectionUnlocked ? 'border-violet-100' : 'border-gray-200/50'}`}>
+                                    <div className={`w-1.5 h-4 rounded-full ${isSectionUnlocked ? 'bg-violet-500' : 'bg-gray-300'}`}></div>
+                                    <h4 className={`text-xs font-black tracking-tight ${isSectionUnlocked ? 'text-black' : 'text-gray-400'}`}>{step.title}</h4>
+                                    <span className={`text-[10px] font-medium ml-1 ${isSectionUnlocked ? 'text-violet-400' : 'text-gray-300'}`}>{step.desc}</span>
+                                </div>
+                            );
+                        }
+
+                        const isDone = idx < applicationStep;
+                        const isCurrent = idx === applicationStep;
+                        // For the very first initialization
+                        if (applicationStep === 0 && idx === 1) { /* First action step */ }
+
+                        // We also need to automatically skip headers if they're the current step
+                        // (Handled by useEffect or inline skip logically, but here UI just locks if not current)
+                        const isLocked = idx > applicationStep;
+
+                        return (
+                            <button
+                                key={idx}
+                                onClick={() => handleStepAction(idx)}
+                                disabled={!isCurrent}
+                                className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all ${isDone ? 'bg-green-50/50 border border-green-200/40 opacity-70 hover:opacity-100' :
+                                    isCurrent ? 'bg-white border-2 border-violet-300 shadow-md shadow-violet-100/50 hover:shadow-lg cursor-pointer' :
+                                        'bg-gray-50/40 border border-gray-100/60 opacity-40'
+                                    }`}
+                            >
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 ${isDone ? 'bg-green-100 grayscale-[0.3]' : isCurrent ? 'bg-violet-100' : 'bg-gray-100'
+                                    }`}>
+                                    {isDone ? '✅' : isLocked ? '🔒' : step.icon}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-xs font-bold ${isDone ? 'text-green-700/80 line-through decoration-green-300' : isCurrent ? 'text-black' : 'text-gray-400'}`}>{step.title}</p>
+                                    <p className={`text-[10px] font-medium mt-0.5 truncate ${isDone ? 'text-green-500/80' : isCurrent ? 'text-gray-500' : 'text-gray-300'}`}>{isDone ? 'Completed' : step.desc}</p>
+                                </div>
+                                {isCurrent && (
+                                    <div className="px-3 py-1 bg-violet-600 text-white text-[10px] font-bold rounded-lg shrink-0 hover:bg-violet-700 transition-colors">
+                                        Start
+                                    </div>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+                {applicationStep >= APPLICATION_STEPS.length && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-center">
+                        <p className="text-xs font-bold text-green-700">🎉 All steps completed! Your project is now live.</p>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     // --- Render Poll Card ---
@@ -583,53 +708,73 @@ const Groups: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    {groups.map(group => (
-                        <button
-                            key={group.id}
-                            onClick={() => setSelectedGroup(group.id)}
-                            className={`w-full text-left p-4 border-b border-gray-50 transition-all hover:bg-gray-50 ${selectedGroup === group.id ? 'bg-green-50/50 border-r-2 border-r-green-500 border-l-0' : ''}`}
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center text-white text-sm font-black shrink-0 shadow-sm">
-                                        {group.projectShort.charAt(0)}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h3 className="text-xs font-bold text-black truncate">{group.projectName}</h3>
-                                        <div className="flex items-center gap-1.5 mt-1">
-                                            <span className="text-[10px] text-gray-400 font-medium">{group.members.length} members</span>
-                                            <span className="text-gray-300">·</span>
-                                            <span className="text-[10px] text-gray-400 font-medium">{group.lastActivity}</span>
+                    {groups.map(group => {
+                        const isApp = group.id.startsWith('app_');
+                        return (
+                            <button
+                                key={group.id}
+                                onClick={() => setSelectedGroup(group.id)}
+                                className={`w-full text-left p-4 border-b transition-all ${isApp
+                                    ? `border-violet-100/50 ${selectedGroup === group.id ? 'bg-gradient-to-r from-violet-50 to-blue-50 border-r-2 border-r-violet-500' : 'bg-gradient-to-r from-violet-50/30 to-transparent hover:from-violet-50/60'}`
+                                    : `border-gray-50 hover:bg-gray-50 ${selectedGroup === group.id ? 'bg-green-50/50 border-r-2 border-r-green-500' : ''}`
+                                    }`}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black shrink-0 shadow-sm ${isApp ? 'bg-gradient-to-br from-violet-500 to-blue-500' : 'bg-gradient-to-br from-green-400 to-emerald-500'
+                                            }`}>
+                                            {isApp ? '🚀' : group.projectShort.charAt(0)}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <h3 className="text-xs font-bold text-black truncate">{group.projectName}</h3>
+                                                {isApp && <span className="px-1.5 py-0.5 bg-violet-100 text-violet-600 text-[8px] font-black rounded-md shrink-0">NEW</span>}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                                <span className="text-[10px] text-gray-400 font-medium">{group.members.length} agents</span>
+                                                <span className="text-gray-300">·</span>
+                                                <span className="text-[10px] text-gray-400 font-medium">{group.lastActivity}</span>
+                                            </div>
                                         </div>
                                     </div>
+                                    {group.unread > 0 && (
+                                        <span className={`text-[9px] font-black min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shrink-0 ${isApp ? 'bg-violet-500 text-white' : 'bg-black text-white'}`}>
+                                            {group.unread}
+                                        </span>
+                                    )}
                                 </div>
-                                {group.unread > 0 && (
-                                    <span className="bg-black text-white text-[9px] font-black min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shrink-0">
-                                        {group.unread}
-                                    </span>
-                                )}
-                            </div>
-                        </button>
-                    ))}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
             {/* --- Right: Chat Area --- */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Chat Header */}
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                <div className={`px-6 py-4 border-b flex items-center justify-between shrink-0 ${isAppGroup ? 'bg-gradient-to-r from-violet-50/50 to-blue-50/30 border-violet-100/50' : 'bg-white border-gray-100'}`}>
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm">
-                            {currentGroup.projectShort.charAt(0)}
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shadow-sm ${isAppGroup ? 'bg-gradient-to-br from-violet-500 to-blue-500 text-white' : 'bg-gradient-to-br from-green-400 to-emerald-500 text-white'}`}>
+                            {isAppGroup ? '🚀' : currentGroup.projectShort.charAt(0)}
                         </div>
                         <div>
                             <h3 className="text-sm font-bold text-black">{currentGroup.projectName}</h3>
                             <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] text-gray-400 font-medium">{currentGroup.fundedAmount} funded</span>
-                                <span className="text-gray-300">·</span>
-                                <span className="text-[10px] text-green-600 font-bold">{currentGroup.apy} APY</span>
-                                <span className="text-gray-300">·</span>
-                                <span className="text-[10px] text-gray-400 font-medium">{currentGroup.members.length} members</span>
+                                {isAppGroup ? (
+                                    <>
+                                        <span className="text-[10px] text-violet-500 font-bold">Step {Math.min(applicationStep + 1, APPLICATION_STEPS.length)} of {APPLICATION_STEPS.length}</span>
+                                        <span className="text-gray-300">·</span>
+                                        <span className="text-[10px] text-gray-400 font-medium">{currentGroup.members.length} agents assisting</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-[10px] text-gray-400 font-medium">{currentGroup.fundedAmount} funded</span>
+                                        <span className="text-gray-300">·</span>
+                                        <span className="text-[10px] text-green-600 font-bold">{currentGroup.apy} APY</span>
+                                        <span className="text-gray-300">·</span>
+                                        <span className="text-[10px] text-gray-400 font-medium">{currentGroup.members.length} members</span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -686,6 +831,8 @@ const Groups: React.FC = () => {
                             })}
                             <div ref={messagesEndRef} />
                         </div>
+                        {/* Interactive Application Steps Card */}
+                        {renderApplicationCard()}
 
                         {/* Enhanced Input */}
                         <div className="px-5 py-4 bg-gray-50/50 shrink-0">
