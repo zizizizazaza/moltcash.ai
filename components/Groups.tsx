@@ -34,6 +34,7 @@ interface GroupMessage {
     timestamp: Date;
     image?: string;
     poll?: Poll;
+    formType?: 'entity_form' | 'kyc_link';
 }
 
 interface GroupChat {
@@ -74,7 +75,7 @@ const mockGroups: GroupChat[] = [
                 senderId: 'agent_onboard',
                 senderName: 'Loka Launcher',
                 role: 'agent',
-                content: '👋 Welcome! I\'m your Loka Launcher agent. Let\'s get your project listed. Please complete the steps below to begin.',
+                content: '👋 Welcome to the Loka Project Application Hub!\n\nTo list your project, you\'ll complete a **2-phase process**:\n\n🏢 **Phase 1 — Company Verification**\nUpload Business License → UBO & KYC Check → Mint Verified Issuer SBT\n\n📋 **Phase 2 — Project Application** _(unlocks after Phase 1)_\nFill project details → Connect revenue accounts → Configure collateral\n\nLet\'s start with **Phase 1: Company Verification**. Click the steps below to begin.',
                 timestamp: new Date()
             }
         ]
@@ -398,35 +399,88 @@ const Groups: React.FC = () => {
 
     const isAppGroup = selectedGroup.startsWith('app_');
 
-    const APPLICATION_STEPS = [
-        { type: 'header', title: 'Company Verification', desc: 'Verify legal entity & Mint SBT' },
-        { title: 'Upload Business License', desc: 'Upload your company registration certificate and address proof.', icon: '📄', agent: 'KYC/AML Verifier' },
-        { title: 'UBO & KYC Verification', desc: 'Declare shareholders (>25%) and upload passport/ID for identity verification.', icon: '🪪', agent: 'KYC/AML Verifier' },
-        { title: 'Mint Verified Issuer SBT', desc: 'Third-party review complete. Minting your on-chain Verified Issuer credential.', icon: '🔗', agent: 'KYC/AML Verifier' },
-        { type: 'header', title: 'Project Application', desc: 'Configure project & connect revenue' },
-        { title: 'Project Details & Parameters', desc: 'Set financing terms: target amount, min start, duration (7-90d), APY, and repayment cycle.', icon: '📋', agent: 'Risk Assessor' },
-        { title: 'Revenue Account Verification', desc: 'Connect Stripe / PayPal / Shopify / Web3 wallet and provide 6-month cash flow history.', icon: '💳', agent: 'Contract Auditor' },
-        { title: 'Collateral & Cash Flow Takeover', desc: 'Provide 10-30% collateral value and configure revenue takeover via smart contract.', icon: '🔐', agent: 'Contract Auditor' },
+    // Phase 1: Company Verification (3 steps)
+    const PHASE1_STEPS = [
+        { title: 'Legal Entity Certification', desc: 'Fill in company info & upload business license and address proof.', icon: '📄', agent: 'KYC/AML Verifier' },
+        { title: 'KYC Identity Verification', desc: 'Complete KYC verification for key shareholders and legal representative.', icon: '🪪', agent: 'KYC/AML Verifier' },
+        { title: 'Review & Mint Issuer SBT', desc: 'Third-party review, then mint your Verified Issuer credential on-chain.', icon: '🔗', agent: 'KYC/AML Verifier' },
     ];
 
-    const handleStepAction = (stepIdx: number) => {
-        if (stepIdx !== applicationStep) return;
-        const step = APPLICATION_STEPS[stepIdx];
+    // Phase 2: Project Application (3 steps)
+    const PHASE2_STEPS = [
+        { title: 'Project Details & Financing Terms', desc: 'Fill in project info, set target amount, duration, APY and repayment cycle.', icon: '📋', agent: 'Risk Assessor' },
+        { title: 'Revenue Account Verification', desc: 'Connect Web2/Web3 revenue accounts and provide 6-month cash flow history.', icon: '💳', agent: 'Contract Auditor' },
+        { title: 'Collateral & Cash Flow Takeover', desc: 'Provide 10-30% collateral value and configure smart contract revenue takeover.', icon: '🔐', agent: 'Contract Auditor' },
+    ];
+
+    const currentPhase = applicationStep < PHASE1_STEPS.length ? 1 : 2;
+    const currentPhaseSteps = currentPhase === 1 ? PHASE1_STEPS : PHASE2_STEPS;
+    const phaseOffset = currentPhase === 1 ? 0 : PHASE1_STEPS.length;
+    const totalSteps = PHASE1_STEPS.length + PHASE2_STEPS.length;
+    const allDone = applicationStep >= totalSteps;
+
+    // Entity form state
+    const [entityForm, setEntityForm] = useState({ companyName: '', country: '', regNumber: '', address: '' });
+    const [entityFormSubmitted, setEntityFormSubmitted] = useState(false);
+    const [progressCollapsed, setProgressCollapsed] = useState(false);
+
+    const handleStepAction = (globalIdx: number) => {
+        if (globalIdx !== applicationStep) return;
+
+        const isPhase1 = globalIdx < PHASE1_STEPS.length;
+        const step = isPhase1 ? PHASE1_STEPS[globalIdx] : PHASE2_STEPS[globalIdx - PHASE1_STEPS.length];
+
         const agentMap: Record<string, { senderId: string; senderName: string }> = {
             'KYC/AML Verifier': { senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier' },
             'Risk Assessor': { senderId: 'risk_assessment', senderName: 'Risk Assessor' },
             'Contract Auditor': { senderId: 'contract_auditor', senderName: 'Contract Auditor' },
         };
-        const agent = agentMap[step.agent || ''] || { senderId: 'agent_onboard', senderName: 'Loka Launcher' };
+        const agent = agentMap[step.agent] || { senderId: 'agent_onboard', senderName: 'Loka Launcher' };
 
-        // Map step string title to its response message to bypass header elements indexing issue
-        const stepMessages: Record<string, string> = {
-            'Upload Business License': '📄 Business License received and validated. Company name, registration country/region, and registration number recorded. Proceeding to UBO check.',
-            'UBO & KYC Verification': '🪪 Shareholder declarations and KYC documents received. Facial recognition verification passed. All controlling persons verified.',
-            'Mint Verified Issuer SBT': '🔗 Third-party manual review completed. Minting **Verified Issuer SBT** to your wallet address... ✅ SBT minted! You now have permission to create asset pools.',
-            'Project Details & Parameters': '📊 Project parameters saved. Target: $100,000 USDC | Min: $50,000 | Duration: 60 days | APY rate and repayment cycle recorded.',
-            'Revenue Account Verification': '💳 Revenue accounts connected. 6-month cash flow history validated. Healthy revenue pattern detected. Coverage ratio: 2.4x',
-            'Collateral & Cash Flow Takeover': '🎉 **Application Complete!** Collateral locked. Smart contract deployed. Cash flow takeover agreement active. Your project is now listed on the Market! 🚀',
+        // Step 0: send form message
+        if (globalIdx === 0) {
+            const formMsg: GroupMessage = {
+                id: `step_${Date.now()}`,
+                senderId: agent.senderId,
+                senderName: agent.senderName,
+                role: 'agent',
+                content: '📄 Please fill in your company information below:',
+                timestamp: new Date(),
+                formType: 'entity_form',
+            };
+            setLocalMessages(prev => ({
+                ...prev,
+                [selectedGroup]: [...(prev[selectedGroup] || []), formMsg],
+            }));
+            // Don't advance step yet — wait for form submission
+            return;
+        }
+
+        // Step 1: KYC link only
+        if (globalIdx === 1) {
+            const kycMsg: GroupMessage = {
+                id: `step_${Date.now()}`,
+                senderId: agent.senderId,
+                senderName: agent.senderName,
+                role: 'agent',
+                content: '',
+                timestamp: new Date(),
+                formType: 'kyc_link',
+            };
+            setLocalMessages(prev => ({
+                ...prev,
+                [selectedGroup]: [...(prev[selectedGroup] || []), kycMsg],
+            }));
+            setApplicationStep(prev => Math.min(prev + 1, totalSteps));
+            return;
+        }
+
+        // Other steps: prompt messages
+        const stepPrompts: Record<number, string> = {
+            2: '🔗 **Step 3: Review & Mint Issuer SBT**\n\nYour documents are being reviewed by our third-party compliance partner.\n\nOnce approved, we will mint a **"Verified Issuer" Soul-Bound Token (SBT)** to your connected wallet. This SBT grants you permission to:\n• Create asset pools\n• Initiate fundraising campaigns\n• Withdraw funds\n\n⏳ Please wait for verification to complete...',
+            3: '📋 **Step 4: Project Details & Financing Terms**\n\nPlease provide your project information:\n\n• **Project Name** & **Description**\n• **Links**: GitHub, Twitter/X, LinkedIn, Official Website\n• **Project Vision** & **Founder Info** (name, photo)\n\nThen set your financing parameters:\n• 💰 **Target Amount**: e.g. $100,000 (USDC)\n• 📊 **Minimum Start Amount**: e.g. $50,000\n• ⏱ **Duration**: 7–90 days (e.g. 60 days)\n• 📈 **Promised APY**: xx%\n• 🔄 **Repayment Cycle**: 1–12 months (monthly)',
+            4: '💳 **Step 5: Revenue Account Verification**\n\nPlease connect your revenue accounts and provide **6 months** of transaction history:\n\n**Web2 Accounts** (connect via API):\n• Stripe, PayPal, Shopify, or AWS\n\n**Web3 Accounts**:\n• On-chain receiving address\n• Gnosis Safe multisig wallet\n\nClick the button below to securely connect your accounts, or paste your wallet address in the chat.',
+            5: '🔐 **Step 6: Collateral & Cash Flow Takeover**\n\nFinal step! Please configure:\n\n• **Collateral** (10–30% of target amount):\n  - On-chain assets (tokens, NFTs)\n  - Off-chain receivables contracts\n\n• **Cash Flow Takeover Setup**:\n  - Web2: Connect via Stripe Connect or PayPal Partner API\n  - Web3: Set your protocol\'s receiving address to the Loka smart contract\n\nOnce configured, your project will be reviewed and listed on the Market! 🚀',
         };
 
         const replyMsg: GroupMessage = {
@@ -434,86 +488,246 @@ const Groups: React.FC = () => {
             senderId: agent.senderId,
             senderName: agent.senderName,
             role: 'agent',
-            content: stepMessages[step.title] || 'Step completed.',
+            content: stepPrompts[globalIdx] || 'Please complete this step.',
             timestamp: new Date(),
         };
         setLocalMessages(prev => ({
             ...prev,
             [selectedGroup]: [...(prev[selectedGroup] || []), replyMsg],
         }));
-        // Find next action step, skipping headers
-        let nextStep = stepIdx + 1;
-        while (nextStep < APPLICATION_STEPS.length && APPLICATION_STEPS[nextStep].type === 'header') {
-            nextStep++;
-        }
-        setApplicationStep(Math.min(nextStep, APPLICATION_STEPS.length));
+        setApplicationStep(prev => Math.min(prev + 1, totalSteps));
     };
+
+    const handleEntityFormSubmit = () => {
+        if (!entityForm.companyName || !entityForm.country || !entityForm.regNumber || !entityForm.address) return;
+        setEntityFormSubmitted(true);
+
+        // Send user's filled data as their message
+        const userMsg: GroupMessage = {
+            id: `user_entity_${Date.now()}`,
+            senderId: 'u3',
+            senderName: 'You',
+            role: 'issuer',
+            content: `🏢 Company Registration Submitted:\n• Company: ${entityForm.companyName}\n• Country: ${entityForm.country}\n• Reg No: ${entityForm.regNumber}\n• Address: ${entityForm.address}`,
+            timestamp: new Date(),
+        };
+
+        // Agent confirmation
+        const confirmMsg: GroupMessage = {
+            id: `confirm_entity_${Date.now()}`,
+            senderId: 'kyc_verifier',
+            senderName: 'KYC/AML Verifier',
+            role: 'agent',
+            content: '✅ **Company information received and validated.** Registration details and uploaded documents have been recorded. Proceeding to KYC verification.',
+            timestamp: new Date(),
+        };
+
+        setLocalMessages(prev => ({
+            ...prev,
+            [selectedGroup]: [...(prev[selectedGroup] || []), userMsg, confirmMsg],
+        }));
+        setApplicationStep(prev => Math.min(prev + 1, totalSteps));
+    };
+
+    const renderEntityForm = (submitted: boolean) => {
+        if (submitted || entityFormSubmitted) {
+            return (
+                <div className="w-[420px] bg-white rounded-2xl border border-green-200 shadow-sm p-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-green-500 text-lg">✅</span>
+                        <p className="text-xs font-bold text-green-700">Company information submitted successfully.</p>
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div className="w-[420px] bg-white rounded-2xl border border-violet-200 shadow-sm overflow-hidden">
+                <div className="px-4 pt-4 pb-2">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="text-base">🏢</span>
+                        <h4 className="text-xs font-black text-black">Legal Entity Certification</h4>
+                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Company Name *</label>
+                            <input
+                                type="text"
+                                value={entityForm.companyName}
+                                onChange={e => setEntityForm(prev => ({ ...prev, companyName: e.target.value }))}
+                                placeholder="Registered legal name"
+                                className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100 transition-all"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Country / Region *</label>
+                                <input
+                                    type="text"
+                                    value={entityForm.country}
+                                    onChange={e => setEntityForm(prev => ({ ...prev, country: e.target.value }))}
+                                    placeholder="e.g. Singapore"
+                                    className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100 transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration No. *</label>
+                                <input
+                                    type="text"
+                                    value={entityForm.regNumber}
+                                    onChange={e => setEntityForm(prev => ({ ...prev, regNumber: e.target.value }))}
+                                    placeholder="e.g. 202312345A"
+                                    className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100 transition-all"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registered Address *</label>
+                            <input
+                                type="text"
+                                value={entityForm.address}
+                                onChange={e => setEntityForm(prev => ({ ...prev, address: e.target.value }))}
+                                placeholder="Full registered address"
+                                className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100 transition-all"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2.5 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50/30 transition-all">
+                                <span className="text-lg">📎</span>
+                                <p className="text-[10px] font-bold text-gray-500 mt-0.5">Business License</p>
+                                <p className="text-[9px] text-gray-400">PDF or Image</p>
+                            </div>
+                            <div className="p-2.5 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50/30 transition-all">
+                                <span className="text-lg">📎</span>
+                                <p className="text-[10px] font-bold text-gray-500 mt-0.5">Address Proof</p>
+                                <p className="text-[9px] text-gray-400">Utility bill / Bank stmt</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <button
+                        onClick={handleEntityFormSubmit}
+                        disabled={!entityForm.companyName || !entityForm.country || !entityForm.regNumber || !entityForm.address}
+                        className="w-full py-2 bg-violet-600 text-white text-xs font-bold rounded-lg hover:bg-violet-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                    >
+                        Submit Company Information
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    const renderKycLink = () => (
+        <div className="w-[420px] bg-white rounded-2xl border border-violet-200 shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">🪪</span>
+                <h4 className="text-xs font-black text-black">KYC Identity Verification</h4>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed mb-3">
+                Core shareholders and legal representatives need to complete identity verification (passport/ID upload + facial recognition).
+            </p>
+            <a
+                href="https://kyc.loka.finance"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-r from-violet-600 to-blue-500 text-white text-xs font-bold rounded-lg hover:from-violet-700 hover:to-blue-600 transition-all active:scale-[0.98] shadow-sm"
+            >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                Go to KYC Verification Portal
+            </a>
+            <p className="text-[9px] text-gray-400 mt-2 text-center">Powered by Loka’s third-party compliance partner</p>
+        </div>
+    );
 
     const renderApplicationCard = () => {
         if (!isAppGroup) return null;
-        const actionStepsOnly = APPLICATION_STEPS.filter(s => s.type !== 'header');
-        const currentActionProg = actionStepsOnly.indexOf(APPLICATION_STEPS[applicationStep]) > -1 ? actionStepsOnly.indexOf(APPLICATION_STEPS[applicationStep]) : actionStepsOnly.length;
+
+        // Phase transition: show congrats message when Phase 1 just completed
+        const phase1Complete = applicationStep >= PHASE1_STEPS.length;
 
         return (
             <div className="mx-6 mb-4 bg-gradient-to-br from-violet-50 via-white to-blue-50 border border-violet-100/60 rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                    <span className="text-base">🚀</span>
-                    <h3 className="text-sm font-black text-black">Application Progress</h3>
-                    <span className="ml-auto text-[10px] font-bold text-violet-500 bg-violet-100 px-2 py-0.5 rounded-full">{currentActionProg}/{actionStepsOnly.length}</span>
+                {/* Header - clickable to toggle */}
+                <div
+                    className="flex items-center gap-2 mb-1 cursor-pointer select-none"
+                    onClick={() => setProgressCollapsed(prev => !prev)}
+                >
+                    <span className="text-base">{currentPhase === 1 ? '🏢' : '📋'}</span>
+                    <h3 className="text-sm font-black text-black">
+                        {allDone ? 'Application Complete!' : currentPhase === 1 ? 'Phase 1 — Company Verification' : 'Phase 2 — Project Application'}
+                    </h3>
+                    <span className="text-[10px] font-bold text-violet-500 bg-violet-100 px-2 py-0.5 rounded-full">
+                        {Math.min(applicationStep, totalSteps)}/{totalSteps}
+                    </span>
+                    <svg className={`w-4 h-4 ml-auto text-gray-400 transition-transform duration-200 ${progressCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
                 </div>
+                {!progressCollapsed && (
+                    <p className="text-[10px] text-gray-400 font-medium mb-4">
+                        {allDone ? 'Your project is now live on the Market.' : currentPhase === 1 ? 'Verify your legal entity to unlock project application.' : 'Company verified ✅ — Now configure your project details.'}
+                    </p>
+                )}
 
-                <div className="space-y-3 mt-4">
-                    {APPLICATION_STEPS.map((step, idx) => {
-                        if (step.type === 'header') {
-                            const isSectionUnlocked = idx === 0 || (idx === 4 && applicationStep >= 4);
+                {/* Steps for current phase */}
+                {!progressCollapsed && (
+                    <div className="space-y-2">
+                        {currentPhaseSteps.map((step, localIdx) => {
+                            const globalIdx = phaseOffset + localIdx;
+                            const isDone = globalIdx < applicationStep;
+                            const isCurrent = globalIdx === applicationStep;
+                            const isLocked = globalIdx > applicationStep;
                             return (
-                                <div key={idx} className={`pt-2 pb-1 flex items-center gap-2 border-b ${isSectionUnlocked ? 'border-violet-100' : 'border-gray-200/50'}`}>
-                                    <div className={`w-1.5 h-4 rounded-full ${isSectionUnlocked ? 'bg-violet-500' : 'bg-gray-300'}`}></div>
-                                    <h4 className={`text-xs font-black tracking-tight ${isSectionUnlocked ? 'text-black' : 'text-gray-400'}`}>{step.title}</h4>
-                                    <span className={`text-[10px] font-medium ml-1 ${isSectionUnlocked ? 'text-violet-400' : 'text-gray-300'}`}>{step.desc}</span>
-                                </div>
-                            );
-                        }
-
-                        const isDone = idx < applicationStep;
-                        const isCurrent = idx === applicationStep;
-                        // For the very first initialization
-                        if (applicationStep === 0 && idx === 1) { /* First action step */ }
-
-                        // We also need to automatically skip headers if they're the current step
-                        // (Handled by useEffect or inline skip logically, but here UI just locks if not current)
-                        const isLocked = idx > applicationStep;
-
-                        return (
-                            <button
-                                key={idx}
-                                onClick={() => handleStepAction(idx)}
-                                disabled={!isCurrent}
-                                className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all ${isDone ? 'bg-green-50/50 border border-green-200/40 opacity-70 hover:opacity-100' :
-                                    isCurrent ? 'bg-white border-2 border-violet-300 shadow-md shadow-violet-100/50 hover:shadow-lg cursor-pointer' :
-                                        'bg-gray-50/40 border border-gray-100/60 opacity-40'
-                                    }`}
-                            >
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 ${isDone ? 'bg-green-100 grayscale-[0.3]' : isCurrent ? 'bg-violet-100' : 'bg-gray-100'
-                                    }`}>
-                                    {isDone ? '✅' : isLocked ? '🔒' : step.icon}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={`text-xs font-bold ${isDone ? 'text-green-700/80 line-through decoration-green-300' : isCurrent ? 'text-black' : 'text-gray-400'}`}>{step.title}</p>
-                                    <p className={`text-[10px] font-medium mt-0.5 truncate ${isDone ? 'text-green-500/80' : isCurrent ? 'text-gray-500' : 'text-gray-300'}`}>{isDone ? 'Completed' : step.desc}</p>
-                                </div>
-                                {isCurrent && (
-                                    <div className="px-3 py-1 bg-violet-600 text-white text-[10px] font-bold rounded-lg shrink-0 hover:bg-violet-700 transition-colors">
-                                        Start
+                                <button
+                                    key={globalIdx}
+                                    onClick={(e) => { e.stopPropagation(); handleStepAction(globalIdx); }}
+                                    disabled={!isCurrent}
+                                    className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all ${isDone ? 'bg-green-50 border border-green-200/60' :
+                                        isCurrent ? 'bg-white border-2 border-violet-300 shadow-md shadow-violet-100/50 hover:shadow-lg cursor-pointer' :
+                                            'bg-gray-50/50 border border-gray-100 opacity-50'
+                                        }`}
+                                >
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 ${isDone ? 'bg-green-100' : isCurrent ? 'bg-violet-100' : 'bg-gray-100'}`}>
+                                        {isDone ? '✅' : isLocked ? '🔒' : step.icon}
                                     </div>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-                {applicationStep >= APPLICATION_STEPS.length && (
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-bold ${isDone ? 'text-green-700 line-through' : isCurrent ? 'text-black' : 'text-gray-400'}`}>{step.title}</p>
+                                        <p className={`text-[10px] font-medium mt-0.5 truncate ${isDone ? 'text-green-500' : isCurrent ? 'text-gray-500' : 'text-gray-300'}`}>{isDone ? 'Completed' : step.desc}</p>
+                                    </div>
+                                    {isCurrent && (
+                                        <div className="px-3 py-1 bg-violet-600 text-white text-[10px] font-bold rounded-lg shrink-0 hover:bg-violet-700 transition-colors">
+                                            Start
+                                        </div>
+                                    )}
+                                    {isDone && (
+                                        <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Phase 1 complete unlock hint */}
+                {!progressCollapsed && phase1Complete && currentPhase === 2 && applicationStep === PHASE1_STEPS.length && (
+                    <div className="mt-3 p-3 bg-violet-50 border border-violet-200 rounded-xl text-center">
+                        <p className="text-xs font-bold text-violet-700">🎉 Company Verified! Phase 2 is now unlocked.</p>
+                    </div>
+                )}
+
+                {/* All done */}
+                {!progressCollapsed && allDone && (
                     <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-center">
-                        <p className="text-xs font-bold text-green-700">🎉 All steps completed! Your project is now live.</p>
+                        <p className="text-xs font-bold text-green-700">🎉 All steps completed! Your project is now live on the Market.</p>
+                    </div>
+                )}
+
+                {/* Phase 2 teaser when still in Phase 1 */}
+                {!progressCollapsed && currentPhase === 1 && !allDone && (
+                    <div className="mt-3 p-2.5 bg-gray-50 border border-gray-100 rounded-xl flex items-center gap-2 opacity-60">
+                        <span className="text-sm">🔒</span>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400">Phase 2 — Project Application</p>
+                            <p className="text-[9px] text-gray-300 font-medium">Complete company verification to unlock</p>
+                        </div>
                     </div>
                 )}
             </div>
@@ -762,7 +976,7 @@ const Groups: React.FC = () => {
                             <div className="flex items-center gap-2 mt-0.5">
                                 {isAppGroup ? (
                                     <>
-                                        <span className="text-[10px] text-violet-500 font-bold">Step {Math.min(applicationStep + 1, APPLICATION_STEPS.length)} of {APPLICATION_STEPS.length}</span>
+                                        <span className="text-[10px] text-violet-500 font-bold">Step {Math.min(applicationStep + 1, totalSteps)} of {totalSteps}</span>
                                         <span className="text-gray-300">·</span>
                                         <span className="text-[10px] text-gray-400 font-medium">{currentGroup.members.length} agents assisting</span>
                                     </>
@@ -814,6 +1028,15 @@ const Groups: React.FC = () => {
                                             {/* Poll */}
                                             {msg.poll ? (
                                                 renderPoll(msg.poll, msg.id)
+                                            ) : msg.formType === 'entity_form' ? (
+                                                <div>
+                                                    <div className={`px-4 py-2.5 text-[13px] leading-relaxed mb-2 ${getMsgBubbleStyle(msg.role, false)}`}>
+                                                        <span>{msg.content}</span>
+                                                    </div>
+                                                    {renderEntityForm(entityFormSubmitted)}
+                                                </div>
+                                            ) : msg.formType === 'kyc_link' ? (
+                                                renderKycLink()
                                             ) : (
                                                 <div className={`px-4 py-2.5 text-[13px] leading-relaxed ${getMsgBubbleStyle(msg.role, isMe)}`}>
                                                     {msg.image && (

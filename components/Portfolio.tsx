@@ -39,6 +39,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'holdings' | 'activity'>('holdings');
   const [timeframe, setTimeframe] = useState('7D');
+  const [profileTab, setProfileTab] = useState<'personal' | 'enterprise'>('personal');
 
   const handleCopy = () => {
     navigator.clipboard.writeText(walletAddress);
@@ -89,284 +90,451 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   return (
     <div className="max-w-7xl mx-auto animate-fadeIn pb-24 px-4 space-y-6">
 
-      {/* Page Title Section */}
-      <div className="pt-12 pb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Personal Dashboard</span>
+      {/* Top bar: Tabs + Settings/Logout */}
+      <div className="pt-10 pb-4 flex items-center justify-between">
+        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+          <button
+            onClick={() => setProfileTab('personal')}
+            className={`px-5 py-2 text-xs font-bold rounded-lg transition-all ${profileTab === 'personal' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-black'}`}
+          >
+            Personal
+          </button>
+          <button
+            onClick={() => setProfileTab('enterprise')}
+            className={`px-5 py-2 text-xs font-bold rounded-lg transition-all ${profileTab === 'enterprise' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-black'}`}
+          >
+            Enterprise
+          </button>
         </div>
-        <h1 className="text-4xl font-black text-black tracking-tighter">Profile</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onSettingsClick}
+            className="p-2 text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+            title="Account Settings"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
+          <button
+            onClick={onLogout}
+            className="p-2 text-red-400 hover:text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+            title="Log Out"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </button>
+        </div>
       </div>
 
-      {/* TWO COLUMN PORTFOLIO HERO LAYOUT */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-0 pb-6">
+      {profileTab === 'personal' ? (
+        <>
 
-        {/* --- Left Card: Profile & Overview --- */}
-        <div className="md:col-span-5 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between space-y-6">
+          {/* TWO COLUMN PORTFOLIO HERO LAYOUT */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-0 pb-6">
 
-          {/* User Profile */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
-              {/* Gradiant Avatar Mock */}
-              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0" />
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-black tracking-tight">{walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}</h2>
-                  <button onClick={handleCopy} className="text-gray-400 hover:text-black transition-colors" title="Copy Address">
-                    {copied ? (
-                      <svg className="w-4 h-4 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                    )}
-                  </button>
+            {/* --- Left Card: Profile & Overview --- */}
+            <div className="md:col-span-5 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between space-y-6">
+
+              {/* User Profile */}
+              <div className="flex items-start gap-4">
+                {/* Gradient Avatar Mock */}
+                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0" />
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-black tracking-tight">{walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}</h2>
+                    <button onClick={handleCopy} className="text-gray-400 hover:text-black transition-colors" title="Copy Address">
+                      {copied ? (
+                        <svg className="w-4 h-4 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[11px] font-medium text-gray-400">Joined Nov {new Date().getFullYear()}</p>
                 </div>
-                <p className="text-[11px] font-medium text-gray-400">Joined Nov {new Date().getFullYear()}</p>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={onSettingsClick}
-                className="p-2 text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
-                title="Account Settings"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              </button>
-              <button
-                onClick={onLogout}
-                className="p-2 text-red-400 hover:text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
-                title="Log Out"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="flex justify-between items-center py-2 border-y border-gray-50/80">
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Net Worth</span>
-              <span className="text-lg font-black text-black">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="w-px h-8 bg-gray-100"></div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Total Yield</span>
-              <span className="text-lg font-black text-[#00E676]">+$340.00</span>
-            </div>
-            <div className="w-px h-8 bg-gray-100"></div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Assets</span>
-              <span className="text-lg font-black text-black">4</span>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }))}
-              className="w-full py-2.5 bg-transparent border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-500 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-              Deposit
-            </button>
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'withdraw' }))}
-              className="w-full py-2.5 bg-transparent border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-500 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-              Withdraw
-            </button>
-          </div>
-
-        </div>
-
-        {/* --- Right Card: Chart & History --- */}
-        <div className="md:col-span-7 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between">
-
-          {/* Chart Header */}
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#00E676] animate-pulse"></div>
-                <span className="text-[10px] text-gray-500 font-bold tracking-widest ">Profit / Loss</span>
+              {/* Stats Grid */}
+              <div className="flex justify-between items-center py-2 border-y border-gray-50/80">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Net Worth</span>
+                  <span className="text-lg font-black text-black">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="w-px h-8 bg-gray-100"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Total Yield</span>
+                  <span className="text-lg font-black text-[#00E676]">+$340.00</span>
+                </div>
+                <div className="w-px h-8 bg-gray-100"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Assets</span>
+                  <span className="text-lg font-black text-black">4</span>
+                </div>
               </div>
-              <h2 className="text-3xl font-black text-black">+${(340.00).toFixed(2)}</h2>
-              <p className="text-[11px] font-bold text-gray-400 mt-1  tracking-widest">{timeframe === 'ALL' ? 'All Time' : `Past ${timeframe}`}</p>
-            </div>
 
-            {/* Toggles */}
-            <div className="flex bg-gray-50 p-1 rounded-full border border-gray-100 gap-0.5">
-              {['7D', '30D', '3M', 'ALL'].map(t => (
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
-                  key={t}
-                  onClick={() => setTimeframe(t)}
-                  className={`px-3.5 py-1.5 text-[10px] font-black rounded-full transition-all ${timeframe === t ? 'bg-white text-black shadow-sm border border-gray-200/50' : 'text-gray-400 hover:text-black'}`}
+                  onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }))}
+                  className="w-full py-2.5 bg-transparent border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-500 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
                 >
-                  {t}
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                  Deposit
                 </button>
-              ))}
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'withdraw' }))}
+                  className="w-full py-2.5 bg-transparent border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-500 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                  Withdraw
+                </button>
+              </div>
+
+            </div>
+
+            {/* --- Right Card: Chart & History --- */}
+            <div className="md:col-span-7 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between">
+
+              {/* Chart Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#00E676] animate-pulse"></div>
+                    <span className="text-[10px] text-gray-500 font-bold tracking-widest ">Profit / Loss</span>
+                  </div>
+                  <h2 className="text-3xl font-black text-black">+${(340.00).toFixed(2)}</h2>
+                  <p className="text-[11px] font-bold text-gray-400 mt-1  tracking-widest">{timeframe === 'ALL' ? 'All Time' : `Past ${timeframe}`}</p>
+                </div>
+
+                {/* Toggles */}
+                <div className="flex bg-gray-50 p-1 rounded-full border border-gray-100 gap-0.5">
+                  {['7D', '30D', '3M', 'ALL'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setTimeframe(t)}
+                      className={`px-3.5 py-1.5 text-[10px] font-black rounded-full transition-all ${timeframe === t ? 'bg-white text-black shadow-sm border border-gray-200/50' : 'text-gray-400 hover:text-black'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chart Container */}
+              <div className="h-[150px] w-full mt-6 -mx-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={filteredChartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#00E676" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#00E676" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="timestamp"
+                      type="number"
+                      domain={['dataMin', 'dataMax']}
+                      axisLine={false}
+                      tickLine={false}
+                      minTickGap={30}
+                      tickFormatter={(tick) => {
+                        const date = new Date(tick);
+                        if (timeframe === '7D') return date.toLocaleDateString('en-US', { weekday: 'short' });
+                        if (timeframe === '30D') return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        return date.toLocaleDateString('en-US', { month: 'short' });
+                      }}
+                      tick={{ fontSize: 9, fill: '#9CA3AF', fontWeight: 'bold' }}
+                      dy={5}
+                    />
+                    <YAxis domain={['dataMin - 200', 'dataMax + 100']} hide />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-xl">
+                              <p className="text-[10px] text-gray-400 font-bold mb-0.5  tracking-widest">{new Date(payload[0].payload.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                              <p className="text-sm font-black text-black">${payload[0].value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="total"
+                      stroke="#00E676"
+                      fillOpacity={1}
+                      fill="url(#colorTotal)"
+                      strokeWidth={2.5}
+                      animationDuration={800}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
             </div>
           </div>
 
-          {/* Chart Container */}
-          <div className="h-[150px] w-full mt-6 -mx-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filteredChartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00E676" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#00E676" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="timestamp"
-                  type="number"
-                  domain={['dataMin', 'dataMax']}
-                  axisLine={false}
-                  tickLine={false}
-                  minTickGap={30}
-                  tickFormatter={(tick) => {
-                    const date = new Date(tick);
-                    if (timeframe === '7D') return date.toLocaleDateString('en-US', { weekday: 'short' });
-                    if (timeframe === '30D') return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    return date.toLocaleDateString('en-US', { month: 'short' });
-                  }}
-                  tick={{ fontSize: 9, fill: '#9CA3AF', fontWeight: 'bold' }}
-                  dy={5}
-                />
-                <YAxis domain={['dataMin - 200', 'dataMax + 100']} hide />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-xl">
-                          <p className="text-[10px] text-gray-400 font-bold mb-0.5  tracking-widest">{new Date(payload[0].payload.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                          <p className="text-sm font-black text-black">${payload[0].value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          {/* BOTTOM SECTION: Tabs for Holding / Activity */}
+          <div className="space-y-6">
+
+            {/* Tabs Control */}
+            <div className="flex items-center gap-6 border-b border-gray-100 pb-px">
+              <button
+                onClick={() => setActiveTab('holdings')}
+                className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'holdings' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                Holdings
+                {activeTab === 'holdings' && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black rounded-t-full" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('activity')}
+                className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'activity' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                Activity
+                {activeTab === 'activity' && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black rounded-t-full" />
+                )}
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            <div className="pt-2">
+              {activeTab === 'holdings' ? (
+                <section className="space-y-4 animate-fadeIn">
+                  <div className="grid grid-cols-1 gap-4">
+                    <AllocationCard
+                      title="AIUSD"
+                      desc="Treasury Backed Stablecoin"
+                      apy="5.24% APY"
+                      amount="$10,340.00"
+                      earnings="+$340.00"
+                      icon={<div className="w-6 h-6 bg-black rounded flex items-center justify-center font-black text-white text-[10px]">A</div>}
+                      onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-swap'))}
+                      action={
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('loka-nav-swap')); }}
+                            className="px-4 py-1.5 bg-gray-100/80 text-black text-[11px] font-bold rounded-full hover:bg-gray-200 transition-colors shadow-sm"
+                          >
+                            Add
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('loka-nav-swap')); }}
+                            className="px-4 py-1.5 bg-black text-white text-[11px] font-bold rounded-full hover:bg-gray-800 transition-colors shadow-sm"
+                          >
+                            Sell
+                          </button>
                         </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#00E676"
-                  fillOpacity={1}
-                  fill="url(#colorTotal)"
-                  strokeWidth={2.5}
-                  animationDuration={800}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+                      }
+                    />
+                    <AllocationCard
+                      title="ComputeDAO - GPU Expansion"
+                      statusBadge={<span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-[9px] font-black">Funded</span>}
+                      apy="15.5% APY · 60d"
+                      amount="$5,000.00"
+                      earnings="+$387.50"
+                      icon={<div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center font-black text-white text-[10px]">C</div>}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('loka-nav-market'));
+                        setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
+                      }}
+                    />
+                  </div>
+                </section>
+              ) : (
+                <section className="space-y-4 animate-fadeIn">
+                  <div className="glass rounded-[32px] overflow-hidden bg-white shadow-sm border border-gray-100">
+                    <ActivityItem
+                      title="Daily Interest Payout"
+                      time="Today, 08:00 AM"
+                      source="AIUSD"
+                      amount="+$5.24"
+                      type="INTEREST"
+                      onSourceClick={() => window.dispatchEvent(new CustomEvent('loka-nav-swap'))}
+                    />
+                    <ActivityItem
+                      title="USDC Deposit"
+                      time="Yesterday, 04:15 PM"
+                      amount="+$1,000.00"
+                      type="DEPOSIT"
+                    />
+                    <ActivityItem
+                      title="Daily Interest Payout"
+                      time="Jan 22, 08:00 AM"
+                      source="ComputeDAO - GPU Expansion"
+                      amount="+$5.10"
+                      type="INTEREST"
+                      onSourceClick={() => {
+                        window.dispatchEvent(new CustomEvent('loka-nav-market'));
+                        setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
+                      }}
+                    />
+                  </div>
+                </section>
+              )}
+            </div>
+
           </div>
+        </>
+      ) : (
+        /* ============ ENTERPRISE TAB ============ */
+        <div className="space-y-6 animate-fadeIn">
 
-        </div>
-      </div>
+          {/* Company Info Card - Simplified */}
+          <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-black text-black">Company Information</h2>
+              <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-full border border-green-200/50 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                Verified Issuer
+              </span>
+            </div>
 
-      {/* BOTTOM SECTION: Tabs for Holding / Activity */}
-      <div className="space-y-6">
+            <div className="space-y-0 divide-y divide-gray-100">
+              <div className="flex items-center justify-between py-3">
+                <span className="text-[11px] text-gray-400 font-medium">Company Name</span>
+                <span className="text-[13px] font-bold text-black">Loka Technologies Pte Ltd</span>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-[11px] text-gray-400 font-medium">Country / Region</span>
+                <span className="text-[13px] font-bold text-black">Singapore</span>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-[11px] text-gray-400 font-medium">Registration No.</span>
+                <span className="text-[13px] font-bold text-black">202312345A</span>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-[11px] text-gray-400 font-medium">Registered Address</span>
+                <span className="text-[13px] font-bold text-black">1 Raffles Place, #20-01, Singapore 048616</span>
+              </div>
+            </div>
 
-        {/* Tabs Control */}
-        <div className="flex items-center gap-6 border-b border-gray-100 pb-px">
-          <button
-            onClick={() => setActiveTab('holdings')}
-            className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'holdings' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            Holdings
-            {activeTab === 'holdings' && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black rounded-t-full" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('activity')}
-            className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'activity' ? 'text-black' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            Activity
-            {activeTab === 'activity' && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black rounded-t-full" />
-            )}
-          </button>
-        </div>
+            <div className="mt-4 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 rounded-full border border-violet-100">
+                <span className="text-xs">🔗</span>
+                <span className="text-[10px] font-bold text-violet-600">SBT #1024</span>
+                <span className="text-[9px] text-violet-400">Active</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-full border border-green-100">
+                <span className="text-xs">🪪</span>
+                <span className="text-[10px] font-bold text-green-600">KYC Verified</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200">
+                <span className="text-xs">📄</span>
+                <span className="text-[10px] font-bold text-gray-600">2 Docs</span>
+              </div>
+            </div>
+          </section>
 
-        {/* Tab Content */}
-        <div className="pt-2">
-          {activeTab === 'holdings' ? (
-            <section className="space-y-4 animate-fadeIn">
-              <div className="grid grid-cols-1 gap-4">
-                <AllocationCard
-                  title="AIUSD"
-                  desc="Treasury Backed Stablecoin"
-                  apy="5.24% APY"
-                  amount="$10,340.00"
-                  earnings="+$340.00"
-                  icon={<div className="w-6 h-6 bg-black rounded flex items-center justify-center font-black text-white text-[10px]">A</div>}
-                  onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-swap'))}
-                  action={
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('loka-nav-swap')); }}
-                        className="px-4 py-1.5 bg-gray-100/80 text-black text-[11px] font-bold rounded-full hover:bg-gray-200 transition-colors shadow-sm"
-                      >
-                        Add
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('loka-nav-swap')); }}
-                        className="px-4 py-1.5 bg-black text-white text-[11px] font-bold rounded-full hover:bg-gray-800 transition-colors shadow-sm"
-                      >
-                        Sell
-                      </button>
+          {/* Submitted Projects */}
+          <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <span className="text-lg">📋</span>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-black">Submitted Projects</h2>
+                  <p className="text-[10px] text-gray-400 font-medium">Your fundraising campaigns</p>
+                </div>
+              </div>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-groups'))}
+                className="px-3.5 py-1.5 bg-gray-100 text-black text-[11px] font-bold rounded-lg hover:bg-gray-200 transition-all flex items-center gap-1 active:scale-95"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                New Project
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Project 1 - Active/Fundraising */}
+              <div
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('loka-nav-swap'));
+                  setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
+                }}
+                className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center font-black text-white text-sm">C</div>
+                    <div>
+                      <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors">ComputeDAO - GPU Expansion</h3>
+                      <p className="text-[10px] text-gray-400 font-medium">Target: $500,000 · Duration: 60 days · 15.5% APY</p>
                     </div>
-                  }
-                />
-                <AllocationCard
-                  title="ComputeDAO - GPU Expansion"
-                  statusBadge={<span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-[9px] font-black">Funded</span>}
-                  apy="15.5% APY · 60d"
-                  amount="$5,000.00"
-                  earnings="+$387.50"
-                  icon={<div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center font-black text-white text-[10px]">C</div>}
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('loka-nav-market'));
-                    setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
-                  }}
-                />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-black">$375,000</p>
+                      <p className="text-[10px] text-gray-400">75% funded</p>
+                    </div>
+                    <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-full border border-green-200/50">● Fundraising</span>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  </div>
+                </div>
               </div>
-            </section>
-          ) : (
-            <section className="space-y-4 animate-fadeIn">
-              <div className="glass rounded-[32px] overflow-hidden bg-white shadow-sm border border-gray-100">
-                <ActivityItem
-                  title="Daily Interest Payout"
-                  time="Today, 08:00 AM"
-                  source="AIUSD"
-                  amount="+$5.24"
-                  type="INTEREST"
-                  onSourceClick={() => window.dispatchEvent(new CustomEvent('loka-nav-swap'))}
-                />
-                <ActivityItem
-                  title="USDC Deposit"
-                  time="Yesterday, 04:15 PM"
-                  amount="+$1,000.00"
-                  type="DEPOSIT"
-                />
-                <ActivityItem
-                  title="Daily Interest Payout"
-                  time="Jan 22, 08:00 AM"
-                  source="ComputeDAO - GPU Expansion"
-                  amount="+$5.10"
-                  type="INTEREST"
-                  onSourceClick={() => {
-                    window.dispatchEvent(new CustomEvent('loka-nav-market'));
-                    setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
-                  }}
-                />
-              </div>
-            </section>
-          )}
-        </div>
 
-      </div>
+              {/* Project 2 - Under Review */}
+              <div
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('loka-nav-swap'));
+                  setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'Shopify' })), 100);
+                }}
+                className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-black text-white text-sm">S</div>
+                    <div>
+                      <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors">Shopify Merchant Cluster X</h3>
+                      <p className="text-[10px] text-gray-400 font-medium">Target: $200,000 · Duration: 45 days · 12% APY</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-black">—</p>
+                      <p className="text-[10px] text-gray-400">Pending</p>
+                    </div>
+                    <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-full border border-amber-200/50">● Under Review</span>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Project 3 - Completed */}
+              <div
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('loka-nav-swap'));
+                  setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'Vercel' })), 100);
+                }}
+                className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center font-black text-white text-sm">V</div>
+                    <div>
+                      <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors">Vercel SaaS Pool</h3>
+                      <p className="text-[10px] text-gray-400 font-medium">Target: $150,000 · Duration: 30 days · 10% APY</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-black">$150,000</p>
+                      <p className="text-[10px] text-green-500">Fully repaid</p>
+                    </div>
+                    <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full border border-gray-200/50">● Completed</span>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      )}
     </div>
   );
 };
