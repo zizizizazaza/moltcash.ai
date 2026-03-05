@@ -123,6 +123,52 @@ const mockGroups: GroupChat[] = [
 
 // --- Component ---
 
+// --- Available Agents Catalog ---
+interface AvailableAgent {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    icon: string;
+    color: string;
+}
+
+const AGENT_CATEGORIES = [
+    { key: 'risk', label: 'Risk Management', icon: '🛡️' },
+    { key: 'investment', label: 'Investment Analysis', icon: '📊' },
+    { key: 'operations', label: 'Operations', icon: '⚙️' },
+    { key: 'compliance', label: 'Compliance & Legal', icon: '📜' },
+    { key: 'defi', label: 'DeFi & On-chain', icon: '🔗' },
+    { key: 'social', label: 'Social & Community', icon: '💬' },
+];
+
+const AVAILABLE_AGENTS: AvailableAgent[] = [
+    // Risk Management
+    { id: 'risk_assessment', name: 'Risk Assessor', description: 'Real-time credit scoring & borrower risk analysis using on-chain data', category: 'risk', icon: '🛡️', color: 'from-red-400 to-orange-500' },
+    { id: 'portfolio_risk', name: 'Portfolio Risk Monitor', description: 'Monitors concentration risk, liquidation thresholds & VaR metrics', category: 'risk', icon: '📉', color: 'from-amber-400 to-red-500' },
+    { id: 'fraud_detector', name: 'Fraud Detector', description: 'ML-powered anomaly detection across transactions and wallet activities', category: 'risk', icon: '🔍', color: 'from-rose-400 to-pink-600' },
+    // Investment Analysis
+    { id: 'yield_optimizer', name: 'Yield Optimizer', description: 'Identifies optimal yield strategies across DeFi protocols', category: 'investment', icon: '💎', color: 'from-blue-400 to-indigo-500' },
+    { id: 'market_analyst', name: 'Market Analyst', description: 'Token price prediction, sentiment analysis & market trend reporting', category: 'investment', icon: '📈', color: 'from-green-400 to-emerald-500' },
+    { id: 'fundamental_analyst', name: 'Fundamental Analyst', description: 'Deep-dive analysis on project financials, team & tokenomics', category: 'investment', icon: '🧮', color: 'from-cyan-400 to-blue-500' },
+    { id: 'arb_scanner', name: 'Arbitrage Scanner', description: 'Scans cross-chain and cross-DEX arbitrage opportunities in real-time', category: 'investment', icon: '⚡', color: 'from-yellow-400 to-amber-500' },
+    // Operations
+    { id: 'treasury_manager', name: 'Treasury Manager', description: 'Automated treasury rebalancing, cash flow forecasting & reporting', category: 'operations', icon: '🏦', color: 'from-violet-400 to-purple-500' },
+    { id: 'milestone_tracker', name: 'Milestone Tracker', description: 'Tracks project milestones, deliverables & sends automated alerts', category: 'operations', icon: '🎯', color: 'from-teal-400 to-cyan-500' },
+    { id: 'report_generator', name: 'Report Generator', description: 'Generates weekly/monthly performance reports for stakeholders', category: 'operations', icon: '📋', color: 'from-indigo-400 to-blue-500' },
+    // Compliance & Legal
+    { id: 'kyc_verifier', name: 'KYC/AML Verifier', description: 'Automated identity verification and anti-money laundering checks', category: 'compliance', icon: '✅', color: 'from-emerald-400 to-green-500' },
+    { id: 'regulatory_monitor', name: 'Regulatory Monitor', description: 'Monitors regulatory changes across jurisdictions impacting your assets', category: 'compliance', icon: '⚖️', color: 'from-slate-400 to-gray-600' },
+    { id: 'contract_auditor', name: 'Smart Contract Auditor', description: 'Continuous smart contract monitoring for vulnerabilities & exploits', category: 'compliance', icon: '🔐', color: 'from-orange-400 to-red-500' },
+    // DeFi & On-chain
+    { id: 'liquidity_monitor', name: 'Liquidity Monitor', description: 'Tracks pool liquidity, impermanent loss & LP position health', category: 'defi', icon: '🌊', color: 'from-sky-400 to-blue-500' },
+    { id: 'gas_optimizer', name: 'Gas Optimizer', description: 'Optimizes transaction timing and gas costs across EVM chains', category: 'defi', icon: '⛽', color: 'from-lime-400 to-green-500' },
+    { id: 'bridge_monitor', name: 'Bridge Monitor', description: 'Monitors cross-chain bridge health, delays & security incidents', category: 'defi', icon: '🌉', color: 'from-purple-400 to-pink-500' },
+    // Social & Community
+    { id: 'sentiment_analyzer', name: 'Sentiment Analyzer', description: 'Tracks social media sentiment across Twitter, Discord & Telegram', category: 'social', icon: '💬', color: 'from-pink-400 to-rose-500' },
+    { id: 'governance_assistant', name: 'Governance Assistant', description: 'Summarizes proposals, tracks voting results & alerts on key votes', category: 'social', icon: '🗳️', color: 'from-fuchsia-400 to-purple-500' },
+];
+
 const Groups: React.FC = () => {
     const [selectedGroup, setSelectedGroup] = useState<string>(mockGroups[0].id);
     const [inputValue, setInputValue] = useState('');
@@ -138,6 +184,15 @@ const Groups: React.FC = () => {
     const [pollQuestion, setPollQuestion] = useState('');
     const [pollOptions, setPollOptions] = useState(['', '']);
     const [pollDuration, setPollDuration] = useState('1d');
+    const [showAgentModal, setShowAgentModal] = useState(false);
+    const [agentSearch, setAgentSearch] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [addedAgents, setAddedAgents] = useState<Record<string, string[]>>(() => {
+        // Initialize: no extra agents added by default (Loka Agent is built-in)
+        const init: Record<string, string[]> = {};
+        mockGroups.forEach(g => { init[g.id] = []; });
+        return init;
+    });
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textInputRef = useRef<HTMLInputElement>(null);
@@ -645,12 +700,13 @@ const Groups: React.FC = () => {
                     {showMembers && (
                         <div className="w-64 border-l border-gray-100 bg-white overflow-y-auto shrink-0">
                             <div className="p-4 border-b border-gray-50">
-                                <h4 className="text-xs font-black text-black tracking-tight">Members ({currentGroup.members.length})</h4>
+                                <h4 className="text-xs font-black text-black tracking-tight">Members ({currentGroup.members.length + (addedAgents[selectedGroup]?.length || 0)})</h4>
                             </div>
                             <div className="p-2">
                                 {(['agent', 'issuer', 'investor'] as const).map(role => {
                                     const roleMembers = currentGroup.members.filter(m => m.role === role);
-                                    if (roleMembers.length === 0) return null;
+                                    const extraAgents = role === 'agent' ? (addedAgents[selectedGroup] || []).map(agentId => AVAILABLE_AGENTS.find(a => a.id === agentId)!).filter(Boolean) : [];
+                                    if (roleMembers.length === 0 && extraAgents.length === 0) return null;
                                     const roleLabel = role === 'agent' ? 'AI Agent' : role === 'issuer' ? 'Project Team' : 'Investors';
                                     return (
                                         <div key={role} className="mb-4">
@@ -671,9 +727,216 @@ const Groups: React.FC = () => {
                                                     </div>
                                                 </div>
                                             ))}
+                                            {/* Extra added agents */}
+                                            {extraAgents.map(agent => (
+                                                <div key={agent.id} className="group flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+                                                    <div className="relative">
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm bg-gradient-to-br ${agent.color}`}>
+                                                            {agent.icon}
+                                                        </div>
+                                                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 border-2 border-white rounded-full" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-xs font-bold text-black truncate">{agent.name}</p>
+                                                        <p className="text-[9px] text-gray-400 font-medium">Always Online</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setAddedAgents(prev => ({
+                                                                ...prev,
+                                                                [selectedGroup]: (prev[selectedGroup] || []).filter(id => id !== agent.id),
+                                                            }));
+                                                        }}
+                                                        className="w-5 h-5 rounded-md opacity-0 group-hover:opacity-100 bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 flex items-center justify-center transition-all"
+                                                        title="Remove Agent"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {/* Add Agent Button Component */}
+                                            {role === 'agent' && (
+                                                <button
+                                                    onClick={() => setShowAgentModal(true)}
+                                                    className="w-full mt-1 flex items-center gap-3 px-2 py-2 rounded-xl text-left hover:bg-gray-50 transition-colors group"
+                                                >
+                                                    <div className="relative">
+                                                        <div className="w-8 h-8 rounded-full border border-dashed border-gray-300 flex items-center justify-center text-gray-400 group-hover:border-black group-hover:text-black transition-colors bg-gray-50/50 group-hover:bg-white shrink-0">
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                                        </div>
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-xs font-bold text-gray-500 group-hover:text-black transition-colors">Add Agent</p>
+                                                        <p className="text-[9px] text-gray-400 font-medium truncate">Explore marketplace</p>
+                                                    </div>
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- Agent Marketplace Modal --- */}
+                    {showAgentModal && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center animate-fadeIn" onClick={() => { setShowAgentModal(false); setAgentSearch(''); setSelectedCategory(null); }}>
+                            <div
+                                className="bg-white rounded-3xl w-[720px] max-h-[80vh] shadow-2xl flex flex-col overflow-hidden"
+                                onClick={e => e.stopPropagation()}
+                                style={{ animation: 'slideUp 0.3s ease-out' }}
+                            >
+                                {/* Modal Header */}
+                                <div className="p-6 pb-4 border-b border-gray-100 shrink-0">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-xl font-black text-black">Agent Marketplace</h3>
+                                            <p className="text-xs text-gray-400 mt-1">Add AI agents to enhance your group's capabilities</p>
+                                        </div>
+                                        <button
+                                            onClick={() => { setShowAgentModal(false); setAgentSearch(''); setSelectedCategory(null); }}
+                                            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-black transition-all"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                    {/* Search */}
+                                    <div className="mt-4 relative">
+                                        <svg className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                        <input
+                                            type="text"
+                                            value={agentSearch}
+                                            onChange={e => setAgentSearch(e.target.value)}
+                                            placeholder="Search agents..."
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:border-gray-300 focus:bg-white transition-all placeholder:text-gray-300"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    {/* Category Filter */}
+                                    <div className="mt-3 flex gap-1.5 flex-wrap">
+                                        <button
+                                            onClick={() => setSelectedCategory(null)}
+                                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${!selectedCategory ? 'bg-black text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                                        >
+                                            All
+                                        </button>
+                                        {AGENT_CATEGORIES.map(cat => (
+                                            <button
+                                                key={cat.key}
+                                                onClick={() => setSelectedCategory(selectedCategory === cat.key ? null : cat.key)}
+                                                className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${selectedCategory === cat.key ? 'bg-black text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                                            >
+                                                {cat.icon} {cat.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Agent List */}
+                                <div className="flex-1 overflow-y-auto p-6 pt-4">
+                                    {(() => {
+                                        const searchLower = agentSearch.toLowerCase();
+                                        const filtered = AVAILABLE_AGENTS.filter(a => {
+                                            const matchesSearch = !agentSearch || a.name.toLowerCase().includes(searchLower) || a.description.toLowerCase().includes(searchLower);
+                                            const matchesCategory = !selectedCategory || a.category === selectedCategory;
+                                            return matchesSearch && matchesCategory;
+                                        });
+                                        const currentGroupAddedAgents = addedAgents[selectedGroup] || [];
+
+                                        if (filtered.length === 0) {
+                                            return (
+                                                <div className="flex flex-col items-center justify-center py-16 text-gray-300">
+                                                    <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    <p className="text-sm font-bold">No agents found</p>
+                                                    <p className="text-xs mt-1">Try adjusting your search or filter</p>
+                                                </div>
+                                            );
+                                        }
+
+                                        // Group by category
+                                        const grouped: Record<string, AvailableAgent[]> = {};
+                                        filtered.forEach(a => {
+                                            if (!grouped[a.category]) grouped[a.category] = [];
+                                            grouped[a.category].push(a);
+                                        });
+
+                                        return Object.entries(grouped).map(([catKey, agents]) => {
+                                            const catInfo = AGENT_CATEGORIES.find(c => c.key === catKey);
+                                            return (
+                                                <div key={catKey} className="mb-6 last:mb-0">
+                                                    <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-3 flex items-center gap-1.5">
+                                                        <span>{catInfo?.icon}</span> {catInfo?.label}
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        {agents.map(agent => {
+                                                            const isAdded = currentGroupAddedAgents.includes(agent.id);
+                                                            return (
+                                                                <div
+                                                                    key={agent.id}
+                                                                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer group ${isAdded
+                                                                        ? 'bg-green-50/50 border-green-200 shadow-sm'
+                                                                        : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-md'
+                                                                        }`}
+                                                                    onClick={() => {
+                                                                        if (isAdded) {
+                                                                            setAddedAgents(prev => ({
+                                                                                ...prev,
+                                                                                [selectedGroup]: (prev[selectedGroup] || []).filter(id => id !== agent.id),
+                                                                            }));
+                                                                        } else {
+                                                                            setAddedAgents(prev => ({
+                                                                                ...prev,
+                                                                                [selectedGroup]: [...(prev[selectedGroup] || []), agent.id],
+                                                                            }));
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-gradient-to-br ${agent.color} shadow-sm shrink-0`}>
+                                                                            {agent.icon}
+                                                                        </div>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <p className="text-sm font-bold text-black truncate">{agent.name}</p>
+                                                                            <p className="text-[11px] text-gray-400 leading-snug mt-0.5 line-clamp-2">{agent.description}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    {/* Add/Added indicator */}
+                                                                    <div className="absolute top-3 right-3">
+                                                                        {isAdded ? (
+                                                                            <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm">
+                                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-400 group-hover:bg-black group-hover:text-white flex items-center justify-center transition-all">
+                                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+
+                                {/* Modal Footer */}
+                                <div className="p-4 border-t border-gray-100 bg-gray-50/50 shrink-0">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-gray-400">
+                                            <span className="font-bold text-black">{(addedAgents[selectedGroup] || []).length}</span> agent{(addedAgents[selectedGroup] || []).length !== 1 ? 's' : ''} added to this group
+                                        </p>
+                                        <button
+                                            onClick={() => { setShowAgentModal(false); setAgentSearch(''); setSelectedCategory(null); }}
+                                            className="px-6 py-2.5 bg-black text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-sm active:scale-95"
+                                        >
+                                            Done
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
