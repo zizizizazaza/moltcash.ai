@@ -154,24 +154,8 @@ const Trade: React.FC = () => {
                 {/* ── Header ── */}
                 <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <h2 className="text-3xl md:text-4xl font-black text-black tracking-tight">Share Marketplace</h2>
+                        <h2 className="text-2xl md:text-3xl font-black text-black tracking-tight">Marketplace</h2>
                         <p className="text-gray-400 mt-2 font-medium">Trade shares of funded projects on the open market.</p>
-                    </div>
-
-                    {/* Summary Stats */}
-                    <div className="flex gap-6">
-                        <div className="text-right">
-                            <p className="text-[9px] font-bold text-gray-400 tracking-widest mb-1">ACTIVE LISTINGS</p>
-                            <p className="text-2xl font-black text-black">{listedCount}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[9px] font-bold text-gray-400 tracking-widest mb-1">TOTAL TRADED</p>
-                            <p className="text-2xl font-black text-black">${totalVolume.toLocaleString()}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[9px] font-bold text-gray-400 tracking-widest mb-1">COMPLETED</p>
-                            <p className="text-2xl font-black text-black">{soldCount}</p>
-                        </div>
                     </div>
                 </section>
 
