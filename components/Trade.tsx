@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { TradeOrder } from '../types';
+import { Icons, COLORS } from '../constants';
 
 // ── Mock Data ──────────────────────────────────────────────────────
 const MOCK_ORDERS: TradeOrder[] = [
@@ -280,7 +281,14 @@ const OrderCard: React.FC<{ order: TradeOrder; onBuy: () => void }> = ({ order, 
 
 
 
-                {/* Seller Address */}
+                {/* Credit Badge */}
+                <div className="absolute top-4 right-4 z-10">
+                    <div className="bg-violet-600/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl text-[10px] font-black tracking-wider shadow-xl border border-white/20 text-white flex items-center gap-1.5">
+                        <Icons.Coins className="w-3.5 h-3.5 text-violet-200" />
+                        <span className="opacity-80 leading-none">CREDIT:</span>
+                        <span className="leading-none">+{order.projectIssuer === 'ComputeDAO LLC' ? '25' : order.projectIssuer === 'DropStream LLC' ? '15' : '10'}</span>
+                    </div>
+                </div>
                 <div className="absolute bottom-3 left-4 z-10 flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 border border-white/30 shadow-lg" />
                     <span className="text-[10px] font-bold text-white/90 tracking-wide">{order.seller}</span>

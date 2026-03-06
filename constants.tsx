@@ -80,5 +80,34 @@ export const Icons = {
   ),
   Trade: () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+  ),
+  Crown: ({ className = "w-4 h-4" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" />
+      <path d="M5 20h14" />
+    </svg>
+  ),
+  Diamond: ({ className = "w-4 h-4" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3h12l4 6-10 12L2 9z" />
+      <path d="M5 21L6 19" />
+      <path d="M19 21L18 19" />
+    </svg>
+  ),
+  Coins: ({ className = "w-4 h-4" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Back Coin - Subtle Opacity */}
+      <circle cx="14" cy="14" r="6" strokeOpacity="0.4" />
+      <rect x="12" y="12" width="4" height="4" transform="rotate(45 14 14)" strokeOpacity="0.4" />
+      {/* Front Coin - Solid */}
+      <circle cx="9" cy="9" r="6" fill="white" stroke="currentColor" />
+      <rect x="7" y="7" width="4" height="4" transform="rotate(45 9 9)" />
+    </svg>
+  ),
+  Compass: ({ className = "w-4 h-4" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" />
+    </svg>
   )
 };

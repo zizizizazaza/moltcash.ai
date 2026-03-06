@@ -230,12 +230,18 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         {/* Top Badges */}
-        <div className="absolute top-4 left-4 z-10">
+        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start">
           <div className="bg-white/95 backdrop-blur-lg px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-wide shadow-xl border border-white/40 text-black">
             {asset.status === 'Fundraising' ? '🔥 Fundraising' :
               asset.status === 'Funded' ? '✅ Funded' :
                 asset.status === 'Failed' ? '🔒 Failed' :
                   asset.status}
+          </div>
+
+          <div className="bg-violet-600/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl text-[10px] font-black tracking-wider shadow-xl border border-white/20 text-white flex items-center gap-1.5">
+            <Icons.Coins className="w-3.5 h-3.5 text-violet-200" />
+            <span className="opacity-80">CREDIT:</span>
+            <span>+{asset.issuer === 'ComputeDAO LLC' ? '25' : asset.issuer === 'DropStream LLC' ? '15' : '10'}</span>
           </div>
         </div>
       </div>
@@ -250,6 +256,9 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
             className="w-5 h-5 rounded-full object-cover border border-gray-100"
           />
           <span className="text-[9px] font-bold text-gray-400  tracking-widest truncate">{asset.issuer}</span>
+          <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100/80 leading-none ml-1 shrink-0 flex items-center gap-1">
+            {asset.issuer === 'ComputeDAO LLC' ? <><Icons.Crown className="w-2.5 h-2.5" /> 1000+</> : asset.issuer === 'DropStream LLC' ? <><Icons.Diamond className="w-2.5 h-2.5" /> 500+</> : <><Icons.Compass className="w-2.5 h-2.5" /> 200+</>}
+          </span>
         </div>
 
         <div className="mb-4">
@@ -362,6 +371,13 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                         <h4 className="text-base font-black  tracking-widest text-black flex items-center gap-2">
                           {asset.issuer}
                           <div className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[7px] text-white italic shadow-sm">✓</div>
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full border leading-none ml-1 flex items-center gap-1" style={{
+                            color: asset.issuer === 'ComputeDAO LLC' ? '#2563eb' : asset.issuer === 'DropStream LLC' ? '#059669' : '#d97706',
+                            backgroundColor: asset.issuer === 'ComputeDAO LLC' ? '#eff6ff' : asset.issuer === 'DropStream LLC' ? '#ecfdf5' : '#fffbeb',
+                            borderColor: asset.issuer === 'ComputeDAO LLC' ? '#bfdbfe' : asset.issuer === 'DropStream LLC' ? '#a7f3d0' : '#fde68a',
+                          }}>
+                            {asset.issuer === 'ComputeDAO LLC' ? <><Icons.Crown className="w-2.5 h-2.5" /> 1000+</> : asset.issuer === 'DropStream LLC' ? <><Icons.Diamond className="w-2.5 h-2.5" /> 500+</> : <><Icons.Compass className="w-2.5 h-2.5" /> 200+</>}
+                          </span>
                         </h4>
                         <p className="text-[10px] text-gray-400 font-bold  tracking-tighter">Singapore (ACRA ID: 20230812X) • Founded 2023</p>
                       </div>
@@ -913,6 +929,27 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                       <span className="text-orange-500 text-sm leading-none mt-0.5">⚠️</span>
                       <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
                         Funds cannot be withdrawn once the campaign successfully reaches its target and closes.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {txTab === 'buy' && (
+                  <div className="px-2 space-y-3">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="font-bold text-gray-400  tracking-widest">Platform Fee</span>
+                      <span className="font-black text-[11px]">
+                        <span className="text-gray-400 line-through mr-1.5">2.0%</span>
+                        <span className="text-green-600">1.0%</span>
+                        <span className="text-[10px] font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100/80 ml-1.5 flex items-center gap-1">
+                          <Icons.Diamond className="w-2.5 h-2.5" /> 850
+                        </span>
+                      </span>
+                    </div>
+                    <div className="p-3 bg-violet-50 border border-violet-100 rounded-xl flex gap-2 items-center">
+                      <span className="text-violet-500 text-sm leading-none">✨</span>
+                      <p className="text-[10px] text-violet-600 font-bold leading-relaxed">
+                        Complete this deposit to earn <span className="font-black">+15 credit pts</span> (high-value subscription bonus)
                       </p>
                     </div>
                   </div>

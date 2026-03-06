@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Icons } from '../constants';
 
 // --- Types ---
 
@@ -9,6 +10,7 @@ interface GroupMember {
     role: 'issuer' | 'investor' | 'agent';
     avatar: string;
     online: boolean;
+    creditScore?: number;
 }
 
 interface PollOption {
@@ -92,10 +94,10 @@ const mockGroups: GroupChat[] = [
         members: [
             { id: 'u1', name: 'Alex Chen', role: 'issuer', avatar: '🧑‍💼', online: true },
             { id: 'u2', name: 'Sarah Kim', role: 'issuer', avatar: '👩‍💻', online: false },
-            { id: 'u3', name: '0x71C...8e29', role: 'investor', avatar: '💎', online: true },
-            { id: 'u4', name: '0xA3F...2d1a', role: 'investor', avatar: '🦊', online: true },
-            { id: 'u5', name: '0xB8E...9c3f', role: 'investor', avatar: '🐋', online: false },
-            { id: 'u6', name: '0x5D2...7e4b', role: 'investor', avatar: '🎯', online: false },
+            { id: 'u3', name: '0x71C...8e29', role: 'investor', avatar: '💎', online: true, creditScore: 850 },
+            { id: 'u4', name: '0xA3F...2d1a', role: 'investor', avatar: '🦊', online: true, creditScore: 520 },
+            { id: 'u5', name: '0xB8E...9c3f', role: 'investor', avatar: '🐳', online: false, creditScore: 1120 },
+            { id: 'u6', name: '0x5D2...7e4b', role: 'investor', avatar: '🎯', online: false, creditScore: 380 },
             { id: 'agent1', name: 'Loka Agent', role: 'agent', avatar: '🤖', online: true },
         ],
         messages: [
@@ -134,9 +136,9 @@ const mockGroups: GroupChat[] = [
         lastActivity: '1 hour ago',
         members: [
             { id: 'u10', name: 'Mike Johnson', role: 'issuer', avatar: '👨‍💼', online: true },
-            { id: 'u11', name: '0x71C...8e29', role: 'investor', avatar: '💎', online: true },
-            { id: 'u12', name: '0xC4D...5f2e', role: 'investor', avatar: '🌟', online: false },
-            { id: 'u13', name: '0xE7F...8a1b', role: 'investor', avatar: '🔮', online: false },
+            { id: 'u11', name: '0x71C...8e29', role: 'investor', avatar: '💎', online: true, creditScore: 850 },
+            { id: 'u12', name: '0xC4D...5f2e', role: 'investor', avatar: '🌟', online: false, creditScore: 210 },
+            { id: 'u13', name: '0xE7F...8a1b', role: 'investor', avatar: '🔮', online: false, creditScore: 670 },
             { id: 'agent2', name: 'Loka Agent', role: 'agent', avatar: '🤖', online: true },
         ],
         messages: [
@@ -1146,10 +1148,26 @@ const Groups: React.FC = () => {
                                                             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 border-2 border-white rounded-full" />
                                                         )}
                                                     </div>
-                                                    <div className="min-w-0">
+                                                    <div className="min-w-0 flex-1">
                                                         <p className="text-xs font-bold text-black truncate">{member.name}</p>
                                                         <p className="text-[9px] text-gray-400 font-medium capitalize">{role === 'agent' ? 'Always Online' : member.online ? 'Online' : 'Offline'}</p>
                                                     </div>
+                                                    {role === 'investor' && member.creditScore && (
+                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border shadow-sm transition-all ${member.creditScore >= 1000 ? 'bg-amber-50 border-amber-200' :
+                                                            member.creditScore >= 500 ? 'bg-blue-50 border-blue-100' :
+                                                                'bg-gray-50 border-gray-100'
+                                                            }`}>
+                                                            <span className="text-xs">
+                                                                {member.creditScore >= 1000 ? <Icons.Crown className="w-3 h-3 text-amber-500" /> : member.creditScore >= 500 ? <Icons.Diamond className="w-3 h-3 text-blue-500" /> : <Icons.Compass className="w-3 h-3 text-gray-400" />}
+                                                            </span>
+                                                            <span className={`text-[11px] font-black ${member.creditScore >= 1000 ? 'text-amber-600' :
+                                                                member.creditScore >= 500 ? 'text-blue-600' :
+                                                                    'text-gray-500'
+                                                                }`}>
+                                                                {member.creditScore}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                             {/* Extra added agents */}
