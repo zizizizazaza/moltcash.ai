@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Icons } from '../constants';
+import { Icons, COLORS } from '../constants';
 
 // Intersection Observer hook for scroll animations
 const useInView = (options?: IntersectionObserverInit) => {
@@ -17,423 +17,419 @@ const useInView = (options?: IntersectionObserverInit) => {
     return { ref, isInView };
 };
 
-// --- CoinSVG with pure dense dot-matrix rendering ---
-const CoinSVG = ({ symbol, side = 'left', className, style, delayOffset = 0 }: { symbol: string, side?: 'left' | 'right', className?: string, style?: React.CSSProperties, delayOffset?: number }) => {
-    const isLong = symbol.length > 2;
-    const fontSize = isLong ? "65" : "140";
+// --- Animated Counter ---
+const Counter = ({ value, duration = 2000 }: { value: number; duration?: number }) => {
+    const [count, setCount] = useState(0);
+    const { ref, isInView } = useInView();
 
-    const width = 300;
-    const height = 300;
-    const spacing = 7; // Dense dots
-    const maskId = `mask-${symbol}`;
-
-    const backgroundBlackDots = [];
-    const foregroundGreenDots = [];
-
-    // Halftone generation
-    for (let x = 0; x <= width; x += spacing) {
-        for (let y = 0; y <= height; y += spacing) {
-            let dx = x - 150;
-            let dy = y - 150;
-            let d = Math.sqrt(dx * dx + dy * dy);
-
-            if (d <= 145) {
-                // Base layer of dots everywhere inside the coin, changed to grey
-                backgroundBlackDots.push(<circle key={`bg-${x}-${y}`} cx={x} cy={y} r={1.8} fill="#D1D5DB" opacity={0.6} />);
-
-                // Determine if this area should be bright green
-                let isBright = false;
-                if (d > 130) {
-                    isBright = false; // Outer dark ring
-                } else if (d > 105 && d <= 130) {
-                    isBright = true; // Outer bright ring
-                } else if (d > 95 && d <= 105) {
-                    isBright = false; // Inner dark ring
+    useEffect(() => {
+        if (isInView) {
+            let start = 0;
+            const end = value;
+            const increment = end / (duration / 16);
+            const timer = setInterval(() => {
+                start += increment;
+                if (start >= end) {
+                    setCount(end);
+                    clearInterval(timer);
                 } else {
-                    isBright = true; // Inner bright fill
+                    setCount(Math.floor(start));
                 }
-
-                if (isBright) {
-                    const animDelay = `${(x + y) * 2 + delayOffset}ms`;
-                    foregroundGreenDots.push(
-                        <circle key={`fg-${x}-${y}`} cx={x} cy={y} r={2.8} fill="#c3ff00" className="coin-dot" style={{ animationDelay: animDelay }} />
-                    );
-                }
-            }
+            }, 16);
+            return () => clearInterval(timer);
         }
-    }
+    }, [isInView, value, duration]);
 
-    return (
-        <svg viewBox="0 0 300 300" overflow="visible" className={className} style={style}>
-            <defs>
-                <style>
-                    {`
-                        @keyframes pulseDot {
-                            0%, 100% { opacity: 0.85; transform: scale(0.9); }
-                            50% { opacity: 1; transform: scale(1.05); }
-                        }
-                        .coin-dot {
-                            transform-origin: center;
-                            animation: pulseDot 4s infinite ease-in-out;
-                        }
-                    `}
-                </style>
-                <mask id={maskId}>
-                    {/* Use page background color #fafdf3 instead of white to avoid white borders */}
-                    <rect width="100%" height="100%" fill="#fafdf3" />
-                    {/* Punch a hole for the text, revealing the grey dots underneath */}
-                    <text x="150" y="155" fontSize={fontSize} fontWeight="900" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central" fill="black">{symbol}</text>
-                </mask>
-            </defs>
-
-            <g>
-                {backgroundBlackDots}
-            </g>
-            <g mask={`url(#${maskId})`}>
-                {foregroundGreenDots}
-            </g>
-        </svg>
-    );
+    return <span ref={ref}>{count.toLocaleString()}</span>;
 };
 
+// --- Performance Chart Component ---
+const PerformanceChart = () => {
+    const points = 12;
+    const generateData = (start: number, volatility: number, trend: number, spikiness: number = 0) => {
+        let current = start;
+        return Array.from({ length: points }, (_, i) => {
+            if (i === 0) return { x: 0, y: 240 - current * 1.6 };
 
-const Landing: React.FC = () => {
-    const [heroTab, setHeroTab] = useState<'agent' | 'human'>('agent');
-    const [copied, setCopied] = useState(false);
+            // Base movement
+            let change = (Math.random() - 0.5) * volatility + trend;
 
-    const quoteRef = useInView();
-    const featuresRef = useInView();
-    const stackRef = useInView();
+            // Add occasional sharp spikes for 'aggressive' traders
+            if (spikiness > 0 && Math.random() < 0.3) {
+                change += (Math.random() - 0.5) * spikiness * 3;
+            }
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText('curl -sL https://docs.openclaw.com/install.sh | bash');
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+            current += change;
+            // Floor at 5 to keep it on chart
+            current = Math.max(5, current);
+
+            return { x: i * 80, y: 240 - current * 1.6 };
+        });
+    };
+
+    const lines = [
+        { name: '0x71C...8e29', data: generateData(50, 8, 10, 5), color: '#a3ff12', width: 3, glow: true }, // Top performer, strong trend
+        { name: '0x1a2...f4b0', data: generateData(45, 2, 6, 0), color: '#3b82f6', width: 2, glow: false }, // Steady climber, very smooth
+        { name: '0x9c3...a1e2', data: generateData(40, 25, 4, 15), color: '#f59e0b', width: 2, glow: false }, // High volatility/Spiky
+        { name: '0x4d5...c8d7', data: generateData(35, 12, 5, 2), color: '#ec4899', width: 2, glow: false }, // Moderate
+        { name: '0x8b3...e9a1', data: generateData(30, 4, 3, 0), color: '#8b5cf6', width: 2, glow: false }, // Conservative, smooth
+        { name: '0x2e1...d6c3', data: generateData(25, 1, 1, 0), color: '#94a3b8', width: 1.5, glow: false, dashed: true }, // Index/Benchmark
+    ];
+
+    const toPath = (data: { x: number; y: number }[]) => {
+        return data.reduce((path, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${path} L ${p.x} ${p.y}`, '');
     };
 
     return (
-        <div className="relative min-h-screen pb-24 overflow-hidden bg-[#fafdf3]"> {/* Updated background color to warm off-white */}
-            {/* Restored Floating Dot Matrix Coins Container */}
-            <div className="absolute top-0 left-0 w-full h-screen pointer-events-none z-0 overflow-hidden flex justify-center">
-                <style>
-                    {`
-                        @keyframes float1 { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(3deg); } }
-                        @keyframes float2 { 0%, 100% { transform: translateY(0) rotate(-12deg); } 50% { transform: translateY(-25px) rotate(-8deg); } }
-                        @keyframes float3 { 0%, 100% { transform: translateY(0) rotate(15deg); } 50% { transform: translateY(-30px) rotate(10deg); } }
-                    `}
-                </style>
-                <div className="relative w-full max-w-[1400px] h-full">
-                    {/* 1. $ - Top Left */}
-                    <div style={{ animation: 'float1 12s ease-in-out infinite' }} className="absolute top-[2vh] left-[-8%] md:left-[-2%]">
-                        <CoinSVG symbol="$" side="left" delayOffset={0} className="w-[280px] h-[280px] md:w-[420px] md:h-[420px] opacity-90 transition-transform hover:scale-105" />
+        <div className="relative w-full h-[480px] group select-none flex flex-col pt-2">
+            {/* Improved Legend - Compact & Integrated */}
+            <div className="flex flex-wrap gap-x-8 gap-y-3 mb-12 items-center">
+                <div className="text-[10px] font-black uppercase tracking-widest text-gray-300 mr-2">Top Performer Wallets</div>
+                {lines.map((l, i) => (
+                    <div key={i} className="flex items-center gap-2.5 group/item cursor-pointer">
+                        <div className={`w-3.5 h-1 rounded-full transition-all group-hover/item:w-6`} style={{ backgroundColor: l.color, opacity: l.dashed ? 0.3 : 1 }}></div>
+                        <span className="text-[11px] font-bold text-gray-400 font-mono tracking-tighter group-hover/item:text-black transition-colors">{l.name}</span>
                     </div>
-                    {/* 2. AIUSD - Bottom Left */}
-                    <div style={{ animation: 'float2 14s ease-in-out infinite 2s' }} className="absolute top-[60vh] left-[-7%] md:left-[3%]">
-                        <CoinSVG symbol="AIUSD" side="left" delayOffset={1200} className="w-[180px] h-[180px] md:w-[260px] md:h-[260px] opacity-70 transition-transform hover:-translate-x-4" />
-                    </div>
+                ))}
+            </div>
 
-                    {/* 3. ¥ - Top Right */}
-                    <div style={{ animation: 'float2 13s ease-in-out infinite 1s' }} className="absolute top-[8vh] right-[-10%] md:right-[-4%]">
-                        <CoinSVG symbol="¥" side="right" delayOffset={500} className="w-[220px] h-[220px] md:w-[350px] md:h-[350px] opacity-80 transition-transform hover:scale-105" />
-                    </div>
-                    {/* 4. USDC - Middle Right */}
-                    <div style={{ animation: 'float3 15s ease-in-out infinite 3s' }} className="absolute top-[45vh] right-[1%] md:right-[15%]">
-                        <CoinSVG symbol="USDC" side="right" delayOffset={2000} className="w-[160px] h-[160px] md:w-[200px] md:h-[200px] opacity-80" />
-                    </div>
-                    {/* 5. € - Bottom Right */}
-                    <div style={{ animation: 'float1 16s ease-in-out infinite 4s' }} className="absolute top-[75vh] right-[2%] md:right-[8%]">
-                        <CoinSVG symbol="€" side="right" delayOffset={3200} className="w-[200px] h-[200px] md:w-[280px] md:h-[280px] opacity-70" />
-                    </div>
+            <div className="relative flex-1">
+                <svg className="w-full h-full overflow-visible" viewBox="0 0 880 280" preserveAspectRatio="none">
+                    {/* Horizontal Grid Lines */}
+                    {[0, 1, 2, 3, 4].map((i) => (
+                        <line key={`h-${i}`} x1="0" y1={i * 60 + 20} x2="880" y2={i * 60 + 20} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+                    ))}
+
+                    {/* Vertical Marker Lines */}
+                    {[1, 3, 5, 7, 9, 11].map((i) => (
+                        <line key={`v-${i}`} x1={i * 80} y1="20" x2={i * 80} y2="280" stroke="#f8fafc" strokeWidth="1" />
+                    ))}
+
+                    {/* The Lines */}
+                    {lines.map((l, i) => (
+                        <g key={i}>
+                            {l.glow && (
+                                <path
+                                    d={toPath(l.data)}
+                                    fill="none"
+                                    stroke={l.color}
+                                    strokeWidth={12}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="opacity-5 blur-xl"
+                                />
+                            )}
+                            <path
+                                d={toPath(l.data)}
+                                fill="none"
+                                stroke={l.color}
+                                strokeWidth={l.width}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeDasharray={l.dashed ? "4 4" : "0"}
+                                className="transition-all duration-1000 origin-left"
+                            />
+                            {/* Final Node Marker */}
+                            <circle
+                                cx={l.data[l.data.length - 1].x}
+                                cy={l.data[l.data.length - 1].y}
+                                r={l.width + 1.5}
+                                fill={l.color}
+                                className="shadow-lg"
+                            />
+                        </g>
+                    ))}
+                </svg>
+
+                {/* Y-Axis Labels */}
+                <div className="absolute -left-10 inset-y-0 flex flex-col justify-between text-[10px] font-bold text-gray-300 pointer-events-none py-[15px]">
+                    <span>150%</span>
+                    <span>100%</span>
+                    <span>50%</span>
+                    <span>20%</span>
+                    <span>0%</span>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-
-                {/* ─── Hero Section ─── */}
-                <section className="text-center space-y-4 pt-4 md:pt-6 relative animate-fadeIn">
-                    <div className="flex justify-center mb-2">
-                        <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/60 border border-gray-200/50 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:scale-105 hover:bg-white/80 transition-all duration-500 cursor-default hover:shadow-[0_5px_15px_rgba(0,0,0,0.05)]">
-                            <span className="text-xs sm:text-sm font-bold text-gray-700 tracking-wide">
-                                MoltCash <span className="text-gray-400 font-medium mx-1">powered by</span> Loka
-                            </span>
-                        </div>
+            {/* Bottom Stats Meta */}
+            <div className="mt-6 pt-6 border-t border-gray-100 flex justify-between items-end">
+                <div className="flex gap-16">
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">Max Realized ROI</p>
+                        <p className="text-2xl font-black text-black tracking-tight">+312.4%</p>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-outfit font-black text-black tracking-[-0.03em] max-w-5xl mx-auto leading-[1.1] md:leading-[1.05] relative z-20 transition-transform duration-700 hover:scale-[1.02]">
-                        The Agentic <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-black via-gray-700 to-black bg-[length:200%_auto] hover:bg-right transition-all duration-1000">Payment Engine</span>
-                    </h1>
-                    <p className="text-base md:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed font-medium">
-                        A decentralized settlement infrastructure built for autonomous AI agents. Zero-fee microtransactions, absolute ZK privacy, and instant stablecoin liquidity.
-                    </p>
-
-                    <div className="pt-4 max-w-2xl mx-auto">
-                        {/* Toggle Buttons */}
-                        <div className="flex bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl mb-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border border-gray-200/50 max-w-sm mx-auto relative z-20">
-                            <button
-                                onClick={() => setHeroTab('agent')}
-                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'agent' ? 'bg-black text-white shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
-                            >
-                                <span className="flex items-center gap-2 mb-0.5">
-                                    <Icons.Code /> For Agent
-                                </span>
-                                <span className={`text-[10px] font-normal ${heroTab === 'agent' ? 'text-gray-300' : 'text-gray-400'}`}>Integrate SKILL</span>
-                            </button>
-                            <button
-                                onClick={() => setHeroTab('human')}
-                                className={`flex flex-col items-center justify-center py-3 px-6 rounded-xl text-sm font-bold transition-all duration-300 w-1/2 hover:-translate-y-1 ${heroTab === 'human' ? 'bg-black text-white shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-black hover:bg-gray-50'}`}
-                            >
-                                <span className="flex items-center gap-2 mb-0.5">
-                                    <Icons.User /> For Human
-                                </span>
-                                <span className={`text-[10px] font-normal ${heroTab === 'human' ? 'text-gray-300' : 'text-gray-400'}`}>Enter Portal</span>
-                            </button>
-                        </div>
-
-                        {/* Dynamic Content Area */}
-                        <div className="min-h-[260px] flex items-center justify-center text-left relative z-10" key={heroTab}>
-                            {heroTab === 'agent' ? (
-                                <div className="w-full bg-[#111827] rounded-3xl p-6 md:p-8 shadow-[0_50px_100px_-20px_rgba(195,255,0,0.4)] border border-[#c3ff00]/40 overflow-hidden relative group font-sans animate-fadeIn">
-                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-15 transition-opacity duration-500"><Icons.Shield /></div>
-
-                                    <div className="space-y-8">
-                                        {/* Terminal Command Banner */}
-                                        <div
-                                            onClick={handleCopy}
-                                            className="w-full bg-[#0D0D0D] font-mono rounded-2xl p-4 md:p-5 shadow-inner border border-white/10 flex items-center justify-between cursor-pointer hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] transition-all duration-300 group/cmd relative overflow-hidden active:scale-[0.98]"
-                                        >
-                                            <div className="text-xs md:text-sm tracking-wide text-gray-300 flex flex-wrap gap-2 items-center leading-relaxed">
-                                                <span className="text-gray-500 select-none group-hover/cmd:text-white transition-colors duration-300">$</span>
-                                                <span className="text-[#00E676] group-hover/cmd:opacity-80 transition-opacity">curl</span>
-                                                <span>-sL</span>
-                                                <span className="text-white break-all">https://docs.openclaw.com/install.sh</span>
-                                                <span className="text-yellow-400">&nbsp;|&nbsp;</span>
-                                                <span className="text-[#00E676] group-hover/cmd:opacity-80 transition-opacity">bash</span>
-                                            </div>
-                                            <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-gray-400 hover:text-white transition-all border border-white/10 ml-4 whitespace-nowrap  tracking-widest">
-                                                {copied ? '✓ Copied' : 'Copy'}
-                                            </div>
-                                        </div>
-
-                                        {/* Steps */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 lg:gap-8 px-2">
-                                            {[
-                                                { num: '01', label: 'READ', desc: 'Tell your agent to read the installation script.' },
-                                                { num: '02', label: 'FETCH', desc: 'Agent installs the OpenClaw skill dependency locally.' },
-                                                { num: '03', label: 'START', desc: 'Runtime restarts and connects to the settlement layer.' },
-                                            ].map((step, i) => (
-                                                <div key={i} className="flex flex-col gap-2 relative group/step" style={{ animationDelay: `${i * 100}ms` }}>
-                                                    <div className="text-[#FF4525] font-black text-sm tracking-widest  mb-1 flex items-center gap-2">
-                                                        <span className="bg-[#FF4525]/10 rounded-md px-2 py-0.5">{step.num}</span>
-                                                        <span>{step.label}</span>
-                                                        {i < 2 && <div className="h-px bg-white/10 flex-1 hidden sm:block"></div>}
-                                                    </div>
-                                                    <p className="text-xs md:text-sm font-medium text-gray-400 leading-relaxed pr-2">
-                                                        {step.desc}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div
-                                    onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-chat'))}
-                                    className="w-full h-full bg-white rounded-3xl p-8 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-200/50 flex flex-col items-center justify-center text-center gap-5 group hover:border-black/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 cursor-pointer relative overflow-hidden animate-fadeIn"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-gray-50 via-white to-gray-50 opacity-50"></div>
-                                    <div className="relative z-10 w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform group-hover:-rotate-6 duration-300">
-                                        <Icons.Chat />
-                                    </div>
-                                    <div className="relative z-10 flex flex-col items-center gap-6">
-                                        <p className="text-gray-500 font-medium max-w-[280px] mx-auto leading-relaxed text-sm">Experience the MoltCash protocol manually through our natural language gateway.</p>
-                                        <button className="px-8 py-3 bg-black text-white rounded-full text-sm font-bold shadow-xl transition-all flex items-center gap-2 group-hover:bg-gray-800 tracking-widest  hover:scale-105">
-                                            start to chat <Icons.Flash />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">Weekly Agg. PnL</p>
+                        <p className="text-2xl font-black text-[#a3ff12] font-mono tracking-tight">+$42.5K</p>
                     </div>
-                </section>
-
-
-
-                {/* ─── Vision Quote ─── */}
-                <section
-                    ref={quoteRef.ref}
-                    className={`max-w-4xl mx-auto mt-16 relative transition-all duration-700 delay-100 ${quoteRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                >
-
-                    <div className="p-10 md:p-16 rounded-[3rem] bg-white/60 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden backdrop-blur-3xl text-center group hover:-translate-y-1 transition-transform duration-700">
-                        <div className="absolute -top-6 -left-2 text-[12rem] text-transparent bg-clip-text bg-gradient-to-br from-gray-300/50 to-transparent font-serif leading-none italic select-none pointer-events-none">"</div>
-                        <p className="text-xl md:text-3xl font-serif italic text-gray-800 leading-relaxed relative z-10 px-4 md:px-10">
-                            Capture sovereign yields completely on-chain. Transform rigid, real-world cash flows into highly programmable, liquid capital loops.
-                        </p>
-                        <div className="mt-10 flex items-center justify-center gap-4">
-                            <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1 max-w-[100px]"></div>
-                            <p className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-600 to-gray-900  tracking-widest">— Protocol Vision</p>
-                            <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1 max-w-[100px]"></div>
-                        </div>
+                </div>
+                <div className="text-right flex flex-col items-end">
+                    <div className="px-3 py-1.5 bg-gray-50/80 backdrop-blur-sm rounded border border-black/5 mb-2 group cursor-crosshair hover:bg-black hover:text-[#a3ff12] transition-colors">
+                        <span className="text-[10px] font-bold font-mono text-gray-400 group-hover:text-[#a3ff12] transition-colors">polymarket_raw_stream.v3.01</span>
                     </div>
-                </section>
-
-                {/* ─── Features Showcase ─── */}
-                <section
-                    ref={featuresRef.ref}
-                    className={`space-y-16 mt-32 relative transition-all duration-700 delay-200 ${featuresRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                >
-                    {/* Background Coins for this section */}
-                    <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
-                        <CoinSVG symbol="USDC" side="right" className="absolute top-0 right-[-10%] w-[400px] h-[400px] opacity-[0.03] rotate-12" />
-                        <CoinSVG symbol="AIUSD" side="left" className="absolute bottom-[-10%] left-[-15%] w-[500px] h-[500px] opacity-[0.04] -rotate-12" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ring-2 ring-green-500/20"></div>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Live Feed Active</span>
                     </div>
-
-                    <div className="md:flex md:items-end md:justify-between mb-16 relative">
-                        <div className="inline-block relative">
-                            <h2 className="text-4xl md:text-5xl font-black text-black tracking-tight relative z-10">Ecosystem <br className="hidden md:block" />Architecture</h2>
-                            <div className="absolute -left-6 top-0 bottom-0 w-2 bg-[#c3ff00] hidden md:block"></div>
-                        </div>
-                        <p className="text-gray-500 text-sm font-mono max-w-sm md:text-right mt-6 md:mt-0 uppercase tracking-widest leading-relaxed">Engineered from the ground up to eliminate friction in AI-driven commerce.</p>
-                    </div>
-
-                    <div className="flex flex-col border-t-2 border-black/10">
-                        {/* Item 1 */}
-                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
-                            {/* Hover accent line */}
-                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
-
-                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
-                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 01 ]</span>
-                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
-                            </div>
-
-                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
-                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Conversational Settlement</h3>
-                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
-                                    Execute payments, configure complex conditional logic, and orchestrate capital routing entirely through natural language commands natively optimized for multi-agent workflows.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Item 2 */}
-                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
-                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
-                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
-                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 02 ]</span>
-                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
-                            </div>
-                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
-                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Zero-Knowledge Autonomy</h3>
-                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
-                                    Institutional-grade financial privacy. ZK proofs validate policy compliance and portfolio solvency instantly without ever exposing balances, counterparties, or proprietary strategies.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Item 3 */}
-                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
-                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
-                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
-                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 03 ]</span>
-                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
-                            </div>
-                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
-                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Programmable Reputation</h3>
-                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
-                                    Dynamic deterministic credit scoring establishes behavioral identity on-chain. Progress from anonymous multi-sig wallets to trusted, measurable institutional agent relationships.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Item 4 */}
-                        <div className="group flex flex-col md:flex-row md:items-start py-8 md:py-12 border-b border-black/10 hover:bg-black/[0.02] transition-colors relative overflow-hidden cursor-default">
-                            <div className="absolute left-0 top-0 bottom-0 w-0 group-hover:w-1 bg-[#c3ff00] transition-all duration-300"></div>
-                            <div className="md:w-1/4 flex flex-row items-center md:items-start pl-6 md:pl-8 mb-6 md:mb-0 space-x-4">
-                                <span className="text-xs font-mono text-gray-400 font-bold uppercase tracking-widest shrink-0">[ 04 ]</span>
-                                <div className="md:hidden block h-px bg-black/10 flex-1"></div>
-                            </div>
-                            <div className="md:w-3/4 flex flex-col md:flex-row gap-4 md:gap-12 pr-6 md:pr-12 pl-6 md:pl-0">
-                                <h3 className="text-2xl md:text-3xl font-black text-black tracking-tight leading-tight md:w-1/2 group-hover:text-gray-700 transition-colors">Absolute Zero-Fee Rail</h3>
-                                <p className="text-sm md:text-base text-gray-500 font-medium leading-relaxed md:w-1/2">
-                                    Engineered atop a custom sovereign layer enabling infinite friction-free microtransactions. Seamless T+0 finality deeply integrated alongside structural global fiat gateways.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* ─── Deep Tech Architecture ─── */}
-                <section
-                    ref={stackRef.ref}
-                    className={`space-y-16 pt-24 pb-12 relative transition-all duration-700 delay-300 ${stackRef.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                >
-                    {/* Background Coins for this section */}
-                    <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
-                        <CoinSVG symbol="€" side="left" className="absolute top-[20%] left-[-5%] w-[350px] h-[350px] opacity-[0.03] -rotate-[15deg]" />
-                        <CoinSVG symbol="¥" side="right" className="absolute bottom-[10%] right-[-8%] w-[450px] h-[450px] opacity-[0.04] rotate-[20deg]" />
-                    </div>
-
-                    <div className="md:flex md:items-end md:justify-between mb-24 relative">
-                        <div className="inline-block relative">
-                            <h2 className="text-4xl md:text-5xl font-black text-black tracking-tight relative z-10">The Institutional<br className="hidden md:block" /> Stack<span className="text-[#c3ff00]">.</span></h2>
-                            <div className="absolute -left-6 top-0 bottom-0 w-2 bg-[#c3ff00] hidden md:block"></div>
-                        </div>
-                        <p className="text-gray-500 text-sm font-mono max-w-sm md:text-right mt-6 md:mt-0 uppercase tracking-widest leading-relaxed">Modular, secure components forged for enterprise-grade throughput.</p>
-                    </div>
-
-                    <div className="relative max-w-5xl mx-auto">
-                        <div className="space-y-12 md:space-y-24">
-                            {/* Layer 3 */}
-                            <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
-                                <div className="md:w-[45%] pl-8 md:pl-0 md:text-right md:pr-16 text-left mb-4 md:mb-0">
-                                    <h3 className="text-2xl font-black text-black group-hover:text-gray-600 transition-colors">Experience & SDK Layer</h3>
-                                    <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Turnkey integration suites for autonomous agents and decentralized businesses. Featuring automated gas sponsorships, isolated session keys, and comprehensive policy rule configurations.</p>
-                                </div>
-                                <div className="absolute left-[-4px] md:left-1/2 w-2 h-2 bg-black/20 group-hover:bg-[#c3ff00] transform md:-translate-x-1/2 mt-2 transition-colors duration-300"></div>
-                                <div className="md:w-[45%] pl-8 md:pl-16 w-full">
-                                    <div className="bg-transparent group-hover:bg-black/[0.02] transition-colors p-6 relative">
-                                        <h4 className="text-[10px] font-mono font-bold text-gray-400 tracking-wider mb-2 uppercase">SKILL Framework</h4>
-                                        <p className="text-xl font-black text-black mb-3">Plonky2 + Groth16 Native Proofs</p>
-                                        <p className="text-sm text-gray-500 leading-relaxed font-medium">Local runtime compiling dynamic exposure limits into deployable zero-knowledge circuits directly within the agent workflow.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Layer 2 */}
-                            <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
-                                <div className="md:w-[45%] pl-8 md:pl-0 md:text-right md:pr-16 text-left mb-4 md:mb-0 md:order-1 order-3 w-full">
-                                    <div className="bg-transparent group-hover:bg-black/[0.02] transition-colors p-6 relative md:text-right">
-                                        <h4 className="text-[10px] font-mono font-bold text-gray-400 tracking-wider mb-2 uppercase">Execution Environment</h4>
-                                        <p className="text-xl font-black text-black mb-3">AWS Nitro Enclaves Hub</p>
-                                        <p className="text-sm text-gray-500 leading-relaxed font-medium">Hardware-level CPU segregation guarantees absolute data confidentiality, rendering proprietary strategies completely opaque to hosts and operators.</p>
-                                    </div>
-                                </div>
-                                <div className="absolute left-[-4px] md:left-1/2 w-2 h-2 bg-black/20 group-hover:bg-[#c3ff00] transform md:-translate-x-1/2 mt-2 md:order-2 order-2 transition-colors duration-300"></div>
-                                <div className="md:w-[45%] pl-8 md:pl-16 md:order-3 order-1 mb-4 md:mb-0 text-left">
-                                    <h3 className="text-2xl font-black text-black group-hover:text-gray-600 transition-colors">Computation & Risk Engine</h3>
-                                    <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">The invisible processing powerhouse safely driving compliance frameworks, multi-tenant agent logical routing, and rigorous fraud deterrence inside restricted boundaries.</p>
-                                </div>
-                            </div>
-
-                            {/* Layer 1 */}
-                            <div className="relative flex flex-col md:flex-row items-start md:justify-between w-full group">
-                                <div className="md:w-[45%] pl-8 md:pl-0 md:text-right md:pr-16 text-left mb-4 md:mb-0">
-                                    <h3 className="text-2xl font-black text-black group-hover:text-gray-600 transition-colors">Ledger & Securitization</h3>
-                                    <p className="text-gray-500 mt-3 font-medium text-sm leading-relaxed">Algorithmic capital utilization mechanisms capturing risk-free US Treasury yields to fund network emission mechanics, enabling continuous capital creation via AIUSD stablecoins.</p>
-                                </div>
-                                <div className="absolute left-[-4px] md:left-1/2 w-2 h-2 bg-black/20 group-hover:bg-[#c3ff00] transform md:-translate-x-1/2 mt-2 transition-colors duration-300"></div>
-                                <div className="md:w-[45%] pl-8 md:pl-16 w-full">
-                                    <div className="bg-transparent group-hover:bg-black/[0.02] transition-colors p-6 relative">
-                                        <h4 className="text-[10px] font-mono font-bold text-gray-400 tracking-wider mb-2 uppercase">Programmable Assets</h4>
-                                        <p className="text-xl font-black text-black mb-3">Native Yield & RWA Discounting</p>
-                                        <p className="text-sm text-gray-500 leading-relaxed font-medium">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                </div>
             </div>
+        </div>
+    );
+};
+
+const Landing: React.FC = () => {
+    const { ref: heroRef, isInView: heroInView } = useInView();
+
+    return (
+        <div className="relative min-h-screen bg-white overflow-hidden font-sans">
+            {/* Custom Styles for animations */}
+            <style>
+                {`
+                    @keyframes bounce-slow {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-10px); }
+                    }
+                    .animate-bounce-slow { animation: bounce-slow 4s ease-in-out infinite; }
+                    
+                    @keyframes float {
+                        0%, 100% { transform: translate(0, 0); }
+                        50% { transform: translate(-5px, -15px); }
+                    }
+                    .animate-float { animation: float 6s ease-in-out infinite; }
+
+                    .stagger-1 { animation-delay: 0.1s; }
+                    .stagger-2 { animation-delay: 0.2s; }
+                    .stagger-3 { animation-delay: 0.3s; }
+                `}
+            </style>
+
+            {/* ─── Hero Section ─── */}
+            <section
+                ref={heroRef}
+                className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 lg:px-12 overflow-hidden pt-32 pb-16"
+            >
+                {/* Background Decor */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] pointer-events-none -z-10 opacity-30">
+                    <div className="absolute top-1/3 left-1/4 w-[800px] h-[800px] bg-[#a3ff12]/5 blur-[150px] rounded-full"></div>
+                    <div className="absolute bottom-1/4 right-1/3 w-[600px] h-[600px] bg-blue-50/20 blur-[120px] rounded-full animate-pulse"></div>
+                </div>
+
+                <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-16 lg:gap-24 items-center">
+                    <div className="space-y-10 text-left z-10">
+                        <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-black text-[#a3ff12] text-[10px] font-black tracking-widest uppercase animate-fadeIn">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#a3ff12] animate-pulse"></span>
+                            Polymarket Copy Trading v4.0
+                        </div>
+
+                        <div className="space-y-6">
+                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-outfit font-black text-black leading-[0.95] tracking-tight animate-fadeIn stagger-1">
+                                Follow<br />
+                                <span className="text-gray-300">The Smartest<br />Money.</span>
+                            </h1>
+
+                            <p className="text-lg text-gray-500 font-medium leading-relaxed animate-fadeIn stagger-2 max-w-md">
+                                Automatically mirror Polymarket whales or deploy specialized AI Agents to capture alpha 24/7.
+                                <span className="text-black font-bold block mt-3 border-l-4 border-[#a3ff12] pl-4">No trading skills required.</span>
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-fadeIn stagger-3">
+                            <button className="px-8 py-5 bg-black text-white rounded-2xl text-sm font-black shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-3 active:scale-95 group">
+                                Connect My Claw
+                                <Icons.Flash />
+                            </button>
+                            <button className="px-8 py-5 bg-white text-black border-2 border-black/5 rounded-2xl text-sm font-black hover:bg-black/5 transition-all flex items-center justify-center gap-3 active:scale-95">
+                                Follow Smart Money
+                                <Icons.TrendingUp />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="relative animate-fadeIn stagger-2 flex flex-col w-full">
+                        <PerformanceChart />
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── Claw Connection Guide Section ─── */}
+            <section className="py-24 bg-black text-white relative overflow-hidden">
+                <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1.5px 1.5px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}></div>
+
+                <div className="max-w-4xl mx-auto px-4 relative z-10 flex flex-col items-center">
+                    <div className="w-full bg-[#1a1a1a] rounded-[48px] p-10 md:p-16 border border-white/5 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-12 opacity-10 font-outfit font-black text-8xl -mr-6 -mt-6 pointer-events-none text-white">MOLTCASH</div>
+
+                        <h2 className="text-2xl md:text-3xl font-outfit font-black text-center mb-10 text-white flex items-center justify-center gap-3">
+                            Send Your AI Agent to Moltcash
+                        </h2>
+
+                        <div className="bg-black/50 rounded-2xl p-8 border border-white/10 mb-12 group hover:border-[#a3ff12]/30 transition-all">
+                            <code className="text-[#a3ff12] text-sm md:text-base font-mono leading-relaxed block text-center">
+                                Read <span className="underline cursor-pointer">https://www.moltcash.com/skill.md</span> and follow the instructions to join Moltcash
+                            </code>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                            {[
+                                { num: '1.', text: 'Send this to your agent', color: 'text-red-500' },
+                                { num: '2.', text: 'They sign up & send you a claim link', color: 'text-gray-400' },
+                                { num: '3.', text: 'Tweet to verify ownership', color: 'text-gray-400' }
+                            ].map((step, idx) => (
+                                <div key={idx} className="flex gap-3 items-start">
+                                    <span className={`${step.num === '1.' ? 'text-red-500' : 'text-gray-500'} font-black text-lg`}>{step.num}</span>
+                                    <p className="text-gray-400 font-medium text-sm leading-tight">{step.text}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex flex-col items-center gap-4 border-t border-white/5 pt-10">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">🤖</span>
+                                <p className="text-gray-400 font-medium">Don't have an AI agent? <span className="text-[#2dd4bf] font-bold cursor-pointer hover:underline">Get early access →</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── Core Features Section ─── */}
+            <section className="py-24 bg-gray-50/50">
+                <div className="max-w-6xl mx-auto px-4">
+                    <div className="text-center mb-16 space-y-4">
+                        <h2 className="text-3xl md:text-5xl font-outfit font-black text-black tracking-tight">Advanced Alpha Engines</h2>
+                        <p className="text-gray-400 text-lg font-medium">Bridging human wisdom with machine speed</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Card 1: Polymarket Whale Following */}
+                        <div className="group bg-white p-10 rounded-[40px] border border-black/5 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col h-full overflow-hidden relative">
+                            <div className="w-14 h-14 bg-blue-50 rounded-2xl mb-8 flex items-center justify-center text-blue-500 text-3xl group-hover:scale-110 transition-transform">
+                                🐋
+                            </div>
+                            <h3 className="text-xl font-black text-black mb-4">Whale Mirroring</h3>
+                            <p className="text-[14px] text-gray-400 leading-relaxed mb-8 font-medium">
+                                Follow the top 1% of Polymarket traders. Our low-latency execution engine mirrors their bets in sub-seconds.
+                            </p>
+                            <div className="bg-gray-50 p-5 rounded-2xl mb-8 border border-black/5 group-hover:bg-blue-50 transition-colors">
+                                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5">Capabilities</div>
+                                <ul className="text-xs font-bold text-gray-600 space-y-1.5">
+                                    <li className="flex items-center gap-2">✓ Real-time Webhook Triggers</li>
+                                    <li className="flex items-center gap-2">✓ Automated Position Sizing</li>
+                                </ul>
+                            </div>
+                            <div className="mt-auto">
+                                <button className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-black group-hover:gap-3 transition-all">
+                                    Browse Whales <Icons.TrendingUp />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Card 2: AI Agent Squads */}
+                        <div className="group bg-white p-10 rounded-[40px] border border-black/5 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col h-full overflow-hidden relative ring-2 ring-[#a3ff12]/50">
+                            <div className="w-14 h-14 bg-[#a3ff12]/10 rounded-2xl mb-8 flex items-center justify-center text-[#85b000] text-3xl group-hover:scale-110 transition-transform">
+                                🤖
+                            </div>
+                            <h3 className="text-xl font-black text-black mb-4">Agent Squads</h3>
+                            <p className="text-[14px] text-gray-400 leading-relaxed mb-8 font-medium">
+                                Deploy a team of agents to specialize in Arbitrage, Sentiment Analysis, and Risk Management simultaneously.
+                            </p>
+                            <div className="bg-gray-50 p-5 rounded-2xl mb-8 border border-black/5 group-hover:bg-[#a3ff12]/5 transition-colors">
+                                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5">Alpha Stream</div>
+                                <div className="text-xs font-bold text-gray-600 leading-tight italic">“Shared intelligence across 12+ prediction verticals.”</div>
+                            </div>
+                            <div className="mt-auto">
+                                <button className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-black group-hover:gap-3 transition-all">
+                                    Deploy Squad <Icons.Flash />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Card 3: Manual Prediction Terminal */}
+                        <div className="group bg-white p-10 rounded-[40px] border border-black/5 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col h-full overflow-hidden relative">
+                            <div className="w-14 h-14 bg-purple-50 rounded-2xl mb-8 flex items-center justify-center text-purple-500 text-3xl group-hover:scale-110 transition-transform">
+                                ⌨️
+                            </div>
+                            <h3 className="text-xl font-black text-black mb-4">Pro Terminal</h3>
+                            <p className="text-[14px] text-gray-400 leading-relaxed mb-8 font-medium">
+                                Professional-grade trading interface for manual entries with advanced chart tools and order types.
+                            </p>
+                            <div className="bg-gray-50 p-5 rounded-2xl mb-8 border border-black/5 group-hover:bg-purple-50 transition-colors">
+                                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5">Tooling</div>
+                                <div className="text-xs font-bold text-gray-600 leading-tight italic">“Limit orders, Depth maps, and MEV protection integration.”</div>
+                            </div>
+                            <div className="mt-auto">
+                                <button className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-black group-hover:gap-3 transition-all">
+                                    Open Terminal <Icons.Market />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── Data/Trust Section ─── */}
+            <section className="py-16 bg-black text-white relative overflow-hidden">
+                <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1.5px 1.5px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}></div>
+
+                <div className="max-w-6xl mx-auto px-4 relative z-10">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+                        <div className="space-y-2">
+                            <div className="text-3xl md:text-4xl font-outfit font-black text-[#a3ff12]">
+                                <Counter value={1200} />+
+                            </div>
+                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Active Squads</div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-3xl md:text-4xl font-outfit font-black text-white">
+                                <Counter value={45000} />+
+                            </div>
+                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Engagements</div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-3xl md:text-4xl font-outfit font-black text-white">
+                                $<Counter value={320} />K+
+                            </div>
+                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Total Payouts</div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-3xl md:text-4xl font-outfit font-black text-white">
+                                $<Counter value={8.5} duration={100} />M
+                            </div>
+                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Protocol TVL</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── Final CTA Section ─── */}
+            <section className="pb-24 px-4">
+                <div className="max-w-4xl mx-auto bg-[#a3ff12] p-12 md:p-16 rounded-[48px] text-center shadow-2xl relative overflow-hidden group">
+                    <div className="relative z-10 space-y-8">
+                        <h2 className="text-3xl md:text-5xl font-outfit font-black text-black leading-tight">
+                            Bootstrap your agent node.<br />
+                            Start for free today.
+                        </h2>
+
+                        <div className="flex flex-col items-center gap-6">
+                            <button className="px-10 py-5 bg-black text-[#a3ff12] rounded-[24px] text-xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
+                                Connect Clawbot
+                                <Icons.Flash />
+                            </button>
+
+                            <div className="flex flex-wrap justify-center gap-8 pt-4">
+                                <a href="#" className="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-colors">Docs</a>
+                                <a href="#" className="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-colors">Discord</a>
+                                <a href="#" className="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-colors">Moltcash</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── Footer ─── */}
+            <footer className="py-8 text-center text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                © 2026 AgentForge & MoltCash. Distributed Execution.
+            </footer>
         </div>
     );
 };

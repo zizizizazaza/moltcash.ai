@@ -8,26 +8,24 @@ import Market from './components/Market';
 import AgentMode from './components/AgentMode';
 import Portfolio from './components/Portfolio';
 import Chat from './components/Chat';
-import RiskModal from './components/RiskModal';
 import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import Landing from './components/Landing';
 import Settings from './components/Settings';
+import Tasks from './components/Tasks';
+import Leaderboard from './components/Leaderboard';
+import TaskDetail from './components/TaskDetail';
+import Groups from './components/Groups';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.LANDING);
-  const [showRiskModal, setShowRiskModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
   useEffect(() => {
-    const hasSeenRisk = localStorage.getItem('loka_risk_accepted');
-    if (!hasSeenRisk) {
-      setShowRiskModal(true);
-    }
-
     const handleNav = () => setCurrentPage(Page.CHAT);
     const handleNavSwap = () => setCurrentPage(Page.SWAP);
     const handleNavMarket = () => setCurrentPage(Page.MARKET);
@@ -46,11 +44,6 @@ const App: React.FC = () => {
   const triggerComingSoon = () => {
     setShowComingSoon(true);
     setTimeout(() => setShowComingSoon(false), 3000);
-  };
-
-  const acceptRisk = () => {
-    localStorage.setItem('loka_risk_accepted', 'true');
-    setShowRiskModal(false);
   };
 
   const connectWallet = () => {
@@ -74,8 +67,6 @@ const App: React.FC = () => {
           <p className="text-xs font-bold tracking-widest ">Coming soon</p>
         </div>
       </div>
-
-      {showRiskModal && <RiskModal onAccept={acceptRisk} onClose={() => setShowRiskModal(false)} />}
 
       {showAuthModal && (
         <AuthModal
@@ -103,7 +94,12 @@ const App: React.FC = () => {
             <NavButton
               active={currentPage === Page.CHAT}
               onClick={() => setCurrentPage(Page.CHAT)}
-              label="Chat"
+              label="Trade"
+            />
+            <NavButton
+              active={currentPage === Page.TASKS}
+              onClick={() => setCurrentPage(Page.TASKS)}
+              label="Tasks"
             />
           </div>
         </div>
@@ -164,12 +160,11 @@ const App: React.FC = () => {
       {/* Mobile Nav */}
       <div className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 z-50 glass rounded-full p-2 flex gap-1 shadow-2xl bg-white/90">
         <MobileNavButton active={currentPage === Page.LANDING} onClick={() => setCurrentPage(Page.LANDING)} icon={<Icons.Dashboard />} />
-        <MobileNavButton active={currentPage === Page.CHAT} onClick={() => setCurrentPage(Page.CHAT)} icon={<Icons.Chat />} />
       </div>
 
       {/* Main Content */}
       <main className={`flex-1 overflow-y-auto ${isChatPage || currentPage === Page.LANDING ? 'p-0' : 'container mx-auto px-6 py-12'}`}>
-        {currentPage !== Page.PORTFOLIO && currentPage !== Page.MARKET && currentPage !== Page.SWAP && currentPage !== Page.CHAT && currentPage !== Page.LANDING && currentPage !== Page.SETTINGS && (
+        {currentPage !== Page.PORTFOLIO && currentPage !== Page.MARKET && currentPage !== Page.SWAP && currentPage !== Page.CHAT && currentPage !== Page.LANDING && currentPage !== Page.SETTINGS && currentPage !== Page.TASKS && currentPage !== Page.TASK_DETAIL && (
           <div className="mb-12">
             <h1 className="font-serif text-5xl md:text-7xl mb-4 text-black">
               {currentPage === Page.DASHBOARD && "MoltCash Protocol"}
@@ -189,6 +184,20 @@ const App: React.FC = () => {
         {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} />}
         {currentPage === Page.SETTINGS && <Settings onBack={() => setCurrentPage(Page.PORTFOLIO)} />}
         {currentPage === Page.CHAT && <Chat />}
+        {currentPage === Page.TASKS && (
+          <Tasks
+            onSelectTask={(id) => {
+              setSelectedTaskId(id);
+              setCurrentPage(Page.TASK_DETAIL);
+            }}
+          />
+        )}
+        {currentPage === Page.TASK_DETAIL && selectedTaskId !== null && (
+          <TaskDetail
+            taskId={selectedTaskId}
+            onBack={() => setCurrentPage(Page.TASKS)}
+          />
+        )}
         {currentPage === Page.LANDING && <Landing />}
       </main>
 
@@ -196,12 +205,6 @@ const App: React.FC = () => {
       {currentPage !== Page.CHAT && (
         <footer className="py-12 border-t border-gray-100 text-center px-6">
           <div className="flex flex-col items-center gap-4">
-            <button
-              onClick={() => setShowRiskModal(true)}
-              className="text-gray-400 text-[9px]  tracking-[0.4em] font-bold hover:text-black transition-colors"
-            >
-              Terms & Disclaimer
-            </button>
             <p className="text-gray-300 text-[10px]  tracking-[0.4em] font-medium">
               Powered by Setu Infrastructure &bull; 2026 MoltCash Protocol
             </p>

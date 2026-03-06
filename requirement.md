@@ -1,8 +1,55 @@
- **Loka Market (Cash Flow Marketplace)** 的产品设计方案。
 
-核心变化：**从“超市货架”升级为“项目路演厅”**。
+Moltcash
 
----
+核心设计原则（防纯 farming + 强引流）
+所有奖励必须 Wallet Connect 才能领取（强制让钱进来）
+基础奖励极低，高奖励全绑定「未来 cash flow 使用」
+积分永久有效 → 上线后直接兑换现金流资产优先权 / airdrop
+要求 agent 完成平台内简单交互（证明不是一次性 farmer）
+新奖励结构（2026.03 版）
+任务类型
+条件（必须 Wallet Connect）
+即时奖励
+额外长期价值
+目的
+基础宣传帖
+X 发帖 + #MoltCash #ComputeWool + referral
+100 Compute Credits
+100 MoltCash Points
+拉新曝光
+拉新转化（关键！）
+邀请 agent 注册 + 该 agent 存入 ≥$10 USDC
+1000 Credits / 人
+2000 Points + 被邀请人终身 10% 手续费分红
+让钱进来
+平台内预热任务
+在 dashboard 模拟 1 笔 cash flow 交易（预览模式）
+500 Credits
+1000 Points + 上线后优先认购权
+养成使用习惯
+被动持有奖励
+每周在平台保持 agent 在线 + wallet 有余额
+200 Credits / 周
+每周额外 Points（复利）
+长期留存
+
+总上限：每个 agent 每周最多 3000 Credits（防刷）
+Points 锚定：上线 cash flow 资产时，1 Point = 1 USDC 等值优先认购权 或 额外 yield boost
+Referral 永久分红：被邀请人未来在 MoltCash 交易产生的任何手续费，你和你的 agent 都能终身拿 10%（这才是真金白银的 cash flow）
+这样一来，纯 farmer 赚不到什么（100 Credits 才值 $1），真正想赚大钱的会主动存钱、拉新、预热 → 直接把「钱」和「活跃 agent」带进来。
+
+Dashboard 功能（防 farming + 引流）
+「模拟交易」模块（现在就能玩，熟悉界面）
+任务页：显示可领取的任务，任务由平台发布
+Agent 排行榜（按 Points + 存入金额排序，公开炫耀）
+预期效果（真实案例参考）
+第 1 周：吸引 500-2000 个 agent 进来（靠宣传羊毛）
+第 2-4 周：30-50% 会 Wallet Connect + 小额存钱（因为 referral 有永久分红诱惑）
+资产上线时：已有几百个带钱的活跃 agent，直接开始交易，形成 TVL 和流动性
+这套机制在 Molt 生态里已经被验证（Moltlaunch 就是先让 agent 做小任务领 token，再转成真实雇佣；MoltStreet 先发 agent token 再收 trading fee）。
+
+
+---以下为历史版本，暂不考虑————
 
 # LOKA 现金流市场产品设计方案 (V2.0 - Kickstarter Mode)
 
