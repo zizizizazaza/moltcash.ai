@@ -14,6 +14,7 @@ import TxModal from './components/TxModal';
 import Landing from './components/Landing';
 import Settings from './components/Settings';
 import Groups from './components/Groups';
+import Trade from './components/Trade';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.CHAT);
@@ -33,17 +34,20 @@ const App: React.FC = () => {
     const handleNavSwap = () => setCurrentPage(Page.SWAP);
     const handleNavMarket = () => setCurrentPage(Page.MARKET);
     const handleNavGroups = () => setCurrentPage(Page.GROUPS);
+    const handleNavTrade = () => setCurrentPage(Page.TRADE);
 
     window.addEventListener('loka-nav-chat', handleNav);
     window.addEventListener('loka-nav-swap', handleNavSwap);
     window.addEventListener('loka-nav-market', handleNavMarket);
     window.addEventListener('loka-nav-groups', handleNavGroups);
+    window.addEventListener('loka-nav-trade', handleNavTrade);
 
     return () => {
       window.removeEventListener('loka-nav-chat', handleNav);
       window.removeEventListener('loka-nav-swap', handleNavSwap);
       window.removeEventListener('loka-nav-market', handleNavMarket);
       window.removeEventListener('loka-nav-groups', handleNavGroups);
+      window.removeEventListener('loka-nav-trade', handleNavTrade);
     };
   }, []);
 
@@ -105,6 +109,12 @@ const App: React.FC = () => {
               icon={<Icons.Groups />}
               label="Groups"
             />
+            <SideNavButton
+              active={currentPage === Page.TRADE}
+              onClick={() => setCurrentPage(Page.TRADE)}
+              icon={<Icons.Trade />}
+              label="Trade"
+            />
           </div>
         </div>
 
@@ -144,6 +154,7 @@ const App: React.FC = () => {
           {currentPage === Page.SETTINGS && <Settings onBack={() => setCurrentPage(Page.PORTFOLIO)} />}
           {currentPage === Page.CHAT && <Chat />}
           {currentPage === Page.GROUPS && <Groups />}
+          {currentPage === Page.TRADE && <Trade />}
         </div>
       </main>
     </div>

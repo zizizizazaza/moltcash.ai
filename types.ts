@@ -44,6 +44,28 @@ export interface HistoryItem {
   status: 'COMPLETED' | 'PENDING' | 'QUEUED';
 }
 
+export interface TradeOrder {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  projectCoverImage: string;
+  projectIssuer: string;
+  projectIssuerLogo: string;
+  projectApy: number;
+  projectDurationDays: number;
+  seller: string;
+  listPrice: number;
+  originalPrice: number;
+  shares: number;
+  totalValue: number;
+  expectedReturn: number;
+  expectedYield: number;
+  listedAt: string;
+  status: 'Listed' | 'Sold';
+  buyer?: string;
+  soldAt?: string;
+}
+
 export enum Page {
   LANDING = 'LANDING',
   DASHBOARD = 'DASHBOARD',
@@ -53,5 +75,6 @@ export enum Page {
   AGENT = 'AGENT',
   CHAT = 'CHAT',
   GROUPS = 'GROUPS',
-  SETTINGS = 'SETTINGS'
+  SETTINGS = 'SETTINGS',
+  TRADE = 'TRADE'
 }
