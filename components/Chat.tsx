@@ -7,7 +7,7 @@ const Chat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
     const [inputText, setInputText] = useState('');
     const [activeAgent, setActiveAgent] = useState('ComputeDAO GPU');
-    const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+    const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(true);
     const [activeForm, setActiveForm] = useState<'buy' | 'sell' | 'deposit' | 'withdraw' | null>(null);
     const [formAmount, setFormAmount] = useState('');
     const [formAsset, setFormAsset] = useState('AIUSD');
@@ -15,6 +15,9 @@ const Chat: React.FC = () => {
     const [projectCardExpanded, setProjectCardExpanded] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
     const [isInputFocused, setIsInputFocused] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [selectedAssetName, setSelectedAssetName] = useState<string | null>(null);
+    const [showActionMenu, setShowActionMenu] = useState(false);
 
     useEffect(() => {
         const phrases = [
@@ -80,12 +83,14 @@ const Chat: React.FC = () => {
         if (pendingAgent) {
             sessionStorage.removeItem('pending_chat_agent');
             setActiveAgent(pendingAgent);
+            setSelectedAssetName(pendingAgent);
         }
 
         const handleSetAgent = (e: Event) => {
             const customEvent = e as CustomEvent;
             setMessages([]);
             setActiveAgent(customEvent.detail);
+            setSelectedAssetName(customEvent.detail);
         };
         window.addEventListener('loka-set-chat-agent', handleSetAgent);
 
@@ -196,6 +201,32 @@ const Chat: React.FC = () => {
         }, 800);
     };
 
+    const handleVoiceInput = () => {
+        if (isRecording) {
+            setIsRecording(false);
+            const voiceText = "Show me the top performing AI agents.";
+
+            const userMsg = { role: 'user', content: voiceText, timestamp: new Date().toLocaleTimeString() };
+            setMessages(prev => [...prev, userMsg]);
+
+            setTimeout(() => {
+                const aiMsg = {
+                    role: 'assistant',
+                    content: "Here are the top performing AI agents currently active in the marketplace, sorted by APY and historical completion rate.",
+                    type: 'action',
+                    actionCompleted: false,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                setMessages(prev => [...prev, aiMsg]);
+            }, 1000);
+
+            setInputText('');
+        } else {
+            setIsRecording(true);
+            setInputText(''); // Clear input
+        }
+    };
+
     const handleSend = () => {
         if (!inputText.trim()) return;
 
@@ -255,61 +286,87 @@ const Chat: React.FC = () => {
     };
 
     const cashFlowAssets = [
-        { title: 'ComputeDAO GPU', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&h=300&fit=crop', desc: 'Enterprise data center expansion funding with verified cash flows.' },
-        { title: 'Shopify Merchant', category: 'E-commerce', image: 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=400&h=300&fit=crop', desc: 'Working capital loan for top-tier Shopify sellers with low risk.' },
-        { title: 'Vercel SaaS Pool', category: 'Software', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop', desc: 'Recurring revenue financing for enterprise SaaS deployments.' },
-        { title: 'CloudScale SaaS', category: 'SaaS', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop', desc: 'Enterprise SaaS revenue financing with Vercel integrations.' },
-        { title: 'ArtBot AI', category: 'AI Tools', image: 'https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?w=400&h=300&fit=crop', desc: 'Generative AI content royalties and subscription backing.' },
-        { title: 'AWS Cloud Note', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=300&fit=crop', desc: 'Secure yield generated from backing AWS capacity reservations.' },
-        { title: 'Stripe Escrow Pool', category: 'DeFi Data', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop', desc: 'Automated revenue streaming and escrow financing.' },
-        { title: 'Cloudflare Capacity', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=400&h=300&fit=crop', desc: 'Global edge network capacity lending with 12% APY.' },
-        { title: 'Amazon FBA Sellers', category: 'E-commerce', image: 'https://images.unsplash.com/photo-1586880244406-556ebe35f282?w=400&h=300&fit=crop', desc: 'Inventory-backed financing for proven Amazon FBA vendors.' },
-        { title: 'DigitalOcean Tier', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop', desc: 'Financing for SME cloud deployments with high retention.' }
+        { title: 'AI Agent Marketplace', category: 'Platform', image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop', desc: 'Making it easier for AI agent markets to showcase themselves on a platform that facilitates exchanges.', progress: 21, apy: '18.5%', term: '30 Days', backers: 4 },
+        { title: 'Climapp.io Utility', category: 'Software', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop', desc: 'AI-enabled platform that helps you understand and manage your utility bills — all in one place.', progress: 2, apy: '14.2%', term: '90 Days', backers: 2 },
+        { title: 'Market Maker AI', category: 'Liquidity', image: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=400&h=300&fit=crop', desc: 'Provides deep liquidity for new pairs with optimized spread management.', progress: 95, apy: '22.0%', term: '120 Days', backers: 124 },
+        { title: 'MEV Searcher Agent', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=300&fit=crop', desc: 'Captures Maximal Extractable Value opportunities efficiently.', progress: 40, apy: '25.5%', term: '60 Days', backers: 18 },
+        { title: 'Copy Trading AI', category: 'Social Trading', image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop', desc: 'Mirrors trades of top-performing wallets automatically.', progress: 78, apy: '16.8%', term: '45 Days', backers: 56 },
+        { title: 'AWS Cloud Note', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Secure yield generated from backing AWS capacity reservations.', progress: 50, apy: '12.0%', term: '30 Days', backers: 23 },
+        { title: 'Stripe Escrow Pool', category: 'DeFi Data', image: 'https://images.unsplash.com/photo-1563986768609-322da13575f2?w=400&h=300&fit=crop', desc: 'Automated revenue streaming and escrow financing.', progress: 90, apy: '11.5%', term: '30 Days', backers: 89 },
+        { title: 'Cloudflare Capacity', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Global edge network capacity lending with 12% APY.', progress: 70, apy: '12.0%', term: '30 Days', backers: 42 },
+        { title: 'Amazon FBA Sellers', category: 'E-commerce', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop', desc: 'Inventory-backed financing for proven Amazon FBA vendors.', progress: 85, apy: '15.0%', term: '30 Days', backers: 115 },
+        { title: 'DigitalOcean Tier', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=300&fit=crop', desc: 'Financing for SME cloud deployments with high retention.', progress: 60, apy: '14.0%', term: '30 Days', backers: 37 }
+    ];
+
+    const chatSessions = [
+        { id: '1', title: 'Analyze ComputeDAO GPU', time: 'Today', active: true },
+        { id: '2', title: 'Buy AI Agent Marketplace', time: 'Today', active: false },
+        { id: '3', title: 'Market Maker AI yield query', time: 'Yesterday', active: false },
+        { id: '4', title: 'Compare pool performance', time: 'Yesterday', active: false },
+        { id: '5', title: 'MEV Searcher risk analysis', time: 'Mar 7', active: false },
+        { id: '6', title: 'Portfolio rebalance strategy', time: 'Mar 6', active: false },
+        { id: '7', title: 'Shopify Merchant Cluster X', time: 'Mar 5', active: false },
     ];
 
     return (
         <div className="flex flex-col h-full bg-[#fafafa] text-black overflow-hidden font-sans">
             <div className="flex flex-1 overflow-hidden relative">
-                {/* Left Sidebar - Chat History */}
-                <aside
-                    className={`border-r border-gray-100 flex flex-col bg-white transition-all duration-300 ease-in-out relative shrink-0 ${leftSidebarCollapsed ? 'w-0 opacity-0 -translate-x-full overflow-hidden border-0' : 'w-80 opacity-100 translate-x-0'
-                        }`}
-                >
-                    <div className="p-5 border-b border-gray-100 shrink-0 flex items-center justify-between">
-                        <div>
-                            <h2 className="text-lg font-black text-black tracking-tight">Assets</h2>
-                            <p className="text-[11px] text-gray-400 font-medium mt-1">Cash flow investment opportunities</p>
-                        </div>
+                {/* Chat History Sidebar */}
+                <div className={`h-full bg-[#fafafa] border-r border-gray-100 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${leftSidebarCollapsed ? 'w-0 overflow-hidden opacity-0' : 'w-64 opacity-100'}`}>
+                    <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                        <h2 className="text-xs font-black text-black tracking-widest uppercase">History</h2>
                         <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-groups'))}
-                            className="px-3.5 py-1.5 bg-gray-100 text-black text-[11px] font-bold rounded-lg hover:bg-gray-200 transition-all active:scale-95 flex items-center gap-1 border border-transparent hover:border-gray-300 shadow-sm"
+                            onClick={() => setLeftSidebarCollapsed(true)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-all"
                         >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                            Add
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
                         </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto w-full pt-2">
-                        {cashFlowAssets.map((asset) => (
-                            <div
-                                key={asset.title}
-                                onClick={() => setActiveAgent(asset.title)}
-                                className={`flex items-center gap-3 px-6 py-4 cursor-pointer transition-all ${activeAgent === asset.title ? 'bg-green-50/50 border-r-2 border-green-500' : 'hover:bg-gray-50 bg-white border-r-2 border-transparent'}`}
+                    <button
+                        onClick={() => { setMessages([]); setLeftSidebarCollapsed(true); }}
+                        className="mx-3 mb-3 px-3 py-2.5 bg-black text-white rounded-xl text-[11px] font-bold tracking-wide hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        New Chat
+                    </button>
+                    <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
+                        {chatSessions.map((session) => (
+                            <button
+                                key={session.id}
+                                onClick={() => {
+                                    setMessages([
+                                        { role: 'user', content: session.title, timestamp: new Date().toLocaleTimeString() },
+                                    ]);
+                                    handleProjectClick(session.title.replace(/^(Analyze |Buy |Compare |View )/, ''));
+                                    setLeftSidebarCollapsed(true);
+                                }}
+                                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition-all group flex items-start gap-2.5 ${session.active
+                                    ? 'bg-white shadow-sm border border-gray-100 font-bold text-black'
+                                    : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-black font-medium'
+                                    }`}
                             >
-                                <div className={`w-10 h-10 rounded-xl overflow-hidden shadow-sm shrink-0 border border-gray-100`}>
-                                    <img src={asset.image} alt={asset.title} className="w-full h-full object-cover" />
-                                </div>
+                                <svg className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${session.active ? 'text-green-500' : 'text-gray-300 group-hover:text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-sm text-black truncate">{asset.title}</h3>
-                                    <p className="text-[10px] text-gray-400 font-medium truncate">{asset.desc}</p>
+                                    <p className="truncate leading-tight">{session.title}</p>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">{session.time}</p>
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
-                </aside>
-
+                </div>
 
                 {/* Main Chat Area */}
                 <main className="flex-1 flex flex-col relative bg-white border-l border-gray-100">
+                    {/* Sidebar Toggle Button */}
+                    {leftSidebarCollapsed && (
+                        <button
+                            onClick={() => setLeftSidebarCollapsed(false)}
+                            className="absolute top-4 left-4 z-30 w-9 h-9 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-400 hover:text-black hover:border-gray-300 hover:shadow-md transition-all"
+                            title="Show chat history"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
+                        </button>
+                    )}
                     <div className="flex-1 overflow-y-auto w-full">
                         {(() => {
                             const selectedCurrent = cashFlowAssets.find(a => a.title === activeAgent) || cashFlowAssets[0];
@@ -389,7 +446,7 @@ const Chat: React.FC = () => {
                                                         <div className="bg-[#fcfbf9] p-8 rounded-[2rem] border-l-4 border-green-500 italic text-sm text-gray-600 shadow-sm">"Purchasing 8 additional H100 GPUs and pre-paying data center rack fees in Tokyo to expand computing rental capacity."</div>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                        {['https://images.unsplash.com/photo-1558494949-ef010cbdcc51?q=80&w=800', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=800', 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800'].map((url, i) => (
+                                                        {['https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=800', 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=800', 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=800'].map((url, i) => (
                                                             <div key={i} className="aspect-[1.6/1] bg-gray-100 rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm group"><img src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /></div>
                                                         ))}
                                                     </div>
@@ -625,25 +682,53 @@ const Chat: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="flex items-center w-full relative">
-                                                {!inputText && !isInputFocused && (
+                                                {!inputText && !isInputFocused && !isRecording && (
                                                     <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
                                                         <span className="text-gray-400 text-base font-medium">{typedPlaceholder}</span>
                                                         <span className="inline-block w-[2px] h-5 bg-green-400 ml-[1px] animate-[cursorBlink_1s_steps(2)_infinite]" />
                                                     </div>
                                                 )}
+                                                {isRecording && (
+                                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-3">
+                                                        <span className="text-red-500 text-base font-bold animate-pulse">Listening...</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
+                                                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
+                                                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '400ms' }} />
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <input
                                                     type="text"
-                                                    value={inputText}
+                                                    value={isRecording ? "" : inputText}
                                                     onChange={(e) => setInputText(e.target.value)}
                                                     onFocus={() => setIsInputFocused(true)}
                                                     onBlur={() => setIsInputFocused(false)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                                    onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSend()}
                                                     placeholder=""
-                                                    className="flex-1 bg-transparent border-none outline-none text-black text-base px-6 py-6 font-medium relative z-10"
+                                                    disabled={isRecording}
+                                                    className={`flex-1 bg-transparent border-none outline-none text-black text-base px-6 py-6 font-medium relative z-10 ${isRecording ? 'opacity-0' : ''} transition-opacity`}
                                                 />
                                                 <button
+                                                    onClick={handleVoiceInput}
+                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all mr-2 shrink-0 relative ${isRecording
+                                                        ? 'bg-red-50 text-red-500 ring-2 ring-red-500/50 shadow-lg shadow-red-500/20 scale-105'
+                                                        : 'text-gray-400 hover:text-black hover:bg-gray-50'
+                                                        }`}
+                                                    title={isRecording ? "Stop Recording" : "Voice Input"}
+                                                >
+                                                    {isRecording && (
+                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                                                    )}
+                                                    {isRecording && (
+                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+                                                    )}
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                                </button>
+                                                <button
                                                     onClick={handleSend}
-                                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white'}`}
+                                                    disabled={isRecording}
+                                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white'} ${isRecording ? 'opacity-50 cursor-not-allowed scale-95 hover:bg-green-100 hover:text-green-600' : ''}`}
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                                                 </button>
@@ -651,15 +736,86 @@ const Chat: React.FC = () => {
                                         )}
 
                                         {/* Quick Actions — always visible */}
-                                        <div className={`flex gap-3 px-5 pb-2 pt-2 border-t transition-colors duration-500 ${activeForm || isInputFocused ? 'border-gray-100' : 'border-transparent'}`}>
-                                            <button onClick={() => { setActiveForm('buy'); setFormAmount(''); }} className={`px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 hover:scale-105 active:scale-95 ${activeForm === 'buy' ? 'bg-green-50 border-green-300 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm'}`}>
-                                                <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                                Buy Asset
-                                            </button>
-                                            <button onClick={() => { setActiveForm('sell'); setFormAmount(''); }} className={`px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 hover:scale-105 active:scale-95 ${activeForm === 'sell' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm'}`}>
-                                                <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
-                                                Sell Asset
-                                            </button>
+                                        <div className={`flex gap-3 px-5 pb-2 pt-2 border-t transition-colors duration-500 items-center ${activeForm || isInputFocused ? 'border-gray-100' : 'border-transparent'}`}>
+                                            {/* @Asset Button */}
+                                            {(() => {
+                                                const selectedAsset = selectedAssetName ? cashFlowAssets.find(a => a.title === selectedAssetName) : null;
+                                                return selectedAsset ? (
+                                                    <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-300 rounded-full text-[11px] font-bold text-green-700">
+                                                        <button
+                                                            onClick={() => handleProjectClick(selectedAsset.title)}
+                                                            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                                                        >
+                                                            <img src={selectedAsset.image} alt={selectedAsset.title} className="w-5 h-5 rounded-full object-cover" />
+                                                            <span className="max-w-[120px] truncate">@{selectedAsset.title}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedAssetName(null); }}
+                                                            className="ml-0.5 text-green-400 hover:text-red-500 transition-colors flex items-center"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
+                                                        className="px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95 bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm"
+                                                    >
+                                                        <span className="text-base leading-none">@</span>
+                                                        Asset
+                                                    </button>
+                                                );
+                                            })()}
+
+                                            {/* + Action Menu Button */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setShowActionMenu(!showActionMenu)}
+                                                    className={`w-9 h-9 border rounded-full text-sm font-bold transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${showActionMenu
+                                                        ? 'bg-black border-black text-white'
+                                                        : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm'
+                                                        }`}
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                </button>
+                                                {showActionMenu && (
+                                                    <div className="absolute bottom-full left-0 mb-3 w-56 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12)] p-2 z-[100] animate-fadeIn">
+                                                        <div className="absolute bottom-[-6px] left-4 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
+                                                        {!selectedAssetName && (
+                                                            <p className="text-[10px] text-amber-600 font-bold px-3 py-2 bg-amber-50 rounded-xl mb-1.5 flex items-center gap-1.5">
+                                                                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" /></svg>
+                                                                Please select an asset first
+                                                            </p>
+                                                        )}
+                                                        <button
+                                                            onClick={() => { if (selectedAssetName) { setActiveForm('buy'); setFormAmount(''); setShowActionMenu(false); } }}
+                                                            disabled={!selectedAssetName}
+                                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${selectedAssetName
+                                                                ? 'text-black hover:bg-green-50 cursor-pointer'
+                                                                : 'text-gray-300 cursor-not-allowed'
+                                                                }`}
+                                                        >
+                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                                                <svg className={`w-3.5 h-3.5 ${selectedAssetName ? 'text-green-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                            </div>
+                                                            Buy Asset
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { if (selectedAssetName) { setActiveForm('sell'); setFormAmount(''); setShowActionMenu(false); } }}
+                                                            disabled={!selectedAssetName}
+                                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${selectedAssetName
+                                                                ? 'text-black hover:bg-red-50 cursor-pointer'
+                                                                : 'text-gray-300 cursor-not-allowed'
+                                                                }`}
+                                                        >
+                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-red-100' : 'bg-gray-100'}`}>
+                                                                <svg className={`w-3.5 h-3.5 ${selectedAssetName ? 'text-red-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                            </div>
+                                                            Sell Asset
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             <div className="group relative ml-2 flex items-center h-full">
                                                 <div className="w-9 h-9 bg-violet-50 border border-violet-100 rounded-full cursor-help hover:bg-violet-100 transition-all flex items-center justify-center shadow-sm">
@@ -707,568 +863,70 @@ const Chat: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Asset Brief Micro-dashboard */}
-                                    <div className="w-full max-w-5xl mx-auto mt-2 mb-8 bg-white border border-gray-100 rounded-[2rem] p-6 shadow-[0_5px_40px_-15px_rgba(0,0,0,0.05)] transition-all">
-                                        <div className="flex flex-col lg:flex-row gap-8">
-                                            {/* Left Side: Basic Info & Core Metrics */}
-                                            <div className="flex-1 flex flex-col justify-between">
-                                                <div className="mb-6 lg:mb-0 flex gap-4">
-                                                    <img src={selectedCurrent.image} className="w-12 h-12 rounded-full object-cover border border-gray-100 shrink-0 mt-1" alt={selectedCurrent.title} />
-                                                    <div>
-                                                        <h3 className="text-2xl font-bold text-black mb-2">{selectedCurrent.title}</h3>
-                                                        <p className="text-xs text-gray-500 font-medium leading-relaxed pr-8">{selectedCurrent.desc}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-wrap gap-8 items-end pt-4 border-t border-gray-50 lg:border-none lg:pt-0">
-                                                    <div>
-                                                        <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-1">Target Yield</p>
-                                                        <p className="text-lg font-serif italic text-black font-bold">15.5% <span className="text-[10px] text-gray-400 not-italic font-sans">APY</span></p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-1">Target Raise</p>
-                                                        <p className="text-lg font-serif italic text-black font-bold">$500,000</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-1">Duration</p>
-                                                        <p className="text-base font-bold text-black">60 Days</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Right Side: Detailed Status Card (from mockup) */}
-                                            <div className="w-full lg:w-[460px] bg-gray-50/80 rounded-3xl p-6 shrink-0 border border-gray-100/80">
-                                                {progress >= 100 ? (
-                                                    <div className="space-y-6">
-                                                        <div className="flex justify-between items-end">
-                                                            <div>
-                                                                <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-2">Campaign Progress</p>
-                                                                <p className="text-3xl font-serif italic text-black font-bold">$500,000</p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-2">Goal</p>
-                                                                <p className="text-sm font-bold text-black font-serif italic">$500k</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-2.5">
-                                                            <div className="w-full h-3 bg-black rounded-full" />
-                                                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                                                <span className="text-black">100% funded</span>
-                                                                <span className="text-green-500 tracking-wide">Successfully Funded</span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="flex -space-x-1.5">
-                                                                <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-gray-50" />
-                                                                <div className="w-6 h-6 rounded-full bg-gray-300 border-2 border-gray-50" />
-                                                                <div className="w-6 h-6 rounded-full bg-gray-400 border-2 border-gray-50" />
-                                                                <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center border-2 border-gray-50 z-10">
-                                                                    <span className="text-[8px] font-bold text-white">+124</span>
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-[10px] font-bold text-gray-400 ml-1">Backers pledged</span>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-1 pt-2">
-                                                            <div className="bg-green-50 rounded-2xl p-5 flex items-center justify-between border border-green-100">
-                                                                <div>
-                                                                    <h4 className="font-bold text-black text-sm mb-1">Campaign Successful</h4>
-                                                                    <p className="text-[10px] text-gray-600 font-medium leading-tight pr-4">This asset has been fully funded and is now generating yield.</p>
-                                                                </div>
-                                                                <span className="text-3xl block drop-shadow-sm shrink-0">🎉</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-6">
-                                                        <div className="flex justify-between items-end">
-                                                            <div>
-                                                                <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-2">Campaign Progress</p>
-                                                                <p className="text-3xl font-serif italic text-black font-bold">${((500000 * progress) / 100).toLocaleString()}</p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-2">Goal</p>
-                                                                <p className="text-sm font-bold text-black font-serif italic">$500k</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-2.5">
-                                                            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                                                                <div className="h-full bg-black rounded-full" style={{ width: `${progress}%` }} />
-                                                            </div>
-                                                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                                                <span className="text-black">{progress}% funded</span>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                                                    <span className="text-black tracking-wide">Fundraising</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="flex -space-x-1.5">
-                                                                <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-gray-50" />
-                                                                <div className="w-6 h-6 rounded-full bg-gray-300 border-2 border-gray-50" />
-                                                                <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center border-2 border-gray-50 z-10">
-                                                                    <span className="text-[8px] font-bold text-white">+86</span>
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-[10px] font-bold text-gray-400 ml-1">Backers pledged</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                    {/* Cash Flow Assets Slider */}
+                                    <div className="w-full max-w-5xl mx-auto mt-6">
+                                        <div className="flex items-center justify-between mb-4 px-2">
+                                            <h3 className="text-sm font-black text-black tracking-widest uppercase">Funding Projects</h3>
+                                            <button
+                                                onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
+                                                className="text-[11px] font-bold text-gray-500 hover:text-black hover:underline underline-offset-4 decoration-2 transition-all flex items-center gap-1"
+                                            >
+                                                View All <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                                            </button>
                                         </div>
-                                    </div>
-
-
-                                    <div className="w-full max-w-5xl mx-auto mt-10">
-                                        <div className="flex items-center justify-between mb-8 px-4">
-                                            <div className="flex gap-8 border-b border-gray-100 flex-1 mr-8">
-                                                {['Background', 'Financial Health', 'Rules'].map(tab => (
-                                                    <button
-                                                        key={tab}
-                                                        onClick={() => setActiveAssetTab(tab as any)}
-                                                        className={`text-sm font-black tracking-widest uppercase pb-4 -mb-px transition-colors border-b-[3px] ${activeAssetTab === tab ? 'border-green-500 text-black' : 'border-transparent text-gray-300 hover:text-black hover:border-black/20'}`}
+                                        <div className="w-full overflow-x-auto pb-6 pt-4 -mt-4 cursor-grab active:cursor-grabbing selection:bg-transparent [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                            <div className="flex w-max gap-5 px-2">
+                                                {cashFlowAssets.slice(0, 5).map((asset, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => {
+                                                            setSelectedAssetName(asset.title);
+                                                            window.dispatchEvent(new CustomEvent('loka-nav-market'));
+                                                            setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: asset.title })), 100);
+                                                        }}
+                                                        className={`w-72 bg-white rounded-[2rem] border border-gray-100 p-5 shrink-0 shadow-sm hover:border-black/10 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all group flex flex-col gap-4 cursor-pointer`}
                                                     >
-                                                        {tab}
-                                                    </button>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3 w-full">
+                                                                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
+                                                                    <img src={asset.image} alt={asset.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                                </div>
+                                                                <div className="flex flex-col flex-1 min-w-0 pr-2">
+                                                                    <h4 className="font-black text-black text-sm leading-tight truncate group-hover:text-green-600 transition-colors">{asset.title}</h4>
+                                                                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 truncate">{asset.category}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="min-h-[2.5rem]">
+                                                            <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-2">{asset.desc}</p>
+                                                        </div>
+
+                                                        <div className="space-y-1.5 mt-auto">
+                                                            <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
+                                                                <span className="text-gray-400">Progress</span>
+                                                                <div className="flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer">
+                                                                    <span className="text-black">{asset.progress || 75}%</span>
+                                                                    <span className="text-gray-400 font-bold normal-case text-[10px]">({asset.backers || 0} backers)</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-green-500 rounded-full" style={{ width: `${asset.progress || 75}%` }}></div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
+                                                            <div>
+                                                                <p className="text-[9px] text-gray-400 font-black tracking-widest uppercase mb-0.5">Target Yield</p>
+                                                                <p className="text-base font-black text-black">{asset.apy || '15.5%'} <span className="text-[9px] text-gray-400 font-bold italic">APY</span></p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[9px] text-gray-400 font-black tracking-widest uppercase mb-0.5">Lock Term</p>
+                                                                <p className="text-sm font-black text-black mt-1">{asset.term || '60 Days'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 ))}
-                                            </div>
-                                            <div className="flex gap-3 shrink-0">
-                                                <span className="px-3 py-1 bg-black text-white text-[10px] font-bold rounded-full">Verified by Loka</span>
-                                                <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-full">Stripe API Verified</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="w-full transition-all">
-                                            {/* Content Grid */}
-                                            <div className="flex flex-col gap-8 pt-2">
-                                                {/* Details */}
-
-                                                {activeAssetTab === 'Background' && (
-                                                    <div className="w-full space-y-8 animate-fadeIn pb-10">
-
-                                                        {/* Issuer Profile & Socials */}
-                                                        <div className="flex flex-col lg:flex-row items-center justify-between bg-gray-50/40 p-4 rounded-2xl border border-gray-100/50 gap-4">
-                                                            <div className="flex items-center gap-6 w-full">
-                                                                <div className="w-12 h-12 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center text-lg font-bold text-black shrink-0">
-                                                                    {selectedCurrent.title.charAt(0)}
-                                                                </div>
-                                                                <div className="flex flex-col gap-2">
-                                                                    <div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <h3 className="font-bold text-black text-lg">{selectedCurrent.title} LLC</h3>
-                                                                            <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                                                                                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
-                                                                            </div>
-                                                                        </div>
-                                                                        <p className="text-[11px] text-gray-400 font-medium mt-1">Singapore (ACRA ID: 20230812X) • Founded 2023</p>
-                                                                    </div>
-
-                                                                    {/* Social Links moved here */}
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {[
-                                                                            {
-                                                                                label: 'Twitter',
-                                                                                icon: <svg className="w-3.5 h-3.5 text-[#1DA1F2]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" /></svg>
-                                                                            },
-                                                                            {
-                                                                                label: 'LinkedIn',
-                                                                                icon: <svg className="w-3.5 h-3.5 text-[#0077b5]" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451c.979 0 1.778-.773 1.778-1.729V1.729C24 .774 23.204 0 22.225 0z" /></svg>
-                                                                            },
-                                                                            {
-                                                                                label: 'GitHub',
-                                                                                icon: <svg className="w-3.5 h-3.5 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.43.372.82 1.102.82 2.222 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
-                                                                            }
-                                                                        ].map((social, i) => (
-                                                                            <div key={i} className="flex items-center gap-1.5 bg-white border border-gray-100 px-3 py-1.5 rounded-xl shadow-sm hover:shadow-md hover:border-black/5 transition-all cursor-pointer group">
-                                                                                {social.icon}
-                                                                                <span className="text-[10px] font-bold text-gray-500 group-hover:text-black">{social.label}</span>
-                                                                                <div className="w-3 h-3 bg-green-50 rounded-full flex items-center justify-center">
-                                                                                    <svg className="w-1.5 h-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={5} d="M5 13l4 4L19 7" /></svg>
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            {/* Right Side Stats from Screenshot */}
-                                                            <div className="flex bg-black rounded-3xl p-5 gap-8 shrink-0 shadow-lg">
-                                                                <div>
-                                                                    <p className="text-xl font-serif italic font-bold text-white leading-none">$1.5M</p>
-                                                                    <p className="text-[8px] font-bold text-gray-500 tracking-widest mt-2 uppercase">Total Funding Raised</p>
-                                                                </div>
-                                                                <div className="w-px h-full bg-white/10" />
-                                                                <div>
-                                                                    <p className="text-xl font-serif italic font-bold text-green-500 leading-none">100% ↑</p>
-                                                                    <p className="text-[8px] font-bold text-gray-500 tracking-widest mt-2 uppercase">On-time Repayment</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Narrative Section */}
-                                                        <div className="space-y-6">
-                                                            <div className="flex items-center gap-4">
-                                                                <h3 className="text-base font-black text-black">Business Narrative</h3>
-                                                                <div className="h-px flex-1 bg-gray-50" />
-                                                            </div>
-                                                            <p className="text-sm text-gray-500 leading-loose font-medium max-w-4xl">
-                                                                We are operating over 500 GPUs in Singapore. This funding batch will be used to prepay electricity and bandwidth expansion for our next month of generative AI rendering contracts. Over the past 12 months, we have maintained a 99.9% uptime and generated consistent cash flows from our enterprise clients.
-                                                            </p>
-                                                            <div className="bg-[#fcfbf9] p-5 rounded-xl border-l-4 border-green-500 italic text-sm text-gray-600 shadow-sm">
-                                                                "Purchasing 8 additional H100 GPUs and pre-paying data center rack fees in Tokyo to expand computing rental capacity."
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Image Gallery from Screenshot */}
-                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
-                                                                <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc51?q=80&w=800" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                                                            </div>
-                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
-                                                                <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=800" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                                                            </div>
-                                                            <div className="aspect-[1.6/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
-                                                                <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Leadership Section from Screenshot */}
-                                                        <div className="space-y-5">
-                                                            <div className="flex items-center gap-4">
-                                                                <h3 className="text-base font-black text-black">Leadership & Backing</h3>
-                                                                <div className="h-px flex-1 bg-gray-50" />
-                                                            </div>
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                {/* CEO */}
-                                                                <div className="bg-white border border-gray-100 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-all">
-                                                                    <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center font-serif text-xl text-gray-300 shrink-0">A</div>
-                                                                    <div className="space-y-1">
-                                                                        <p className="font-black text-black text-base">Alex Chen</p>
-                                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chief Executive Officer</p>
-                                                                        <div className="pt-2">
-                                                                            <span className="text-[11px] text-blue-600 font-black bg-blue-50 px-2.5 py-1 rounded-lg">Ex-AWS Principal Architect</span>
-                                                                        </div>
-                                                                        <p className="text-xs text-gray-500 mt-4 font-medium leading-relaxed">10+ years scaling global cloud infrastructure. Led GPU cluster deployments for Fortune 500 AI divisions.</p>
-                                                                    </div>
-                                                                </div>
-                                                                {/* CTO */}
-                                                                <div className="bg-white border border-gray-100 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-all">
-                                                                    <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center font-serif text-xl text-gray-300 shrink-0">S</div>
-                                                                    <div className="space-y-1">
-                                                                        <p className="font-black text-black text-base">Sarah Li</p>
-                                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chief Technology Officer</p>
-                                                                        <div className="pt-2">
-                                                                            <span className="text-[11px] text-blue-600 font-black bg-blue-50 px-2.5 py-1 rounded-lg">Ex-Ethereum Foundation</span>
-                                                                        </div>
-                                                                        <p className="text-xs text-gray-500 mt-4 font-medium leading-relaxed">Expert in secure protocol & smart contract auditing. Specializes in DePIN hardware attestation layers.</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                    </div>
-                                                )}
-
-                                                {activeAssetTab === 'Financial Health' && (
-                                                    <div className="w-full space-y-8 animate-fadeIn">
-                                                        {/* 1. Live Monitor */}
-                                                        <section className="space-y-6">
-                                                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                                                <div className="flex items-center gap-3">
-                                                                    <h3 className="text-base font-bold text-black">Stripe Connect API Monitor</h3>
-                                                                    <div className="bg-blue-50 text-blue-600 text-[9px] font-bold px-3 py-1 rounded-full italic">Read-Only Access</div>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#00E676] animate-pulse" />
-                                                                    <span className="text-[10px] font-bold text-[#00E676]">Oracle Online</span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* High Level Metrics */}
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                {[
-                                                                    { label: '30d Gross Flow', value: `$1,245,600`, sub: 'Up 11.2% MoM', trend: 'up' },
-                                                                    { label: 'Coverage Ratio', value: '2.49x', sub: 'Calculated at Maturity', trend: 'safe' },
-                                                                    { label: 'MRR', value: '$42,000', sub: 'Enterprise Focus', trend: 'up' }
-                                                                ].map((stat, i) => (
-                                                                    <div key={i} className="p-6 bg-white glass rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                                                                        <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-3">{stat.label}</p>
-                                                                        <p className="text-3xl font-serif italic text-black mb-1">{stat.value}</p>
-                                                                        <p className="text-[10px] font-bold text-[#00E676]  tracking-tighter flex items-center gap-1">
-                                                                            {stat.trend === 'up' && '▲'} {stat.sub}
-                                                                        </p>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-
-                                                            {/* Detailed Analysis Section */}
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                {/* Revenue History */}
-                                                                <div className="p-6 bg-white glass rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                                                                    <div className="flex justify-between items-center">
-                                                                        <p className="text-sm font-bold text-black">Revenue Timeline (6mo)</p>
-                                                                        <p className="text-[10px] font-bold text-gray-400">Verifiably Accurate</p>
-                                                                    </div>
-                                                                    <div className="h-[200px] w-full">
-                                                                        <ResponsiveContainer width="100%" height="100%">
-                                                                            <BarChart data={mockMonthlyRevenue}>
-                                                                                <CartesianGrid strokeDasharray="1 6" vertical={false} stroke="#f0f0f0" />
-                                                                                <XAxis
-                                                                                    dataKey="month"
-                                                                                    axisLine={false}
-                                                                                    tickLine={false}
-                                                                                    tick={{ fontSize: 9, fontWeight: 700, fill: '#999' }}
-                                                                                    dy={8}
-                                                                                />
-                                                                                <YAxis hide />
-                                                                                <Tooltip
-                                                                                    cursor={{ fill: '#f9f9f9' }}
-                                                                                    content={({ payload }) => payload?.[0] ? (
-                                                                                        <div className="bg-black text-white p-3 rounded-2xl text-[10px] font-black shadow-2xl">
-                                                                                            ${payload[0].value?.toLocaleString()}
-                                                                                        </div>
-                                                                                    ) : null}
-                                                                                />
-                                                                                <Bar dataKey="amount" fill="#000" radius={[4, 4, 4, 4]} barSize={32} />
-                                                                            </BarChart>
-                                                                        </ResponsiveContainer>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Concentration Analysis */}
-                                                                <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 space-y-4">
-                                                                    <p className="text-sm font-bold text-black">Customer Concentration Analysis</p>
-                                                                    <div className="space-y-4">
-                                                                        {[
-                                                                            { label: 'Top 1 Customer', value: '15%', color: 'bg-black' },
-                                                                            { label: 'Top 5 Customers', value: '42%', color: 'bg-gray-400' },
-                                                                            { label: 'Long-Tail Borrowers', value: '43%', color: 'bg-gray-200' }
-                                                                        ].map((item, i) => (
-                                                                            <div key={i} className="space-y-2">
-                                                                                <div className="flex justify-between text-[11px] font-bold">
-                                                                                    <span className="text-gray-400">{item.label}</span>
-                                                                                    <span className="text-black">{item.value}</span>
-                                                                                </div>
-                                                                                <div className="w-full h-1.5 bg-white rounded-full overflow-hidden border border-gray-100/50">
-                                                                                    <div className={`h-full ${item.color}`} style={{ width: item.value }} />
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                    <p className="text-[10px] text-gray-400 italic leading-relaxed">Diversified customer base ensures that if a single client churns, the underlying asset revenue remains robust enough to cover interest payments.</p>
-                                                                </div>
-                                                            </div>
-                                                        </section>
-
-                                                        {/* AI Risk Report */}
-                                                        <section className="space-y-4">
-                                                            <div className="flex items-center gap-4">
-                                                                <h3 className="text-base font-bold text-black">Loka AI Risk scoring</h3>
-                                                                <div className="h-px flex-1 bg-gray-100" />
-                                                            </div>
-                                                            <div className="p-8 bg-purple-50 rounded-[40px] border-2 border-purple-100/50 relative overflow-hidden group">
-                                                                <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-purple-200/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
-                                                                <div className="relative z-10 space-y-6">
-                                                                    <div className="flex justify-between items-start">
-                                                                        <div className="space-y-1">
-                                                                            <div className="p-2 bg-purple-600 rounded-lg w-fit text-white text-xs">Loka AI v2.4</div>
-                                                                            <p className="text-[10px] font-bold text-purple-400 mt-2">Analysis Engine: Predictive Default Model</p>
-                                                                        </div>
-                                                                        <div className="text-right">
-                                                                            <div className="text-5xl font-serif italic text-purple-600">AAA</div>
-                                                                            <p className="text-xs font-bold text-purple-400">98/100 Confidence</p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                        <div className="space-y-3">
-                                                                            <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-1">Key Strengths</p>
-                                                                            <ul className="space-y-2">
-                                                                                {[
-                                                                                    'Market Fit: AI computing demand is in a phase of exponential growth.',
-                                                                                    'Cash Flow Quality: Stripe lock-box account with mandatory repayment mechanism.',
-                                                                                    'Strong Collateral: Physical GPU lien + Accounts receivable security interest.'
-                                                                                ].map((point, i) => (
-                                                                                    <li key={i} className="flex items-center gap-3 text-[11px] text-purple-800 font-medium italic">
-                                                                                        <span className="text-[#00E676] text-lg">✓</span> {point}
-                                                                                    </li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        </div>
-                                                                        <div className="space-y-3">
-                                                                            <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-1">Risk Observations</p>
-                                                                            <ul className="space-y-2">
-                                                                                {[
-                                                                                    'Geopolitics: Data center electricity rates in Tokyo impacted by energy price volatility.',
-                                                                                    'Obsolescence: Risk of H100 computing power facing depreciation after 24 months.'
-                                                                                ].map((point, i) => (
-                                                                                    <li key={i} className="flex items-center gap-3 text-[11px] text-purple-800 font-medium italic">
-                                                                                        <span className="text-orange-400 text-lg">⚠️</span> {point}
-                                                                                    </li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </section>
-                                                    </div>
-                                                )}
-
-                                                {activeAssetTab === 'Rules' && (
-                                                    <div className="w-full space-y-12 animate-fadeIn">
-                                                        {/* 1. Fundraising Mechanics */}
-                                                        <section className="space-y-6">
-                                                            <h3 className="text-base font-bold text-black">Campaign Rules & Mechanics</h3>
-                                                            <div className="p-8 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-8">
-                                                                {/* Visual Timeline */}
-                                                                <div className="relative pt-6 pb-2">
-                                                                    {/* Background Bar */}
-                                                                    <div className="absolute top-8 left-[16%] right-[16%] h-1 bg-gray-100 rounded-full" />
-                                                                    {/* Progress Bar */}
-                                                                    <div className="absolute top-8 left-[16%] h-1 bg-[#00E676] transition-all duration-1000 rounded-full" style={{ width: `${progress * 0.68}%` }} />
-
-                                                                    <div className="relative flex justify-between z-10 w-full">
-                                                                        {/* Step 1 */}
-                                                                        <div className="flex flex-col items-center w-1/3 text-center space-y-3">
-                                                                            <div className="w-5 h-5 rounded-full bg-white border-4 border-gray-200 shadow-sm relative">
-                                                                                <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black  tracking-widest text-gray-400 whitespace-nowrap">Start</span>
-                                                                            </div>
-                                                                            <div>
-                                                                                <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">Fundraising</h4>
-                                                                                <p className="text-[10px] text-gray-500 font-medium px-2 leading-relaxed">Freely deposit or withdraw USDC.</p>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {/* Step 2 */}
-                                                                        <div className="flex flex-col items-center w-1/3 text-center space-y-3">
-                                                                            <div className="w-5 h-5 rounded-full bg-white border-4 border-black shadow-sm relative">
-                                                                                <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black  tracking-widest text-black whitespace-nowrap">$250k</span>
-                                                                            </div>
-                                                                            <div>
-                                                                                <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">Success Point</h4>
-                                                                                <p className="text-[10px] text-gray-500 font-medium px-2 leading-relaxed">Goal met. Campaign secures funding.</p>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {/* Step 3 */}
-                                                                        <div className="flex flex-col items-center w-1/3 text-center space-y-3">
-                                                                            <div className="w-5 h-5 rounded-full bg-white border-4 border-gray-200 shadow-sm relative">
-                                                                                <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[9px] font-black  tracking-widest text-gray-400 whitespace-nowrap">$500k</span>
-                                                                            </div>
-                                                                            <div>
-                                                                                <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">Lock & Deploy</h4>
-                                                                                <p className="text-[10px] text-gray-500 font-medium px-2 leading-relaxed">Pool locked immediately. Yield begins.</p>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Conditions */}
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6 border-t border-gray-100">
-                                                                    <div className="flex gap-4 p-5 bg-green-50/50 rounded-2xl border border-green-100/50">
-                                                                        <div className="text-xl" style={{ marginTop: '2px' }}>💸</div>
-                                                                        <div>
-                                                                            <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">If Campaign Succeeds</h4>
-                                                                            <p className="text-[10px] text-gray-500 leading-relaxed font-medium">Funds are locked. Guaranteed payout rules execute to distribute principal and yield direct to wallet.</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex gap-4 p-5 bg-red-50/40 rounded-2xl border border-red-100/50">
-                                                                        <div className="text-xl" style={{ marginTop: '2px' }}>↩️</div>
-                                                                        <div>
-                                                                            <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">If Campaign Fails</h4>
-                                                                            <p className="text-[10px] text-gray-500 leading-relaxed font-medium">Should the soft cap be missed before deadline, smart contracts auto-refund 100% of participants' capital safety.</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </section>
-
-                                                        {/* 2. Asset Structure Flow */}
-                                                        <section className="space-y-8">
-                                                            <h3 className="text-base font-bold text-black">Fund Flow & Asset Structure</h3>
-                                                            <div className="p-10 bg-gray-50 rounded-[32px] border border-gray-100 flex flex-wrap items-center justify-center gap-x-4 gap-y-8 text-center relative overflow-hidden">
-                                                                <div className="absolute top-0 right-0 p-4">
-                                                                    <div className="px-2 py-0.5 bg-white/80 backdrop-blur rounded text-[9px] font-bold text-gray-400 border border-gray-100">Immutable Smart Contract</div>
-                                                                </div>
-                                                                {[
-                                                                    'Investors', 'Loka SPV', 'Borrower', 'Purchase H100', 'Revenue Gen', 'Stripe Escrow', 'Auto-Repay'
-                                                                ].map((step, i) => (
-                                                                    <React.Fragment key={i}>
-                                                                        <div className="relative group">
-                                                                            <div className={`px-4 py-3 rounded-2xl border shadow-sm transition-all duration-500 flex items-center justify-center min-w-[100px] ${i === 6 ? 'bg-black text-white border-black' : 'bg-white text-black border-gray-100 group-hover:border-black'
-                                                                                }`}>
-                                                                                <p className="text-[9px] font-black  tracking-widest">{step}</p>
-                                                                            </div>
-                                                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap font-bold text-gray-300 italic">Step 0{i + 1}</div>
-                                                                        </div>
-                                                                        {i < 6 && (
-                                                                            <div className="text-gray-300 font-light text-xl animate-pulse">→</div>
-                                                                        )}
-                                                                    </React.Fragment>
-                                                                ))}
-                                                            </div>
-                                                        </section>
-
-                                                        {/* 3. Key Rights & Protections */}
-                                                        <section className="space-y-6">
-                                                            <h3 className="text-base font-bold text-black">Key Rights & Protections</h3>
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                {[
-                                                                    {
-                                                                        icon: '🥇',
-                                                                        title: 'Seniority',
-                                                                        badge: 'Senior Secured',
-                                                                        plainEnglish: 'In the event of liquidation, you are paid back first—before the company’s shareholders.'
-                                                                    },
-                                                                    {
-                                                                        icon: '🛡️',
-                                                                        title: 'Structure',
-                                                                        badge: 'Bankruptcy Remote',
-                                                                        plainEnglish: 'Assets are held in a secure, independent SPV. Even if the parent company fails, your investment remains out of reach for their creditors.'
-                                                                    },
-                                                                    {
-                                                                        icon: '🧱',
-                                                                        title: 'Collateral Ratio',
-                                                                        badge: '120%-150%',
-                                                                        plainEnglish: 'Every $100 lent is backed by up to $150 in expected revenue. Even if earnings drop by 30%, your principal remains secure.'
-                                                                    },
-                                                                    {
-                                                                        icon: '🤖',
-                                                                        title: 'Smart Escrow',
-                                                                        badge: 'Code Enforced',
-                                                                        plainEnglish: 'Revenue is intercepted by SDK and flows directly into on-chain contracts. It is tamper-proof and automatically distributed at maturity.'
-                                                                    }
-                                                                ].map((item, i) => (
-                                                                    <div key={i} className="group relative bg-white border border-gray-100 p-6 rounded-[32px] hover:border-black transition-all duration-300 shadow-sm overflow-hidden h-48 flex flex-col justify-between">
-                                                                        {/* Normal State */}
-                                                                        <div className="space-y-3">
-                                                                            <div className="text-2xl">{item.icon}</div>
-                                                                            <div>
-                                                                                <p className="text-[11px] font-bold text-gray-400  tracking-tight">{item.title}</p>
-                                                                                <p className="text-sm font-black text-black leading-tight mt-1">{item.badge}</p>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div className="flex items-center gap-1.5 pt-2 border-t border-gray-50">
-                                                                            <div className="w-1.5 h-1.5 rounded-full bg-[#00E676]" />
-                                                                            <span className="text-[9px] font-bold text-gray-400  tracking-widest">Active Protection</span>
-                                                                        </div>
-
-                                                                        {/* Hover State - Explanation */}
-                                                                        <div className="absolute inset-0 bg-black/95 p-6 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0 cursor-default">
-                                                                            <p className="text-[13px] text-white font-medium leading-relaxed italic text-center">
-                                                                                "{item.plainEnglish}"
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </section>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -1565,33 +1223,131 @@ const Chat: React.FC = () => {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="flex items-center w-full">
+                                        <div className="flex items-center w-full relative">
+                                            {isRecording && (
+                                                <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1.5 z-20">
+                                                    <span className="text-red-500 text-xs font-bold animate-pulse">Listening...</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
+                                                        <span className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
+                                                        <span className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '400ms' }} />
+                                                    </div>
+                                                </div>
+                                            )}
                                             <input
                                                 type="text"
-                                                value={inputText}
+                                                value={isRecording ? "" : inputText}
                                                 onChange={(e) => setInputText(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                                placeholder="Ask your assistant..."
-                                                className="flex-1 bg-transparent border-none outline-none text-black text-sm px-6 py-3 placeholder:text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                                                onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSend()}
+                                                placeholder={isRecording ? "" : "Ask your assistant..."}
+                                                disabled={isRecording}
+                                                className={`flex-1 bg-transparent border-none outline-none text-black text-sm px-6 py-3 placeholder:text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis ${isRecording ? 'opacity-0' : ''} transition-opacity z-10`}
                                             />
                                             <button
+                                                onClick={handleVoiceInput}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all mr-2 shrink-0 relative z-20 ${isRecording
+                                                    ? 'bg-red-50 text-red-500 ring-1 ring-red-500/50 shadow-sm scale-110'
+                                                    : 'text-gray-400 hover:text-black hover:bg-gray-100'
+                                                    }`}
+                                                title={isRecording ? "Stop Recording" : "Voice Input"}
+                                            >
+                                                {isRecording && (
+                                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                                                )}
+                                                {isRecording && (
+                                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
+                                                )}
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                            </button>
+                                            <button
                                                 onClick={handleSend}
-                                                className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-600 hover:text-white active:scale-90 transition-all shadow-lg shadow-black/5 shrink-0 mr-1 group-focus-within/bottominput:bg-green-500 group-focus-within/bottominput:text-white"
+                                                disabled={isRecording}
+                                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-black/5 shrink-0 mr-1 z-20 ${isRecording
+                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed scale-95 opacity-50'
+                                                    : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white active:scale-90 group-focus-within/bottominput:bg-green-500 group-focus-within/bottominput:text-white'
+                                                    }`}
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                                             </button>
                                         </div>
 
-                                        {/* Simplified Buy/Sell shortcuts for bottom input */}
-                                        <div className="flex gap-2 px-4 pb-1 pt-1 border-t border-gray-100/50 mt-1">
-                                            <button onClick={() => { setActiveForm('buy'); setFormAmount(''); }} className="px-3 py-1 bg-gray-50/50 hover:bg-white border border-gray-100/80 hover:border-black rounded-full text-[10px] font-bold text-gray-500 hover:text-black transition-all flex items-center gap-1 hover:scale-105 active:scale-95">
-                                                <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                                Buy
-                                            </button>
-                                            <button onClick={() => { setActiveForm('sell'); setFormAmount(''); }} className="px-3 py-1 bg-gray-50/50 hover:bg-white border border-gray-100/80 hover:border-black rounded-full text-[10px] font-bold text-gray-500 hover:text-black transition-all flex items-center gap-1 hover:scale-105 active:scale-95">
-                                                <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
-                                                Sell
-                                            </button>
+                                        {/* Quick Actions — consistent with home page */}
+                                        <div className="flex gap-2 px-4 pb-1 pt-1 border-t border-gray-100/50 mt-1 items-center">
+                                            {/* @Asset Button */}
+                                            {(() => {
+                                                const selectedAsset = selectedAssetName ? cashFlowAssets.find(a => a.title === selectedAssetName) : null;
+                                                return selectedAsset ? (
+                                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-300 rounded-full text-[10px] font-bold text-green-700">
+                                                        <button
+                                                            onClick={() => handleProjectClick(selectedAsset.title)}
+                                                            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                                                        >
+                                                            <img src={selectedAsset.image} alt={selectedAsset.title} className="w-4 h-4 rounded-full object-cover" />
+                                                            <span className="max-w-[100px] truncate">@{selectedAsset.title}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedAssetName(null); }}
+                                                            className="ml-0.5 text-green-400 hover:text-red-500 transition-colors flex items-center"
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
+                                                        className="px-3 py-1 border rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 hover:scale-105 active:scale-95 bg-gray-50/50 border-gray-100/80 text-gray-500 hover:border-black hover:text-black"
+                                                    >
+                                                        <span className="text-sm leading-none">@</span>
+                                                        Asset
+                                                    </button>
+                                                );
+                                            })()}
+
+                                            {/* + Action Menu Button */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setShowActionMenu(!showActionMenu)}
+                                                    className={`w-7 h-7 border rounded-full text-xs font-bold transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${showActionMenu
+                                                        ? 'bg-black border-black text-white'
+                                                        : 'bg-gray-50/50 border-gray-100/80 text-gray-500 hover:border-black hover:text-black'
+                                                        }`}
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                </button>
+                                                {showActionMenu && (
+                                                    <div className="absolute bottom-full left-0 mb-3 w-52 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12)] p-2 z-[100] animate-fadeIn">
+                                                        <div className="absolute bottom-[-6px] left-3 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
+                                                        {!selectedAssetName && (
+                                                            <p className="text-[9px] text-amber-600 font-bold px-3 py-1.5 bg-amber-50 rounded-xl mb-1 flex items-center gap-1.5">
+                                                                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" /></svg>
+                                                                Select an asset first
+                                                            </p>
+                                                        )}
+                                                        <button
+                                                            onClick={() => { if (selectedAssetName) { setActiveForm('buy'); setFormAmount(''); setShowActionMenu(false); } }}
+                                                            disabled={!selectedAssetName}
+                                                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all ${selectedAssetName ? 'text-black hover:bg-green-50 cursor-pointer' : 'text-gray-300 cursor-not-allowed'
+                                                                }`}
+                                                        >
+                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                                                <svg className={`w-3 h-3 ${selectedAssetName ? 'text-green-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                            </div>
+                                                            Buy Asset
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { if (selectedAssetName) { setActiveForm('sell'); setFormAmount(''); setShowActionMenu(false); } }}
+                                                            disabled={!selectedAssetName}
+                                                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all ${selectedAssetName ? 'text-black hover:bg-red-50 cursor-pointer' : 'text-gray-300 cursor-not-allowed'
+                                                                }`}
+                                                        >
+                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-red-100' : 'bg-gray-100'}`}>
+                                                                <svg className={`w-3 h-3 ${selectedAssetName ? 'text-red-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                            </div>
+                                                            Sell Asset
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </>
                                 )}

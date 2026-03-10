@@ -112,8 +112,8 @@ const App: React.FC = () => {
             <SideNavButton
               active={currentPage === Page.TRADE}
               onClick={() => setCurrentPage(Page.TRADE)}
-              icon={<Icons.Trade />}
-              label="Trade"
+              icon={<Icons.Market />}
+              label="Market"
             />
           </div>
         </div>
