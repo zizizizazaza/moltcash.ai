@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { api } from '../services/api';
 
 // Mock data for Total Return (Up-only curve)
 const chartData = [
@@ -35,6 +36,30 @@ const Swap: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const [swapLoading, setSwapLoading] = useState(false);
+  const [swapMessage, setSwapMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleSwap = async () => {
+    const val = parseFloat(amount);
+    if (!val || val <= 0) return;
+    setSwapLoading(true);
+    setSwapMessage(null);
+    try {
+      if (mode === 'DEPOSIT') {
+        await api.mintAIUSD(val);
+        setSwapMessage({ type: 'success', text: `Minted ${val.toLocaleString()} AIUSD` });
+      } else {
+        await api.redeemAIUSD(val);
+        setSwapMessage({ type: 'success', text: `Redeemed ${val.toLocaleString()} AIUSD` });
+      }
+      setAmount('');
+    } catch (err: any) {
+      setSwapMessage({ type: 'error', text: err.message || 'Transaction failed' });
+    } finally {
+      setSwapLoading(false);
+    }
+  };
+
   const projectedEarnings = useMemo(() => {
     const val = parseFloat(amount);
     if (isNaN(val)) return '0.00';
@@ -42,14 +67,14 @@ const Swap: React.FC = () => {
   }, [amount]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-fadeIn pb-24">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 animate-fadeIn pb-24 px-4 sm:px-6 lg:px-0">
 
       {/* LEFT PANEL: Trust & Data (60-65%) */}
       <div className="lg:col-span-7 space-y-12">
 
         {/* 1. Header Information */}
         <section className="mb-12">
-          <h2 className="font-serif text-5xl text-black italic">Mint & Redeem.</h2>
+          <h2 className="font-serif text-3xl sm:text-5xl text-black italic">Mint & Redeem.</h2>
           <p className="text-gray-500 mt-2 font-medium">
             Convert stable liquidity into treasury-backed AIUSD seamlessly.
           </p>
@@ -57,7 +82,7 @@ const Swap: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-end gap-6 pt-4">
             <div>
               <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-1">Current APY</p>
-              <h3 className="font-serif text-7xl text-green-500 italic leading-none">5.24%</h3>
+              <h3 className="font-serif text-5xl sm:text-7xl text-green-500 italic leading-none">5.24%</h3>
             </div>
             <div className="flex gap-4 pb-1">
               <div className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-2xl">
@@ -73,7 +98,7 @@ const Swap: React.FC = () => {
         </section>
 
         {/* 2. Total Return Chart */}
-        <section className="glass rounded-[40px] p-8 bg-white overflow-hidden relative">
+        <section className="glass rounded-3xl sm:rounded-[40px] p-4 sm:p-8 bg-white overflow-hidden relative">
           <div className="flex justify-between items-center mb-8">
             <h4 className="text-xs font-bold text-gray-400  tracking-widest">Total Return</h4>
             <div className="flex gap-2">
@@ -253,11 +278,17 @@ const Swap: React.FC = () => {
           </div>
 
           {/* CTA */}
+          {swapMessage && (
+            <div className={`px-4 py-2 rounded-xl text-xs font-bold ${swapMessage.type === 'success' ? 'bg-green-50 border border-green-100 text-green-700' : 'bg-red-50 border border-red-100 text-red-600'}`}>
+              {swapMessage.text}
+            </div>
+          )}
           <button
-            onClick={() => setIsWalletConnected(true)}
-            className="w-full py-5 bg-black text-white rounded-full font-bold  text-[11px] tracking-[0.3em] hover:bg-gray-800 transition-all shadow-xl"
+            onClick={isWalletConnected ? handleSwap : () => setIsWalletConnected(true)}
+            disabled={swapLoading}
+            className="w-full py-5 bg-black text-white rounded-full font-bold  text-[11px] tracking-[0.3em] hover:bg-gray-800 transition-all shadow-xl disabled:opacity-50"
           >
-            {!isWalletConnected ? 'Connect Wallet' : mode === 'DEPOSIT' ? 'Deposit & Start Earning' : 'Confirm Redemption'}
+            {swapLoading ? 'Processing...' : !isWalletConnected ? 'Connect Wallet' : mode === 'DEPOSIT' ? 'Deposit & Start Earning' : 'Confirm Redemption'}
           </button>
 
           {/* Trust Badges */}

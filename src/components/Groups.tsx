@@ -209,6 +209,7 @@ const Groups: React.FC = () => {
         return init;
     });
     const [showMembers, setShowMembers] = useState(true);
+    const [showGroupList, setShowGroupList] = useState(true);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);
     const [showPollModal, setShowPollModal] = useState(false);
@@ -534,7 +535,7 @@ const Groups: React.FC = () => {
     const renderEntityForm = (submitted: boolean) => {
         if (submitted || entityFormSubmitted) {
             return (
-                <div className="w-[420px] bg-white rounded-2xl border border-green-200 shadow-sm p-4">
+                <div className="w-full max-w-[420px] bg-white rounded-2xl border border-green-200 shadow-sm p-4">
                     <div className="flex items-center gap-2">
                         <span className="text-green-500 text-lg">✅</span>
                         <p className="text-xs font-bold text-green-700">Company information submitted successfully.</p>
@@ -543,7 +544,7 @@ const Groups: React.FC = () => {
             );
         }
         return (
-            <div className="w-[420px] bg-white rounded-2xl border border-violet-200 shadow-sm overflow-hidden">
+            <div className="w-full max-w-[420px] bg-white rounded-2xl border border-violet-200 shadow-sm overflow-hidden">
                 <div className="px-4 pt-4 pb-2">
                     <div className="flex items-center gap-2 mb-3">
                         <span className="text-base">🏢</span>
@@ -620,7 +621,7 @@ const Groups: React.FC = () => {
     };
 
     const renderKycLink = () => (
-        <div className="w-[420px] bg-white rounded-2xl border border-violet-200 shadow-sm p-4">
+        <div className="w-full max-w-[420px] bg-white rounded-2xl border border-violet-200 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-3">
                 <span className="text-base">🪪</span>
                 <h4 className="text-xs font-black text-black">KYC Identity Verification</h4>
@@ -742,7 +743,7 @@ const Groups: React.FC = () => {
         const hasVoted = poll.options.some(o => o.votes.includes('u3'));
         const maxVotes = Math.max(...poll.options.map(o => o.votes.length));
         return (
-            <div className="w-[380px] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="w-full max-w-[380px] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {/* Poll Header */}
                 <div className="px-5 pt-5 pb-3">
                     <div className="flex items-center gap-2 mb-2">
@@ -818,8 +819,8 @@ const Groups: React.FC = () => {
         <div className="flex h-full overflow-hidden animate-fadeIn">
             {/* --- Poll Modal --- */}
             {showPollModal && (
-                <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center" onClick={() => setShowPollModal(false)}>
-                    <div className="bg-white rounded-3xl w-[420px] max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4" onClick={() => setShowPollModal(false)}>
+                    <div className="bg-white rounded-3xl w-full max-w-[420px] max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="p-6">
                             <h3 className="text-xl font-black text-black">Create Poll</h3>
                             <p className="text-xs text-gray-400 mt-1">Ask the group to vote on a decision</p>
@@ -916,7 +917,7 @@ const Groups: React.FC = () => {
             )}
 
             {/* --- Left: Group List --- */}
-            <div className="w-80 border-r border-gray-100 flex flex-col bg-white shrink-0">
+            <div className={`${showGroupList ? 'flex' : 'hidden'} md:flex w-full md:w-80 border-r border-gray-100 flex-col bg-white shrink-0 absolute inset-0 z-30 md:relative md:z-auto`}>
                 <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                     <div>
                         <h2 className="text-lg font-black text-black tracking-tight">Groups</h2>
@@ -929,7 +930,7 @@ const Groups: React.FC = () => {
                         return (
                             <button
                                 key={group.id}
-                                onClick={() => setSelectedGroup(group.id)}
+                                onClick={() => { setSelectedGroup(group.id); setShowGroupList(false); }}
                                 className={`w-full text-left p-4 border-b transition-all ${isApp
                                     ? `border-violet-100/50 ${selectedGroup === group.id ? 'bg-gradient-to-r from-violet-50 to-blue-50 border-r-2 border-r-violet-500' : 'bg-gradient-to-r from-violet-50/30 to-transparent hover:from-violet-50/60'}`
                                     : `border-gray-50 hover:bg-gray-50 ${selectedGroup === group.id ? 'bg-green-50/50 border-r-2 border-r-green-500' : ''}`
@@ -966,10 +967,13 @@ const Groups: React.FC = () => {
             </div>
 
             {/* --- Right: Chat Area --- */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className={`${!showGroupList ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
                 {/* Chat Header */}
-                <div className={`px-6 py-4 border-b flex items-center justify-between shrink-0 ${isAppGroup ? 'bg-gradient-to-r from-violet-50/50 to-blue-50/30 border-violet-100/50' : 'bg-white border-gray-100'}`}>
+                <div className={`px-4 sm:px-6 py-4 border-b flex items-center justify-between shrink-0 ${isAppGroup ? 'bg-gradient-to-r from-violet-50/50 to-blue-50/30 border-violet-100/50' : 'bg-white border-gray-100'}`}>
                     <div className="flex items-center gap-3">
+                        <button onClick={() => setShowGroupList(true)} className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-all shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                        </button>
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shadow-sm ${isAppGroup ? 'bg-gradient-to-br from-violet-500 to-blue-500 text-white' : 'bg-gradient-to-br from-green-400 to-emerald-500 text-white'}`}>
                             {isAppGroup ? '🚀' : currentGroup.projectShort.charAt(0)}
                         </div>
@@ -1007,7 +1011,7 @@ const Groups: React.FC = () => {
                 <div className="flex flex-1 overflow-hidden">
                     {/* Messages */}
                     <div className="flex-1 flex flex-col min-w-0">
-                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-4">
                             {currentMessages.map((msg, i) => {
                                 const isMe = msg.senderId === 'u3';
                                 const showAvatar = i === 0 || currentMessages[i - 1].senderId !== msg.senderId;
@@ -1125,7 +1129,7 @@ const Groups: React.FC = () => {
 
                     {/* Members Panel */}
                     {showMembers && (
-                        <div className="w-64 border-l border-gray-100 bg-white overflow-y-auto shrink-0">
+                        <div className="hidden md:block w-64 border-l border-gray-100 bg-white overflow-y-auto shrink-0">
                             <div className="p-4 border-b border-gray-50">
                                 <h4 className="text-xs font-black text-black tracking-tight">Members ({currentGroup.members.length + (addedAgents[selectedGroup]?.length || 0)})</h4>
                             </div>

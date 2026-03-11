@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import { Icons } from '../constants';
+import { api } from '../services/api';
 
 const Chat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
@@ -18,6 +19,8 @@ const Chat: React.FC = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [selectedAssetName, setSelectedAssetName] = useState<string | null>(null);
     const [showActionMenu, setShowActionMenu] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         const phrases = [
@@ -96,6 +99,114 @@ const Chat: React.FC = () => {
 
         return () => window.removeEventListener('loka-set-chat-agent', handleSetAgent);
     }, []);
+
+    // Auto-login for demo purposes
+    useEffect(() => {
+        if (!api.isAuthenticated) {
+            api.loginEmail('demo@loka.finance').catch(() => {});
+        }
+    }, []);
+
+    const sendToAI = async (text: string) => {
+        if (isStreaming) return;
+        setIsStreaming(true);
+
+        // Add the streaming placeholder message
+        const placeholderIdx = messages.length; // will be the last
+        setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
+
+        try {
+            // Try streaming first
+            const abortController = new AbortController();
+            abortControllerRef.current = abortController;
+
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            const token = sessionStorage.getItem('loka_token');
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const response = await fetch('/api/chat/stream', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ content: text, agentId: activeAgent }),
+                signal: abortController.signal,
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const reader = response.body!.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data);
+                            if (parsed.content) {
+                                fullContent += parsed.content;
+                                setMessages(prev => {
+                                    const updated = [...prev];
+                                    const lastAssistant = updated.findLastIndex(m => m.role === 'assistant' && m.isStreaming);
+                                    if (lastAssistant >= 0) {
+                                        updated[lastAssistant] = { ...updated[lastAssistant], content: fullContent };
+                                    }
+                                    return updated;
+                                });
+                            }
+                            if (parsed.error) {
+                                fullContent = parsed.error;
+                            }
+                        } catch { /* skip */ }
+                    }
+                }
+            }
+
+            // Mark streaming complete
+            setMessages(prev => {
+                const updated = [...prev];
+                const lastAssistant = updated.findLastIndex(m => m.role === 'assistant' && m.isStreaming);
+                if (lastAssistant >= 0) {
+                    updated[lastAssistant] = { ...updated[lastAssistant], content: fullContent || 'No response received.', isStreaming: false };
+                }
+                return updated;
+            });
+        } catch (err: any) {
+            if (err.name === 'AbortError') return;
+            // Fallback: try non-streaming
+            try {
+                const result = await api.sendChatMessage(text, activeAgent);
+                setMessages(prev => {
+                    const updated = [...prev];
+                    const lastAssistant = updated.findLastIndex(m => m.role === 'assistant' && m.isStreaming);
+                    if (lastAssistant >= 0) {
+                        updated[lastAssistant] = { role: 'assistant', content: result.assistantMessage.content, timestamp: new Date().toLocaleTimeString(), isStreaming: false };
+                    }
+                    return updated;
+                });
+            } catch {
+                setMessages(prev => {
+                    const updated = [...prev];
+                    const lastAssistant = updated.findLastIndex(m => m.role === 'assistant' && m.isStreaming);
+                    if (lastAssistant >= 0) {
+                        updated[lastAssistant] = { role: 'assistant', content: 'Sorry, failed to get a response. Please try again.', timestamp: new Date().toLocaleTimeString(), isStreaming: false };
+                    }
+                    return updated;
+                });
+            }
+        } finally {
+            setIsStreaming(false);
+            abortControllerRef.current = null;
+        }
+    };
 
     const handleProjectClick = (projectName: string) => {
         const userMsg = { role: 'user', content: `Analyze project: ${projectName}`, timestamp: new Date().toLocaleTimeString() };
@@ -228,28 +339,18 @@ const Chat: React.FC = () => {
     };
 
     const handleSend = () => {
-        if (!inputText.trim()) return;
+        if (!inputText.trim() || isStreaming) return;
 
-        const userMsg = { role: 'user', content: inputText, timestamp: new Date().toLocaleTimeString() };
+        const text = inputText.trim();
+        const userMsg = { role: 'user', content: text, timestamp: new Date().toLocaleTimeString() };
         setMessages(prev => [...prev, userMsg]);
-
-        // Simulate AI behavior
-        setTimeout(() => {
-            const aiMsg = {
-                role: 'assistant',
-                content: `I've prepared a transaction for you: Swap $10 USDT for AIUSD on Solana. Would you like to proceed?`,
-                type: 'action',
-                actionCompleted: false,
-                timestamp: new Date().toLocaleTimeString()
-            };
-            setMessages(prev => [...prev, aiMsg]);
-        }, 1000);
-
         setInputText('');
+
+        sendToAI(text);
     };
 
     const handleInlineActionSubmit = () => {
-        if (!formAmount) return;
+        if (!formAmount || isStreaming) return;
 
         const actionStr = activeForm === 'buy' ? 'buy' : 'sell';
         const assetName = activeAgent;
@@ -259,16 +360,7 @@ const Chat: React.FC = () => {
         setActiveForm(null);
         setFormAmount('');
 
-        setTimeout(() => {
-            const aiMsg = {
-                role: 'assistant',
-                content: `I've prepared the intentional transaction for you: ${activeForm === 'buy' ? 'Buy' : 'Sell'} ${formAmount} USDC of ${assetName}. Please confirm.`,
-                type: 'action',
-                actionCompleted: false,
-                timestamp: new Date().toLocaleTimeString()
-            };
-            setMessages(prev => [...prev, aiMsg]);
-        }, 1000);
+        sendToAI(userMsgText);
     };
 
     const handleActionResponse = (index: number, confirm: boolean) => {
@@ -312,7 +404,7 @@ const Chat: React.FC = () => {
         <div className="flex flex-col h-full bg-[#fafafa] text-black overflow-hidden font-sans">
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Chat History Sidebar */}
-                <div className={`h-full bg-[#fafafa] border-r border-gray-100 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${leftSidebarCollapsed ? 'w-0 overflow-hidden opacity-0' : 'w-64 opacity-100'}`}>
+                <div className={`h-full bg-[#fafafa] border-r border-gray-100 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${leftSidebarCollapsed ? 'w-0 overflow-hidden opacity-0' : 'w-full absolute inset-0 z-40 md:relative md:w-64 opacity-100'}`}>
                     <div className="flex items-center justify-between px-4 pt-4 pb-3">
                         <h2 className="text-xs font-black text-black tracking-widest uppercase">History</h2>
                         <button
@@ -383,19 +475,19 @@ const Chat: React.FC = () => {
                             // Shared tab content renderer
                             const renderTabContent = () => (
                                 <div className="w-full max-w-5xl mx-auto">
-                                    <div className="flex items-center justify-between mb-8 px-4">
-                                        <div className="flex gap-8 border-b border-gray-100 flex-1 mr-8">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-4 gap-4">
+                                        <div className="flex gap-4 sm:gap-8 border-b border-gray-100 flex-1 sm:mr-8 overflow-x-auto">
                                             {['Background', 'Financial Health', 'Rules'].map(tab => (
                                                 <button
                                                     key={tab}
                                                     onClick={() => setActiveAssetTab(tab as any)}
-                                                    className={`text-sm font-black tracking-widest uppercase pb-4 -mb-px transition-colors border-b-[3px] ${activeAssetTab === tab ? 'border-green-500 text-black' : 'border-transparent text-gray-300 hover:text-black hover:border-black/20'}`}
+                                                    className={`text-xs sm:text-sm font-black tracking-widest uppercase pb-4 -mb-px transition-colors border-b-[3px] whitespace-nowrap ${activeAssetTab === tab ? 'border-green-500 text-black' : 'border-transparent text-gray-300 hover:text-black hover:border-black/20'}`}
                                                 >
                                                     {tab}
                                                 </button>
                                             ))}
                                         </div>
-                                        <div className="flex gap-3 shrink-0">
+                                        <div className="flex gap-2 sm:gap-3 shrink-0">
                                             <span className="px-3 py-1 bg-black text-white text-[10px] font-bold rounded-full">Verified by Loka</span>
                                             <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-full">Stripe API Verified</span>
                                         </div>
@@ -428,12 +520,12 @@ const Chat: React.FC = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex bg-black rounded-3xl p-5 gap-8 shrink-0 shadow-lg">
+                                                        <div className="flex flex-col sm:flex-row bg-black rounded-3xl p-5 gap-4 sm:gap-8 shrink-0 shadow-lg">
                                                             <div>
                                                                 <p className="text-xl font-serif italic font-bold text-white leading-none">$1.5M</p>
                                                                 <p className="text-[8px] font-bold text-gray-500 tracking-widest mt-2 uppercase">Total Funding Raised</p>
                                                             </div>
-                                                            <div className="w-px h-full bg-white/10" />
+                                                            <div className="w-px h-full bg-white/10 hidden sm:block" />
                                                             <div>
                                                                 <p className="text-xl font-serif italic font-bold text-green-500 leading-none">100% ↑</p>
                                                                 <p className="text-[8px] font-bold text-gray-500 tracking-widest mt-2 uppercase">On-time Repayment</p>
@@ -617,7 +709,7 @@ const Chat: React.FC = () => {
                                                 <div><p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-1">Duration</p><p className="text-base font-bold text-black">60 Days</p></div>
                                             </div>
                                         </div>
-                                        <div className="w-full lg:w-[460px] bg-gray-50/80 rounded-3xl p-6 shrink-0 border border-gray-100/80">
+                                        <div className="w-full lg:w-[460px] bg-gray-50/80 rounded-3xl p-4 sm:p-6 shrink-0 border border-gray-100/80">
                                             <div className="space-y-6">
                                                 <div className="flex justify-between items-end">
                                                     <div><p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-2">Campaign Progress</p><p className="text-3xl font-serif italic text-black font-bold">${((500000 * progress) / 100).toLocaleString()}</p></div>
@@ -638,21 +730,21 @@ const Chat: React.FC = () => {
                             );
 
                             return messages.length === 0 ? (
-                                <div className="min-h-full w-full flex flex-col max-w-5xl mx-auto px-10 pt-32 pb-32">
-                                    <div className="flex flex-col items-center mb-10">
+                                <div className="min-h-full w-full flex flex-col max-w-5xl mx-auto px-4 sm:px-10 pt-14 sm:pt-32 pb-20 sm:pb-32">
+                                    <div className="flex flex-col items-center mb-6 sm:mb-10">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-black font-black shadow-lg">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-xl flex items-center justify-center text-black font-black shadow-lg text-sm sm:text-base">
                                                 L
                                             </div>
-                                            <h1 className="text-3xl font-black text-black tracking-tight">Loka AI</h1>
+                                            <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight">Loka AI</h1>
                                         </div>
                                     </div>
 
-                                    <div className={`bg-white border rounded-2xl p-4 w-full flex flex-col max-w-3xl mx-auto mb-12 relative transition-all duration-500 group/input ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : isInputFocused ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200/80 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] hover:border-green-200 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] idle-input-glow'}`}>
+                                    <div className={`bg-white border rounded-2xl p-2 sm:p-4 w-full flex flex-col max-w-3xl mx-auto mb-8 sm:mb-12 relative transition-all duration-500 group/input ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : isInputFocused ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200/80 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] hover:border-green-200 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] idle-input-glow'}`}>
                                         {/* Input Row — switches between normal input and inline sentence */}
                                         {activeForm ? (
-                                            <div className="flex items-center w-full px-6 py-5 gap-2 flex-wrap">
-                                                <span className="text-base font-medium text-black whitespace-nowrap">I want to {activeForm}</span>
+                                            <div className="flex items-center w-full px-3 sm:px-6 py-4 sm:py-5 gap-2 flex-wrap">
+                                                <span className="text-sm sm:text-base font-medium text-black whitespace-nowrap">I want to {activeForm}</span>
                                                 <input
                                                     type="number"
                                                     value={formAmount}
@@ -660,11 +752,11 @@ const Chat: React.FC = () => {
                                                     onKeyDown={(e) => e.key === 'Enter' && handleInlineActionSubmit()}
                                                     placeholder="0.00"
                                                     autoFocus
-                                                    className="w-28 bg-transparent border-b-2 border-green-400 outline-none text-base font-bold text-green-600 text-center py-1 placeholder:text-green-300/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    className="w-20 sm:w-28 bg-transparent border-b-2 border-green-400 outline-none text-sm sm:text-base font-bold text-green-600 text-center py-1 placeholder:text-green-300/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
-                                                <span className="text-base font-medium text-black whitespace-nowrap">USDC of</span>
-                                                <span className="text-base font-bold text-black bg-gray-100 px-3 py-1 rounded-lg">{activeAgent}</span>
-                                                <span className="text-base font-medium text-black">.</span>
+                                                <span className="text-sm sm:text-base font-medium text-black whitespace-nowrap">USDC of</span>
+                                                <span className="text-sm sm:text-base font-bold text-black bg-gray-100 px-2 sm:px-3 py-1 rounded-lg truncate max-w-[120px] sm:max-w-none">{activeAgent}</span>
+                                                <span className="text-sm sm:text-base font-medium text-black">.</span>
                                                 <div className="flex items-center gap-2 ml-auto">
                                                     <button
                                                         onClick={() => { setActiveForm(null); setFormAmount(''); }}
@@ -683,14 +775,14 @@ const Chat: React.FC = () => {
                                         ) : (
                                             <div className="flex items-center w-full relative">
                                                 {!inputText && !isInputFocused && !isRecording && (
-                                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
-                                                        <span className="text-gray-400 text-base font-medium">{typedPlaceholder}</span>
+                                                    <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+                                                        <span className="text-gray-400 text-sm sm:text-base font-medium">{typedPlaceholder}</span>
                                                         <span className="inline-block w-[2px] h-5 bg-green-400 ml-[1px] animate-[cursorBlink_1s_steps(2)_infinite]" />
                                                     </div>
                                                 )}
                                                 {isRecording && (
-                                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-3">
-                                                        <span className="text-red-500 text-base font-bold animate-pulse">Listening...</span>
+                                                    <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-3">
+                                                        <span className="text-red-500 text-sm sm:text-base font-bold animate-pulse">Listening...</span>
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
                                                             <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
@@ -707,11 +799,11 @@ const Chat: React.FC = () => {
                                                     onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSend()}
                                                     placeholder=""
                                                     disabled={isRecording}
-                                                    className={`flex-1 bg-transparent border-none outline-none text-black text-base px-6 py-6 font-medium relative z-10 ${isRecording ? 'opacity-0' : ''} transition-opacity`}
+                                                    className={`flex-1 bg-transparent border-none outline-none text-black text-sm sm:text-base px-3 sm:px-6 py-4 sm:py-6 font-medium relative z-10 ${isRecording ? 'opacity-0' : ''} transition-opacity`}
                                                 />
                                                 <button
                                                     onClick={handleVoiceInput}
-                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all mr-2 shrink-0 relative ${isRecording
+                                                    className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-all mr-1 sm:mr-2 shrink-0 relative ${isRecording
                                                         ? 'bg-red-50 text-red-500 ring-2 ring-red-500/50 shadow-lg shadow-red-500/20 scale-105'
                                                         : 'text-gray-400 hover:text-black hover:bg-gray-50'
                                                         }`}
@@ -728,7 +820,7 @@ const Chat: React.FC = () => {
                                                 <button
                                                     onClick={handleSend}
                                                     disabled={isRecording}
-                                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white'} ${isRecording ? 'opacity-50 cursor-not-allowed scale-95 hover:bg-green-100 hover:text-green-600' : ''}`}
+                                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white'} ${isRecording ? 'opacity-50 cursor-not-allowed scale-95 hover:bg-green-100 hover:text-green-600' : ''}`}
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                                                 </button>
@@ -736,7 +828,7 @@ const Chat: React.FC = () => {
                                         )}
 
                                         {/* Quick Actions — always visible */}
-                                        <div className={`flex gap-3 px-5 pb-2 pt-2 border-t transition-colors duration-500 items-center ${activeForm || isInputFocused ? 'border-gray-100' : 'border-transparent'}`}>
+                                        <div className={`flex gap-2 sm:gap-3 px-3 sm:px-5 pb-2 pt-2 border-t transition-colors duration-500 items-center ${activeForm || isInputFocused ? 'border-gray-100' : 'border-transparent'}`}>
                                             {/* @Asset Button */}
                                             {(() => {
                                                 const selectedAsset = selectedAssetName ? cashFlowAssets.find(a => a.title === selectedAssetName) : null;
@@ -822,7 +914,7 @@ const Chat: React.FC = () => {
                                                     <Icons.Coins className="w-5 h-5 text-violet-600" />
                                                 </div>
 
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-72 p-6 bg-black shadow-2xl rounded-[32px] opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-[100] transform translate-y-3 group-hover:translate-y-0 border border-white/10">
+                                                <div className="absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-4 w-64 sm:w-72 p-4 sm:p-6 bg-black shadow-2xl rounded-[24px] sm:rounded-[32px] opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-[100] transform translate-y-3 group-hover:translate-y-0 border border-white/10">
                                                     <p className="text-[9px] font-black text-violet-400 tracking-[0.3em] mb-4 uppercase text-center">Earning Strategy</p>
                                                     <div className="space-y-4">
                                                         <div className="flex items-start gap-3">
@@ -864,8 +956,8 @@ const Chat: React.FC = () => {
                                     </div>
 
                                     {/* Cash Flow Assets Slider */}
-                                    <div className="w-full max-w-5xl mx-auto mt-6">
-                                        <div className="flex items-center justify-between mb-4 px-2">
+                                    <div className="w-full mt-8 sm:mt-10">
+                                        <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-sm font-black text-black tracking-widest uppercase">Funding Projects</h3>
                                             <button
                                                 onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
@@ -875,7 +967,7 @@ const Chat: React.FC = () => {
                                             </button>
                                         </div>
                                         <div className="w-full overflow-x-auto pb-6 pt-4 -mt-4 cursor-grab active:cursor-grabbing selection:bg-transparent [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                            <div className="flex w-max gap-5 px-2">
+                                            <div className="flex w-max gap-3 sm:gap-5 px-0 sm:px-2">
                                                 {cashFlowAssets.slice(0, 5).map((asset, idx) => (
                                                     <div
                                                         key={idx}
@@ -884,7 +976,7 @@ const Chat: React.FC = () => {
                                                             window.dispatchEvent(new CustomEvent('loka-nav-market'));
                                                             setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: asset.title })), 100);
                                                         }}
-                                                        className={`w-72 bg-white rounded-[2rem] border border-gray-100 p-5 shrink-0 shadow-sm hover:border-black/10 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all group flex flex-col gap-4 cursor-pointer`}
+                                                        className={`w-[70vw] max-w-[280px] sm:w-72 bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 p-4 sm:p-5 shrink-0 shadow-sm hover:border-black/10 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all group flex flex-col gap-3 sm:gap-4 cursor-pointer`}
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-3 w-full">
@@ -932,46 +1024,52 @@ const Chat: React.FC = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-8 space-y-8 max-w-5xl mx-auto">
+                                <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-w-5xl mx-auto">
                                     {/* Expandable Project Details Card at top of chat */}
                                     <div className="w-full bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
                                         {/* Compact Header - always visible */}
                                         <div
-                                            className="flex items-center gap-4 p-5 cursor-pointer group"
+                                            className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 cursor-pointer group"
                                             onClick={() => setProjectCardExpanded(!projectCardExpanded)}
                                         >
-                                            <img src={selectedCurrent.image} className="w-11 h-11 rounded-xl object-cover border border-gray-100 shrink-0" alt={selectedCurrent.title} />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="text-sm font-black text-black truncate">{selectedCurrent.title}</h3>
-                                                    <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-[8px] font-black rounded tracking-wider shrink-0">VERIFIED</span>
+                                            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                                <img src={selectedCurrent.image} className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border border-gray-100 shrink-0" alt={selectedCurrent.title} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h3 className="text-sm font-black text-black truncate">{selectedCurrent.title}</h3>
+                                                        <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-[8px] font-black rounded tracking-wider shrink-0">VERIFIED</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-400 font-medium leading-snug line-clamp-1">{selectedCurrent.desc}</p>
                                                 </div>
-                                                <p className="text-[11px] text-gray-400 font-medium leading-snug line-clamp-1">{selectedCurrent.desc}</p>
+                                                {/* Expand/Collapse Chevron */}
+                                                <div className={`w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all sm:hidden ${projectCardExpanded ? 'rotate-180' : ''}`}>
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-5 shrink-0 pl-4 border-l border-gray-100">
-                                                <div className="text-right">
+                                            <div className="flex items-center gap-3 sm:gap-5 shrink-0 sm:pl-4 sm:border-l border-gray-100 overflow-x-auto">
+                                                <div className="text-left sm:text-right">
                                                     <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">Yield</p>
                                                     <p className="text-sm font-black text-black">15.5%</p>
                                                 </div>
-                                                <div className="text-right">
+                                                <div className="text-left sm:text-right">
                                                     <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">Raise</p>
                                                     <p className="text-sm font-black text-black">$500k</p>
                                                 </div>
-                                                <div className="text-right">
+                                                <div className="text-left sm:text-right">
                                                     <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">Term</p>
                                                     <p className="text-sm font-bold text-black">60d</p>
                                                 </div>
-                                            </div>
-                                            {/* Progress bar inline */}
-                                            <div className="flex items-center gap-2 shrink-0 pl-4 border-l border-gray-100">
-                                                <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-black rounded-full" style={{ width: `${progress}%` }} />
+                                                {/* Progress bar inline */}
+                                                <div className="flex items-center gap-2 shrink-0 pl-3 sm:pl-4 border-l border-gray-100">
+                                                    <div className="w-16 sm:w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-black rounded-full" style={{ width: `${progress}%` }} />
+                                                    </div>
+                                                    <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">{progress}%</span>
                                                 </div>
-                                                <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">{progress}%</span>
-                                            </div>
-                                            {/* Expand/Collapse Chevron */}
-                                            <div className={`w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all ${projectCardExpanded ? 'rotate-180' : ''}`}>
-                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                                                {/* Expand/Collapse Chevron — desktop only */}
+                                                <div className={`hidden sm:flex w-8 h-8 rounded-full bg-gray-50 items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all ${projectCardExpanded ? 'rotate-180' : ''}`}>
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -1148,7 +1246,7 @@ const Chat: React.FC = () => {
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <p className="text-sm leading-relaxed">{msg.content}</p>
+                                                            <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}{msg.isStreaming && <span className="inline-block w-1.5 h-4 bg-black/70 ml-0.5 animate-pulse" />}</div>
                                                             {msg.type === 'action' && !msg.actionCompleted && (
                                                                 <div className="mt-4 flex gap-2">
                                                                     <button onClick={() => handleActionResponse(i, true)} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition-all">Confirm</button>
@@ -1188,8 +1286,8 @@ const Chat: React.FC = () => {
 
 
                     {messages.length > 0 && (
-                        <div className="px-12 pb-8 pt-0 flex flex-col items-center relative z-50 mt-auto bg-gradient-to-t from-[#fafafa] via-[#fafafa] to-transparent shrink-0">
-                            <div className={`bg-white border rounded-2xl p-3 w-full max-w-4xl flex flex-col shadow-2xl transition-all duration-500 group/bottominput ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200 shadow-black/5 hover:border-green-200 focus-within:border-green-400/50 focus-within:scale-[1.005] focus-within:shadow-[0_0_30px_-5px_rgba(74,222,128,0.15)]'}`}>
+                        <div className="px-3 sm:px-12 pb-4 sm:pb-8 pt-0 flex flex-col items-center relative z-50 mt-auto bg-gradient-to-t from-[#fafafa] via-[#fafafa] to-transparent shrink-0">
+                            <div className={`bg-white border rounded-2xl p-2 sm:p-3 w-full max-w-4xl flex flex-col shadow-2xl transition-all duration-500 group/bottominput ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200 shadow-black/5 hover:border-green-200 focus-within:border-green-400/50 focus-within:scale-[1.005] focus-within:shadow-[0_0_30px_-5px_rgba(74,222,128,0.15)]'}`}>
                                 {activeForm ? (
                                     /* Inline sentence mode for bottom input */
                                     <div className="flex items-center w-full px-4 py-3 gap-2 flex-wrap">

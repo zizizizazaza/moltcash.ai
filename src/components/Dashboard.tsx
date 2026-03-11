@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Icons, COLORS } from '../constants';
 import { TreasuryStats } from '../types';
+import { api } from '../services/api';
 
 const REVENUE_DATA = [
   { name: 'Jan', revenue: 42000, baseline: 1200 },
@@ -13,7 +14,7 @@ const REVENUE_DATA = [
   { name: 'Jun', revenue: 145000, baseline: 1450 },
 ];
 
-const stats: TreasuryStats = {
+const defaultStats: TreasuryStats = {
   tvl: 128450000,
   collateralRatio: 104.2,
   treasuryRevenue: 2450000,
@@ -30,13 +31,29 @@ const COLORS_PIE = ['#000000', '#00E676']; // Black for T-Bills, Green for AI Yi
 
 
 const Dashboard: React.FC = () => {
+  const [stats, setStats] = useState<TreasuryStats>(defaultStats);
+
+  useEffect(() => {
+    api.getTreasuryStats().then((data: any) => {
+      if (data) {
+        setStats({
+          tvl: data.tvl,
+          collateralRatio: data.collateralRatio,
+          treasuryRevenue: data.treasuryRevenue,
+          lastPoR: data.lastPoR ? new Date(data.lastPoR).toLocaleTimeString() : new Date().toLocaleTimeString(),
+          reserveAllocation: data.reserveAllocation || defaultStats.reserveAllocation,
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
   const pieData = [
     { name: 'Anchor: US Treasury Bills', value: 90 },
     { name: 'Boost: AI Receivables', value: 10 },
   ];
 
   return (
-    <div className="space-y-10 animate-fadeIn min-h-screen">
+    <div className="space-y-10 animate-fadeIn min-h-screen px-4 sm:px-6 lg:px-8">
 
 
       {/* 2. Command Center Stats */}
@@ -57,7 +74,7 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* 3. Revenue Heartbeat (Chart) */}
-        <div className="lg:col-span-2 glass rounded-[40px] p-10 bg-white border border-gray-100 shadow-sm relative group overflow-hidden">
+        <div className="lg:col-span-2 glass rounded-3xl sm:rounded-[40px] p-5 sm:p-10 bg-white border border-gray-100 shadow-sm relative group overflow-hidden">
           <div className="absolute top-0 right-0 p-8">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">

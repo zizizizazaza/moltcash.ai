@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 interface SettingsProps {
     onBack?: () => void;
@@ -7,6 +8,32 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     const [showSeedMode, setShowSeedMode] = useState<boolean>(false);
     const [showPrivateKey, setShowPrivateKey] = useState<boolean>(false);
+    const [profile, setProfile] = useState<{ name: string; email: string; walletAddress: string } | null>(null);
+    const [editName, setEditName] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        api.getUserProfile().then(data => {
+            setProfile(data);
+            setEditName(data.name || '');
+        }).catch(() => {});
+    }, []);
+
+    const handleSaveName = async () => {
+        if (!editName.trim()) return;
+        setSaving(true);
+        setSaveMsg(null);
+        try {
+            const updated = await api.updateProfile({ name: editName.trim() });
+            setProfile(updated);
+            setSaveMsg('Saved!');
+        } catch (err: any) {
+            setSaveMsg(err.message || 'Failed to save');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     // Mock seed phrase
     const seedWords = ["apple", "butter", "crush", "drift", "eagle", "fossil", "guitar", "hover", "iron", "jungle", "karma", "lemon"];
@@ -30,6 +57,44 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
             </div>
 
             <div className="space-y-8">
+                {/* Profile Section */}
+                <section className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
+                    <h2 className="text-lg font-bold text-black mb-1">Profile</h2>
+                    <p className="text-xs font-medium text-gray-500 mb-6">Manage your account details.</p>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[11px] font-bold text-gray-500 mb-1 block">Display Name</label>
+                            <div className="flex gap-3">
+                                <input
+                                    type="text"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-black/10"
+                                    placeholder="Your name"
+                                />
+                                <button
+                                    onClick={handleSaveName}
+                                    disabled={saving}
+                                    className="px-5 py-2.5 bg-black text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all disabled:opacity-50"
+                                >
+                                    {saving ? '...' : 'Save'}
+                                </button>
+                            </div>
+                            {saveMsg && <p className="text-[10px] font-bold text-green-600 mt-1">{saveMsg}</p>}
+                        </div>
+                        <div>
+                            <label className="text-[11px] font-bold text-gray-500 mb-1 block">Email</label>
+                            <p className="text-sm font-medium text-gray-700">{profile?.email || '—'}</p>
+                        </div>
+                        {profile?.walletAddress && (
+                            <div>
+                                <label className="text-[11px] font-bold text-gray-500 mb-1 block">Wallet</label>
+                                <p className="text-sm font-mono font-medium text-gray-700">{profile.walletAddress}</p>
+                            </div>
+                        )}
+                    </div>
+                </section>
+
                 {/* Connected Accounts Session */}
                 <section className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
                     <h2 className="text-lg font-bold text-black mb-1">Connected Accounts</h2>

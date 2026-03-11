@@ -10,13 +10,13 @@ const AgentMode: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12 animate-fadeIn pb-20">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    <div className="max-w-6xl mx-auto space-y-12 animate-fadeIn pb-20 px-4 sm:px-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         <div className="space-y-10">
-          <div className="glass p-12 rounded-[40px] bg-white border border-gray-100 h-full flex flex-col justify-between">
+          <div className="glass p-6 sm:p-12 rounded-3xl sm:rounded-[40px] bg-white border border-gray-100 h-full flex flex-col justify-between">
             <div>
               <div className="inline-block px-3 py-1 bg-gray-50 rounded-full text-[10px] font-bold text-gray-500 tracking-widest  mb-6 border border-gray-100">x402 Protocol</div>
-              <h2 className="font-serif text-5xl italic mb-6 text-black">Monetizing the Machine.</h2>
+              <h2 className="font-serif text-3xl sm:text-5xl italic mb-6 text-black">Monetizing the Machine.</h2>
               <p className="text-gray-500 leading-relaxed mb-8">
                 Deploy autonomous payment capabilities. The x402 standard allows agents to programmatically mint, stream, and settle treasury value without human friction.
               </p>

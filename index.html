@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>MoltCash | AIUSD Treasury Stablecoin</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link
@@ -240,6 +240,22 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #999;
     }
+
+    /* Mobile safe area for bottom nav */
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Hide scrollbar on mobile */
+    @media (max-width: 767px) {
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      body {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    }
   </style>
   <script type="importmap">
 {
@@ -256,7 +272,7 @@
 
 <body>
   <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+  <script type="module" src="/src/index.tsx"></script>
 </body>
 
 </html>

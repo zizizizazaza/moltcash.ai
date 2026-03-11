@@ -73,7 +73,7 @@ const App: React.FC = () => {
   const isChatPage = currentPage === Page.CHAT;
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden selection:bg-black selection:text-white bg-white">
+    <div className="h-screen w-screen flex flex-col md:flex-row overflow-hidden selection:bg-black selection:text-white bg-white">
       {/* Toast Notification */}
       <div className={`fixed top-6 right-6 z-[100] transition-all duration-500 transform ${showComingSoon ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0 pointer-events-none'
         }`}>
@@ -87,8 +87,8 @@ const App: React.FC = () => {
       {showAuthModal && <AuthModal onLogin={handleLogin} onClose={() => setShowAuthModal(false)} />}
       <TxModal />
 
-      {/* Far-Left App Navigation */}
-      <nav className="w-20 bg-white border-r border-gray-100 flex flex-col items-center py-6 shrink-0 z-50 shadow-sm relative">
+      {/* Desktop Sidebar — hidden on mobile */}
+      <nav className="hidden md:flex w-20 bg-white border-r border-gray-100 flex-col items-center py-6 shrink-0 z-50 shadow-sm relative">
         <div className="flex flex-col items-center gap-8 w-full">
           {/* Logo */}
           <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center font-black text-white hover:rotate-12 transition-transform cursor-pointer mb-2" onClick={() => setCurrentPage(Page.CHAT)}>
@@ -141,7 +141,7 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="flex-1 flex flex-col overflow-hidden h-full relative">
+      <main className="flex-1 flex flex-col overflow-hidden h-full relative pb-16 md:pb-0">
         <div className="flex-1 overflow-y-auto">
           {currentPage === Page.DASHBOARD && <Dashboard />}
           {currentPage === Page.SWAP && <Swap />}
@@ -157,6 +157,21 @@ const App: React.FC = () => {
           {currentPage === Page.TRADE && <Trade />}
         </div>
       </main>
+
+      {/* Mobile Bottom Tab Bar — visible only on mobile */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-1 z-50 safe-bottom">
+        <MobileTabButton active={currentPage === Page.CHAT} onClick={() => setCurrentPage(Page.CHAT)} icon={<Icons.Assets />} label="Assets" />
+        <MobileTabButton active={currentPage === Page.GROUPS} onClick={() => setCurrentPage(Page.GROUPS)} icon={<Icons.Groups />} label="Groups" />
+        <MobileTabButton active={currentPage === Page.TRADE} onClick={() => setCurrentPage(Page.TRADE)} icon={<Icons.Market />} label="Market" />
+        <MobileTabButton active={false} onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }))} icon={<Icons.CreditCard />} label="Deposit" />
+        <MobileTabButton
+          active={currentPage === Page.PORTFOLIO}
+          onClick={() => { if (!isWalletConnected) connectWallet(); else setCurrentPage(Page.PORTFOLIO); }}
+          icon={<Icons.User />}
+          label={isWalletConnected ? "Profile" : "Sign in"}
+          customClass={isWalletConnected ? "text-green-500" : ""}
+        />
+      </nav>
     </div>
   );
 };
@@ -168,6 +183,16 @@ const SideNavButton: React.FC<{ active: boolean; label: string; icon: React.Reac
   >
     <div className={`transition-transform group-hover:scale-110 ${customClass}`}>{icon}</div>
     <span className="text-[9px] font-bold tracking-widest">{label}</span>
+  </button>
+);
+
+const MobileTabButton: React.FC<{ active: boolean; label: string; icon: React.ReactNode; onClick: () => void; customClass?: string }> = ({ active, label, icon, onClick, customClass = '' }) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 min-w-[56px] rounded-xl transition-all ${active ? 'text-black' : 'text-gray-400'}`}
+  >
+    <div className={`${customClass}`}>{icon}</div>
+    <span className="text-[9px] font-bold tracking-wide">{label}</span>
   </button>
 );
 

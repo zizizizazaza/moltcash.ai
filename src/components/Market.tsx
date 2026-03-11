@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Icons, COLORS } from '../constants';
 import { MarketAsset } from '../types';
+import { api } from '../services/api';
 
 const MOCK_ASSETS: MarketAsset[] = [
   {
@@ -224,37 +225,76 @@ const MOCK_ASSETS: MarketAsset[] = [
   }
 ];
 
+const mapApiProject = (p: any): MarketAsset => ({
+  id: p.id,
+  title: p.title,
+  subtitle: p.subtitle || '',
+  category: p.category as MarketAsset['category'],
+  issuer: p.issuer,
+  issuerLogo: p.issuerLogo || '',
+  coverImage: p.coverImage || '',
+  faceValue: p.faceValue,
+  askPrice: p.askPrice,
+  apy: p.apy,
+  durationDays: p.durationDays,
+  creditScore: p.creditScore,
+  status: p.status as MarketAsset['status'],
+  targetAmount: p.targetAmount,
+  raisedAmount: p.raisedAmount,
+  backersCount: p.backersCount,
+  remainingCap: p.remainingCap,
+  coverageRatio: p.coverageRatio,
+  verifiedSource: p.verifiedSource || '',
+  description: p.description || '',
+  useOfFunds: p.useOfFunds || '',
+  monthlyRevenue: (p.monthlyRevenue || []).map((m: any) => ({ month: m.month, amount: m.amount })),
+});
+
 const Market: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<MarketAsset | null>(null);
   const [filter, setFilter] = useState<'All' | 'Fundraising' | 'Funded' | 'Failed'>('All');
+  const [assets, setAssets] = useState<MarketAsset[]>(MOCK_ASSETS);
+
+  const refreshAssets = () => {
+    api.getProjects().then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        setAssets(data.map(mapApiProject));
+      }
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshAssets();
+  }, []);
 
   const filteredAssets = useMemo(() => {
-    if (filter === 'All') return MOCK_ASSETS;
-    return MOCK_ASSETS.filter(a => a.status === filter);
-  }, [filter]);
+    if (filter === 'All') return assets;
+    return assets.filter(a => a.status === filter);
+  }, [filter, assets]);
 
   useEffect(() => {
     const handleOpenAsset = (e: Event) => {
       const customEvent = e as CustomEvent;
-      const match = MOCK_ASSETS.find(a => a.title.includes(customEvent.detail));
+      const match = assets.find(a => a.title.includes(customEvent.detail));
       if (match) setSelectedAsset(match);
     };
 
     window.addEventListener('loka-open-asset', handleOpenAsset);
     return () => window.removeEventListener('loka-open-asset', handleOpenAsset);
-  }, []);
+  }, [assets]);
 
   if (selectedAsset) {
     return (
       <AssetDetail
         asset={selectedAsset}
         onClose={() => setSelectedAsset(null)}
+        onInvested={refreshAssets}
       />
     );
   }
 
   return (
-    <div className="space-y-12 animate-fadeIn pb-24 p-8 md:p-12 lg:p-16 max-w-[1600px] mx-auto w-full bg-white min-h-full">
+    <div className="space-y-12 animate-fadeIn pb-24 p-4 sm:p-8 md:p-12 lg:p-16 max-w-[1600px] mx-auto w-full bg-white min-h-full">
       {/* 1. Header & Filters */}
       <section className="space-y-6">
         <button onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-chat'))} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group">
@@ -262,7 +302,7 @@ const Market: React.FC = () => {
           Back to Chat
         </button>
         <div className="text-center">
-          <h2 className="text-5xl text-black tracking-tight" style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 900 }}>Cash Flow Market.</h2>
+          <h2 className="text-3xl sm:text-5xl text-black tracking-tight" style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 900 }}>Cash Flow Market.</h2>
           <p className="text-gray-400 mt-3 font-medium">Invest in the future cash flow of verified businesses.</p>
         </div>
         <div className="flex justify-center">
@@ -383,11 +423,62 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
   );
 };
 
-const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ asset, onClose }) => {
+const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInvested?: () => void }> = ({ asset, onClose, onInvested }) => {
   const [activeTab, setActiveTab] = useState<'STORY' | 'AGREEMENT' | 'FINANCIALS'>('STORY');
+  const [pledgeAmount, setPledgeAmount] = useState<string>('');
+  const [investing, setInvesting] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [investError, setInvestError] = useState<string | null>(null);
+  const [investSuccess, setInvestSuccess] = useState<string | null>(null);
   const progress = Math.min(100, (asset.raisedAmount / asset.targetAmount) * 100);
   const allTimeRevenue = asset.monthlyRevenue.reduce((sum, m) => sum + m.amount, 0);
   const mrr = asset.monthlyRevenue[asset.monthlyRevenue.length - 1]?.amount || 0;
+
+  const canInvest = ['Fundraising', 'Ending Soon'].includes(asset.status);
+
+  const handleInvest = async () => {
+    const amount = parseFloat(pledgeAmount);
+    if (!amount || amount <= 0) { setInvestError('Please enter a valid amount'); return; }
+    if (amount < 10) { setInvestError('Minimum investment is $10'); return; }
+    if (amount > asset.remainingCap) { setInvestError(`Max available: $${asset.remainingCap.toLocaleString()}`); return; }
+
+    setInvesting(true);
+    setInvestError(null);
+    setInvestSuccess(null);
+    try {
+      const result = await api.investInProject(asset.id, amount);
+      setInvestSuccess(`Successfully invested $${amount.toLocaleString()}!`);
+      setPledgeAmount('');
+      // Update the asset in place so progress bar reflects changes
+      asset.raisedAmount = result.project.raisedAmount;
+      asset.remainingCap = result.project.remainingCap;
+      asset.status = result.project.status;
+      onInvested?.();
+    } catch (err: any) {
+      setInvestError(err.message || 'Investment failed');
+    } finally {
+      setInvesting(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!confirm('Are you sure you want to revoke your investment?')) return;
+    setRevoking(true);
+    setInvestError(null);
+    setInvestSuccess(null);
+    try {
+      const result = await api.revokeInvestment(asset.id);
+      setInvestSuccess(`Refunded $${result.refundAmount.toLocaleString()}`);
+      asset.raisedAmount = result.project.raisedAmount;
+      asset.remainingCap = result.project.remainingCap;
+      asset.status = result.project.status;
+      onInvested?.();
+    } catch (err: any) {
+      setInvestError(err.message || 'Revocation failed');
+    } finally {
+      setRevoking(false);
+    }
+  };
 
   const handleAddToChat = () => {
     sessionStorage.setItem('pending_chat_agent', asset.title);
@@ -396,7 +487,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
   };
 
   return (
-    <div className="animate-fadeIn pb-32 p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full">
+    <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full">
       {/* Breadcrumb / Back Navigation */}
       <div className="flex items-center gap-2 text-[12px] font-bold text-gray-400 mb-8 cursor-pointer hover:text-black transition-colors w-fit" onClick={onClose}>
         <span className="text-gray-300">Cash Flow Market</span>
@@ -1028,6 +1119,93 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void }> = ({ as
                   </div>
                 </div>
               </div>
+            </section>
+
+            {/* 3. Pledge / Invest Box */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-4">
+                <h3 className="text-base font-bold text-black">Invest</h3>
+                <div className="h-px flex-1 bg-gray-100" />
+              </div>
+
+              {canInvest ? (
+                <div className="p-6 bg-white rounded-[28px] border-2 border-gray-100 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">Available Capacity</p>
+                      <p className="text-2xl font-black text-black">${asset.remainingCap.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">Price per Note</p>
+                      <p className="text-2xl font-black text-black">${asset.askPrice}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-gray-500">Pledge Amount (AIUSD)</label>
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                        <input
+                          type="number"
+                          min="10"
+                          max={asset.remainingCap}
+                          step="10"
+                          value={pledgeAmount}
+                          onChange={(e) => { setPledgeAmount(e.target.value); setInvestError(null); setInvestSuccess(null); }}
+                          placeholder="100"
+                          className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-black focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-300 transition-all"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        {[100, 500, 1000].map(v => (
+                          <button key={v} onClick={() => { setPledgeAmount(String(Math.min(v, asset.remainingCap))); setInvestError(null); }} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-[11px] font-bold rounded-lg transition-colors text-gray-600">
+                            ${v >= 1000 ? `${v/1000}k` : v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {pledgeAmount && parseFloat(pledgeAmount) > 0 && (
+                      <p className="text-[10px] text-gray-400 font-medium">
+                        ≈ {(parseFloat(pledgeAmount) / asset.askPrice).toFixed(2)} shares · {asset.apy}% APY · {asset.durationDays} days
+                      </p>
+                    )}
+                  </div>
+
+                  {investError && (
+                    <div className="px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-bold text-red-600">{investError}</div>
+                  )}
+                  {investSuccess && (
+                    <div className="px-4 py-2 bg-green-50 border border-green-100 rounded-xl text-xs font-bold text-green-700">{investSuccess}</div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleInvest}
+                      disabled={investing || !pledgeAmount}
+                      className="flex-1 py-3.5 bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {investing ? 'Processing...' : 'Pledge Now'}
+                    </button>
+                    {api.isAuthenticated && (
+                      <button
+                        onClick={handleRevoke}
+                        disabled={revoking}
+                        className="px-5 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all disabled:opacity-50"
+                      >
+                        {revoking ? '...' : 'Revoke'}
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-gray-400 text-center italic">By investing, you agree to the terms of the offering agreement.</p>
+                </div>
+              ) : (
+                <div className="p-6 bg-gray-50 rounded-[28px] border border-gray-100 text-center space-y-2">
+                  <p className="text-sm font-bold text-gray-500">This project is {asset.status.toLowerCase()}</p>
+                  <p className="text-[11px] text-gray-400">Investment is no longer available for this project.</p>
+                </div>
+              )}
             </section>
           </div>
         )}

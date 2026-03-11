@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TradeOrder } from '../types';
 import { Icons, COLORS } from '../constants';
+import { api } from '../services/api';
 
 // ── Mock Data ──────────────────────────────────────────────────────
 const MOCK_ORDERS: TradeOrder[] = [
@@ -125,29 +126,60 @@ const MOCK_ORDERS: TradeOrder[] = [
     },
 ];
 
-// ── Helper: unique project list ────────────────────────────────────
-const uniqueProjects = Array.from(
-    new Map(MOCK_ORDERS.map(o => [o.projectId, { id: o.projectId, title: o.projectTitle }])).values()
-);
+const mapApiOrder = (o: any): TradeOrder => ({
+  id: o.id,
+  projectId: o.projectId,
+  projectTitle: o.project?.title || '',
+  projectCoverImage: o.project?.coverImage || '',
+  projectIssuer: o.project?.issuer || '',
+  projectIssuerLogo: o.project?.issuerLogo || '',
+  projectApy: o.project?.apy || 0,
+  projectDurationDays: o.project?.durationDays || 0,
+  seller: o.sellerId ? `${o.sellerId.slice(0, 6)}...${o.sellerId.slice(-4)}` : '',
+  listPrice: o.listPrice,
+  originalPrice: o.originalPrice,
+  shares: o.shares,
+  totalValue: o.totalValue,
+  expectedReturn: o.expectedReturn,
+  expectedYield: o.expectedYield,
+  listedAt: o.listedAt ? new Date(o.listedAt).toISOString().split('T')[0] : '',
+  status: o.status as 'Listed' | 'Sold',
+  buyer: o.buyerId ? `${o.buyerId.slice(0, 6)}...${o.buyerId.slice(-4)}` : undefined,
+  soldAt: o.soldAt ? new Date(o.soldAt).toISOString().split('T')[0] : undefined,
+});
 
 // ── Main Component ─────────────────────────────────────────────────
 const Trade: React.FC = () => {
+    const [orders, setOrders] = useState<TradeOrder[]>(MOCK_ORDERS);
     const [statusFilter, setStatusFilter] = useState<'Listed' | 'Sold'>('Listed');
     const [projectFilter, setProjectFilter] = useState<string>('All');
     const [buyingOrder, setBuyingOrder] = useState<TradeOrder | null>(null);
     const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
-    const filteredOrders = useMemo(() => {
-        let orders = MOCK_ORDERS.filter(o => o.status === statusFilter);
-        if (projectFilter !== 'All') {
-            orders = orders.filter(o => o.projectId === projectFilter);
-        }
-        return orders;
-    }, [statusFilter, projectFilter]);
+    useEffect(() => {
+        api.getTradeOrders().then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+                setOrders(data.map(mapApiOrder));
+            }
+        }).catch(() => {});
+    }, []);
 
-    const listedCount = MOCK_ORDERS.filter(o => o.status === 'Listed').length;
-    const soldCount = MOCK_ORDERS.filter(o => o.status === 'Sold').length;
-    const totalVolume = MOCK_ORDERS.filter(o => o.status === 'Sold').reduce((sum, o) => sum + o.totalValue, 0);
+    const uniqueProjects = useMemo(() =>
+        Array.from(new Map(orders.map(o => [o.projectId, { id: o.projectId, title: o.projectTitle }])).values()),
+        [orders]
+    );
+
+    const filteredOrders = useMemo(() => {
+        let filtered = orders.filter(o => o.status === statusFilter);
+        if (projectFilter !== 'All') {
+            filtered = filtered.filter(o => o.projectId === projectFilter);
+        }
+        return filtered;
+    }, [statusFilter, projectFilter, orders]);
+
+    const listedCount = orders.filter(o => o.status === 'Listed').length;
+    const soldCount = orders.filter(o => o.status === 'Sold').length;
+    const totalVolume = orders.filter(o => o.status === 'Sold').reduce((sum, o) => sum + o.totalValue, 0);
 
     return (
         <>
@@ -242,7 +274,11 @@ const Trade: React.FC = () => {
 
             {/* ── Buy Modal ── */}
             {buyingOrder && (
-                <BuyModal order={buyingOrder} onClose={() => setBuyingOrder(null)} />
+                <BuyModal order={buyingOrder} onClose={() => setBuyingOrder(null)} onBought={() => {
+                    api.getTradeOrders().then(data => {
+                        if (Array.isArray(data) && data.length > 0) setOrders(data.map(mapApiOrder));
+                    }).catch(() => {});
+                }} />
             )}
         </>
     );
@@ -354,17 +390,24 @@ const OrderCard: React.FC<{ order: TradeOrder; onBuy: () => void }> = ({ order, 
 };
 
 // ── Buy Modal ──────────────────────────────────────────────────────
-const BuyModal: React.FC<{ order: TradeOrder; onClose: () => void }> = ({ order, onClose }) => {
+const BuyModal: React.FC<{ order: TradeOrder; onClose: () => void; onBought?: () => void }> = ({ order, onClose, onBought }) => {
     const [confirmed, setConfirmed] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [done, setDone] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         setProcessing(true);
-        setTimeout(() => {
-            setProcessing(false);
+        setError(null);
+        try {
+            await api.buyTradeOrder(order.id);
             setDone(true);
-        }, 2000);
+            onBought?.();
+        } catch (err: any) {
+            setError(err.message || 'Purchase failed');
+        } finally {
+            setProcessing(false);
+        }
     };
 
     return (
@@ -459,6 +502,10 @@ const BuyModal: React.FC<{ order: TradeOrder; onClose: () => void }> = ({ order,
                                     I understand this is a secondary market purchase. The shares will be transferred to my wallet upon transaction confirmation.
                                 </span>
                             </label>
+
+                            {error && (
+                                <div className="px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-bold text-red-600">{error}</div>
+                            )}
 
                             {/* Action */}
                             <button

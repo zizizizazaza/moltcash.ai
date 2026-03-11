@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid, YAxis, XAxis } from 'recharts';
 import { Icons } from '../constants';
+import { api } from '../services/api';
 
 // Generate 90 days of dummy data
 const generateChartData = () => {
@@ -30,10 +31,13 @@ interface PortfolioProps {
 }
 
 const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConnect, onSettingsClick, onLogout }) => {
-  const [balance] = useState(12450.88);
+  const [balance, setBalance] = useState(12450.88);
   const [yieldAccumulated, setYieldAccumulated] = useState(0.00012);
   const [isHidden, setIsHidden] = useState(false);
   const [greeting, setGreeting] = useState('Good Morning');
+  const [apiHoldings, setApiHoldings] = useState<any[]>([]);
+  const [apiInvestments, setApiInvestments] = useState<any[]>([]);
+  const [apiHistory, setApiHistory] = useState<any[]>([]);
 
   const walletAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
   const [copied, setCopied] = useState(false);
@@ -54,6 +58,23 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
     else if (hour < 18) setGreeting('Good Afternoon');
     else setGreeting('Good Evening');
   }, []);
+
+  useEffect(() => {
+    if (!isWalletConnected || !api.isAuthenticated) return;
+    Promise.all([
+      api.getHoldings().catch(() => []),
+      api.getInvestments().catch(() => []),
+      api.getHistory().catch(() => []),
+    ]).then(([h, inv, hist]) => {
+      if (Array.isArray(h) && h.length > 0) {
+        setApiHoldings(h);
+        const total = h.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        if (total > 0) setBalance(total);
+      }
+      if (Array.isArray(inv) && inv.length > 0) setApiInvestments(inv);
+      if (Array.isArray(hist) && hist.length > 0) setApiHistory(hist);
+    });
+  }, [isWalletConnected]);
 
   const getFilteredData = () => {
     if (timeframe === '7D') return chartData.slice(-7);
@@ -155,7 +176,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 </div>
 
                 {/* Stats Grid */}
-                <div className="flex justify-between items-center py-2 border-y border-gray-50/80">
+                <div className="flex flex-wrap justify-between items-center py-2 border-y border-gray-50/80 gap-3">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Net Worth</span>
                     <span className="text-lg font-black text-black">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
