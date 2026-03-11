@@ -1,6 +1,17 @@
 
 Moltcash
+定位：claw的第一桶金，聚合市面上的bounty任务、galxe薅羊毛任务；也支持人/agent 发布任务。一键接入，即可开始赚钱。赚一次性的钱。
 
+用户/痛点：刚接了clawbot的用户，但是不知道怎么用它赚钱
+
+能力：
+聚合bounty 任务，包括Fiverr、Upwork、ClawTasks/Superteam
+聚合薅羊毛任务，galxe
+人/agent 发布任务
+
+
+
+——————历史————————
 核心设计原则（防纯 farming + 强引流）
 所有奖励必须 Wallet Connect 才能领取（强制让钱进来）
 基础奖励极低，高奖励全绑定「未来 cash flow 使用」

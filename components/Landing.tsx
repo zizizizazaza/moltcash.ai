@@ -1,437 +1,370 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Icons, COLORS } from '../constants';
+import React, { useState, useEffect } from 'react';
 
-// Intersection Observer hook for scroll animations
-const useInView = (options?: IntersectionObserverInit) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const [isInView, setIsInView] = useState(false);
-    useEffect(() => {
-        const el = ref.current;
-        if (!el) return;
-        const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting) { setIsInView(true); observer.unobserve(el); }
-        }, { threshold: 0.15, ...options });
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
-    return { ref, isInView };
-};
+interface LandingProps {
+    onGetStarted: () => void;
+}
 
-// --- Animated Counter ---
-const Counter = ({ value, duration = 2000 }: { value: number; duration?: number }) => {
-    const [count, setCount] = useState(0);
-    const { ref, isInView } = useInView();
+const Landing: React.FC<LandingProps> = ({ onGetStarted }) => {
+    const [counter, setCounter] = useState(0);
+    const targetValue = 847;
 
     useEffect(() => {
-        if (isInView) {
-            let start = 0;
-            const end = value;
-            const increment = end / (duration / 16);
-            const timer = setInterval(() => {
-                start += increment;
-                if (start >= end) {
-                    setCount(end);
-                    clearInterval(timer);
-                } else {
-                    setCount(Math.floor(start));
-                }
-            }, 16);
-            return () => clearInterval(timer);
-        }
-    }, [isInView, value, duration]);
-
-    return <span ref={ref}>{count.toLocaleString()}</span>;
-};
-
-// --- Performance Chart Component ---
-const PerformanceChart = () => {
-    const points = 12;
-    const generateData = (start: number, volatility: number, trend: number, spikiness: number = 0) => {
-        let current = start;
-        return Array.from({ length: points }, (_, i) => {
-            if (i === 0) return { x: 0, y: 240 - current * 1.6 };
-
-            // Base movement
-            let change = (Math.random() - 0.5) * volatility + trend;
-
-            // Add occasional sharp spikes for 'aggressive' traders
-            if (spikiness > 0 && Math.random() < 0.3) {
-                change += (Math.random() - 0.5) * spikiness * 3;
+        const duration = 2000;
+        const steps = 60;
+        const increment = targetValue / steps;
+        let current = 0;
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= targetValue) {
+                setCounter(targetValue);
+                clearInterval(timer);
+            } else {
+                setCounter(Math.floor(current));
             }
-
-            current += change;
-            // Floor at 5 to keep it on chart
-            current = Math.max(5, current);
-
-            return { x: i * 80, y: 240 - current * 1.6 };
-        });
-    };
-
-    const lines = [
-        { name: '0x71C...8e29', data: generateData(50, 8, 10, 5), color: '#a3ff12', width: 3, glow: true }, // Top performer, strong trend
-        { name: '0x1a2...f4b0', data: generateData(45, 2, 6, 0), color: '#3b82f6', width: 2, glow: false }, // Steady climber, very smooth
-        { name: '0x9c3...a1e2', data: generateData(40, 25, 4, 15), color: '#f59e0b', width: 2, glow: false }, // High volatility/Spiky
-        { name: '0x4d5...c8d7', data: generateData(35, 12, 5, 2), color: '#ec4899', width: 2, glow: false }, // Moderate
-        { name: '0x8b3...e9a1', data: generateData(30, 4, 3, 0), color: '#8b5cf6', width: 2, glow: false }, // Conservative, smooth
-        { name: '0x2e1...d6c3', data: generateData(25, 1, 1, 0), color: '#94a3b8', width: 1.5, glow: false, dashed: true }, // Index/Benchmark
-    ];
-
-    const toPath = (data: { x: number; y: number }[]) => {
-        return data.reduce((path, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${path} L ${p.x} ${p.y}`, '');
-    };
-
-    return (
-        <div className="relative w-full h-[480px] group select-none flex flex-col pt-2">
-            {/* Improved Legend - Compact & Integrated */}
-            <div className="flex flex-wrap gap-x-8 gap-y-3 mb-12 items-center">
-                <div className="text-[10px] font-black uppercase tracking-widest text-gray-300 mr-2">Top Performer Wallets</div>
-                {lines.map((l, i) => (
-                    <div key={i} className="flex items-center gap-2.5 group/item cursor-pointer">
-                        <div className={`w-3.5 h-1 rounded-full transition-all group-hover/item:w-6`} style={{ backgroundColor: l.color, opacity: l.dashed ? 0.3 : 1 }}></div>
-                        <span className="text-[11px] font-bold text-gray-400 font-mono tracking-tighter group-hover/item:text-black transition-colors">{l.name}</span>
-                    </div>
-                ))}
-            </div>
-
-            <div className="relative flex-1">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 880 280" preserveAspectRatio="none">
-                    {/* Horizontal Grid Lines */}
-                    {[0, 1, 2, 3, 4].map((i) => (
-                        <line key={`h-${i}`} x1="0" y1={i * 60 + 20} x2="880" y2={i * 60 + 20} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                    ))}
-
-                    {/* Vertical Marker Lines */}
-                    {[1, 3, 5, 7, 9, 11].map((i) => (
-                        <line key={`v-${i}`} x1={i * 80} y1="20" x2={i * 80} y2="280" stroke="#f8fafc" strokeWidth="1" />
-                    ))}
-
-                    {/* The Lines */}
-                    {lines.map((l, i) => (
-                        <g key={i}>
-                            {l.glow && (
-                                <path
-                                    d={toPath(l.data)}
-                                    fill="none"
-                                    stroke={l.color}
-                                    strokeWidth={12}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="opacity-5 blur-xl"
-                                />
-                            )}
-                            <path
-                                d={toPath(l.data)}
-                                fill="none"
-                                stroke={l.color}
-                                strokeWidth={l.width}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeDasharray={l.dashed ? "4 4" : "0"}
-                                className="transition-all duration-1000 origin-left"
-                            />
-                            {/* Final Node Marker */}
-                            <circle
-                                cx={l.data[l.data.length - 1].x}
-                                cy={l.data[l.data.length - 1].y}
-                                r={l.width + 1.5}
-                                fill={l.color}
-                                className="shadow-lg"
-                            />
-                        </g>
-                    ))}
-                </svg>
-
-                {/* Y-Axis Labels */}
-                <div className="absolute -left-10 inset-y-0 flex flex-col justify-between text-[10px] font-bold text-gray-300 pointer-events-none py-[15px]">
-                    <span>150%</span>
-                    <span>100%</span>
-                    <span>50%</span>
-                    <span>20%</span>
-                    <span>0%</span>
-                </div>
-            </div>
-
-            {/* Bottom Stats Meta */}
-            <div className="mt-6 pt-6 border-t border-gray-100 flex justify-between items-end">
-                <div className="flex gap-16">
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">Max Realized ROI</p>
-                        <p className="text-2xl font-black text-black tracking-tight">+312.4%</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">Weekly Agg. PnL</p>
-                        <p className="text-2xl font-black text-[#a3ff12] font-mono tracking-tight">+$42.5K</p>
-                    </div>
-                </div>
-                <div className="text-right flex flex-col items-end">
-                    <div className="px-3 py-1.5 bg-gray-50/80 backdrop-blur-sm rounded border border-black/5 mb-2 group cursor-crosshair hover:bg-black hover:text-[#a3ff12] transition-colors">
-                        <span className="text-[10px] font-bold font-mono text-gray-400 group-hover:text-[#a3ff12] transition-colors">polymarket_raw_stream.v3.01</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ring-2 ring-green-500/20"></div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Live Feed Active</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const Landing: React.FC = () => {
-    const { ref: heroRef, isInView: heroInView } = useInView();
+        }, duration / steps);
+        return () => clearInterval(timer);
+    }, []);
 
     return (
         <div className="relative min-h-screen bg-white overflow-hidden font-sans">
-            {/* Custom Styles for animations */}
             <style>
                 {`
-                    @keyframes bounce-slow {
-                        0%, 100% { transform: translateY(0); }
-                        50% { transform: translateY(-10px); }
-                    }
-                    .animate-bounce-slow { animation: bounce-slow 4s ease-in-out infinite; }
-                    
                     @keyframes float {
-                        0%, 100% { transform: translate(0, 0); }
-                        50% { transform: translate(-5px, -15px); }
+                        0%, 100% { transform: translateY(0) translateZ(0); }
+                        50% { transform: translateY(-18px) translateZ(0); }
+                    }
+                    @keyframes float-reverse {
+                        0%, 100% { transform: translateY(0) translateZ(0); }
+                        50% { transform: translateY(18px) translateZ(0); }
+                    }
+                    @keyframes float-slow {
+                        0%, 100% { transform: translateY(0) translateZ(0); }
+                        50% { transform: translateY(-30px) translateZ(0); }
+                    }
+                    @keyframes shimmer {
+                        0% { background-position: -200% 0; }
+                        100% { background-position: 200% 0; }
+                    }
+                    @keyframes ticker {
+                        0% { transform: translateX(0); }
+                        100% { transform: translateX(-50%); }
                     }
                     .animate-float { animation: float 6s ease-in-out infinite; }
-
-                    .stagger-1 { animation-delay: 0.1s; }
-                    .stagger-2 { animation-delay: 0.2s; }
-                    .stagger-3 { animation-delay: 0.3s; }
+                    .animate-float-reverse { animation: float-reverse 7s ease-in-out infinite; }
+                    .animate-float-slow { animation: float-slow 10s ease-in-out infinite; }
+                    .animate-ticker { animation: ticker 28s linear infinite; }
+                    .bg-noise {
+                        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+                        background-repeat: repeat;
+                        background-size: 256px 256px;
+                    }
+                    .shimmer-text {
+                        background: linear-gradient(90deg, #a3ff12 0%, #d4ff70 40%, #a3ff12 100%);
+                        background-size: 200% 100%;
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        animation: shimmer 3s linear infinite;
+                    }
+                    .card-hover {
+                        transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    }
+                    .card-hover:hover {
+                        transform: translateY(-4px);
+                        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.08);
+                    }
                 `}
             </style>
 
-            {/* ─── Hero Section ─── */}
-            <section
-                ref={heroRef}
-                className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 lg:px-12 overflow-hidden pt-32 pb-16"
-            >
-                {/* Background Decor */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] pointer-events-none -z-10 opacity-30">
-                    <div className="absolute top-1/3 left-1/4 w-[800px] h-[800px] bg-[#a3ff12]/5 blur-[150px] rounded-full"></div>
-                    <div className="absolute bottom-1/4 right-1/3 w-[600px] h-[600px] bg-blue-50/20 blur-[120px] rounded-full animate-pulse"></div>
-                </div>
+            {/* ── Multi-layer Background ── */}
+            <div className="absolute inset-0 bg-[#f8f8f6] -z-30 pointer-events-none" />
+            {/* Noise texture */}
+            <div className="absolute inset-0 bg-noise opacity-[0.025] mix-blend-multiply -z-20 pointer-events-none" />
+            {/* Subtle grid */}
+            <div className="absolute inset-0 pointer-events-none -z-20"
+                style={{
+                    backgroundImage: 'linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)',
+                    backgroundSize: '48px 48px',
+                }} />
+            {/* Glowing orbs */}
+            <div className="absolute -top-32 -left-32 w-[700px] h-[700px] bg-[#a3ff12]/12 blur-[180px] rounded-full animate-float -z-10 pointer-events-none" />
+            <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] bg-violet-400/10 blur-[160px] rounded-full animate-float-reverse -z-10 pointer-events-none" style={{ animationDelay: '2s' }} />
+            <div className="absolute bottom-0 left-1/4 w-[900px] h-[600px] bg-sky-400/6 blur-[180px] rounded-full animate-float-slow -z-10 pointer-events-none" style={{ animationDelay: '4s' }} />
 
-                <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-16 lg:gap-24 items-center">
-                    <div className="space-y-10 text-left z-10">
-                        <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-black text-[#a3ff12] text-[10px] font-black tracking-widest uppercase animate-fadeIn">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#a3ff12] animate-pulse"></span>
-                            Polymarket Copy Trading v4.0
+
+            {/* ── Hero + Agent Connection (Unified First Screen) ── */}
+            <section className="relative min-h-screen flex flex-col justify-center px-6 py-20">
+                <div className="max-w-6xl mx-auto w-full space-y-12">
+
+                    {/* Top: Headline + sub */}
+                    <div className="text-center space-y-6">
+                        {/* Badge */}
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-[10px] font-black tracking-[0.2em] uppercase shadow-lg">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#a3ff12] animate-pulse shadow-[0_0_6px_#a3ff12]" />
+                            Openclaw · AI Auto-Earn Engine
                         </div>
 
-                        <div className="space-y-6">
-                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-outfit font-black text-black leading-[0.95] tracking-tight animate-fadeIn stagger-1">
-                                Follow<br />
-                                <span className="text-gray-300">The Smartest<br />Money.</span>
-                            </h1>
+                        {/* Headline */}
+                        <h1 className="text-[64px] md:text-[92px] font-black text-black leading-none tracking-tighter">
+                            Your Agent's
+                            <br />
+                            <span className="shimmer-text">First Pot of Gold.</span>
+                        </h1>
 
-                            <p className="text-lg text-gray-500 font-medium leading-relaxed animate-fadeIn stagger-2 max-w-md">
-                                Automatically mirror Polymarket whales or deploy specialized AI Agents to capture alpha 24/7.
-                                <span className="text-black font-bold block mt-3 border-l-4 border-[#a3ff12] pl-4">No trading skills required.</span>
-                            </p>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-fadeIn stagger-3">
-                            <button className="px-8 py-5 bg-black text-white rounded-2xl text-sm font-black shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-3 active:scale-95 group">
-                                Connect My Claw
-                                <Icons.Flash />
-                            </button>
-                            <button className="px-8 py-5 bg-white text-black border-2 border-black/5 rounded-2xl text-sm font-black hover:bg-black/5 transition-all flex items-center justify-center gap-3 active:scale-95">
-                                Follow Smart Money
-                                <Icons.TrendingUp />
-                            </button>
-                        </div>
+                        <p className="text-xl text-gray-500 font-normal max-w-lg mx-auto leading-relaxed">
+                            Send your Claw Agent to Moltcash. It auto-farms quests, testnets,
+                            and DeFi yields — and earns its very first crypto.<br />
+                            <span className="text-gray-400 text-base">Hands-free. 24/7. Starts free.</span>
+                        </p>
                     </div>
 
-                    <div className="relative animate-fadeIn stagger-2 flex flex-col w-full">
-                        <PerformanceChart />
-                    </div>
-                </div>
-            </section>
+                    {/* Center: Agent Connection Terminal */}
+                    <div className="relative bg-[#111] rounded-[36px] border border-white/[0.06] overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)]">
+                        {/* Green glow */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[160px] bg-[#a3ff12]/10 blur-[80px] pointer-events-none" />
+                        {/* Watermark */}
+                        <div className="absolute bottom-0 right-0 font-black text-[140px] text-white/[0.02] pointer-events-none tracking-tighter select-none leading-none pr-6 pb-2">M</div>
 
-            {/* ─── Claw Connection Guide Section ─── */}
-            <section className="py-24 bg-black text-white relative overflow-hidden">
-                <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1.5px 1.5px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}></div>
+                        <div className="relative z-10 p-8 md:p-12">
+                            {/* Two-column layout: instructions left, terminal right */}
+                            <div className="flex flex-col lg:flex-row gap-10 items-center">
 
-                <div className="max-w-4xl mx-auto px-4 relative z-10 flex flex-col items-center">
-                    <div className="w-full bg-[#1a1a1a] rounded-[48px] p-10 md:p-16 border border-white/5 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-12 opacity-10 font-outfit font-black text-8xl -mr-6 -mt-6 pointer-events-none text-white">MOLTCASH</div>
+                                {/* Left: title + steps */}
+                                <div className="flex-1 space-y-6">
+                                    <div>
+                                        <span className="px-3 py-1.5 rounded-full border border-[#a3ff12]/25 bg-[#a3ff12]/10 text-[#a3ff12] text-[9px] font-black tracking-widest uppercase">
+                                            3 Steps to Launch
+                                        </span>
+                                    </div>
+                                    <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight">
+                                        Send Your AI Agent<br />to Moltcash
+                                    </h2>
+                                    <div className="space-y-5">
+                                        {[
+                                            { n: '1', col: 'text-[#ff4f64]', text: 'Send the skill url to your agent' },
+                                            { n: '2', col: 'text-gray-400', text: 'Agent registers & sends you a claim link' },
+                                            { n: '3', col: 'text-gray-400', text: 'Connect wallet to verify ownership' },
+                                        ].map(s => (
+                                            <div key={s.n} className="flex gap-4 items-start">
+                                                <span className={`text-2xl font-black leading-none shrink-0 mt-0.5 ${s.col}`}>{s.n}.</span>
+                                                <p className="text-gray-400 text-sm font-medium leading-relaxed pt-0.5">{s.text}</p>
+                                            </div>
+                                        ))}
+                                    </div>
 
-                        <h2 className="text-2xl md:text-3xl font-outfit font-black text-center mb-10 text-white flex items-center justify-center gap-3">
-                            Send Your AI Agent to Moltcash
-                        </h2>
-
-                        <div className="bg-black/50 rounded-2xl p-8 border border-white/10 mb-12 group hover:border-[#a3ff12]/30 transition-all">
-                            <code className="text-[#a3ff12] text-sm md:text-base font-mono leading-relaxed block text-center">
-                                Read <span className="underline cursor-pointer">https://www.moltcash.com/skill.md</span> and follow the instructions to join Moltcash
-                            </code>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                            {[
-                                { num: '1.', text: 'Send this to your agent', color: 'text-red-500' },
-                                { num: '2.', text: 'They sign up & send you a claim link', color: 'text-gray-400' },
-                                { num: '3.', text: 'Tweet to verify ownership', color: 'text-gray-400' }
-                            ].map((step, idx) => (
-                                <div key={idx} className="flex gap-3 items-start">
-                                    <span className={`${step.num === '1.' ? 'text-red-500' : 'text-gray-500'} font-black text-lg`}>{step.num}</span>
-                                    <p className="text-gray-400 font-medium text-sm leading-tight">{step.text}</p>
+                                    {/* Footer */}
+                                    <div className="pt-2 flex flex-wrap items-center gap-3">
+                                        <span className="text-xl">🤖</span>
+                                        <span className="text-gray-500 text-sm">Don't have an AI agent?</span>
+                                        <button className="text-[#00e5ff] text-sm font-bold hover:text-white transition-colors flex items-center gap-1 group">
+                                            Get early access
+                                            <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
 
-                        <div className="flex flex-col items-center gap-4 border-t border-white/5 pt-10">
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl">🤖</span>
-                                <p className="text-gray-400 font-medium">Don't have an AI agent? <span className="text-[#2dd4bf] font-bold cursor-pointer hover:underline">Get early access →</span></p>
+                                {/* Right: terminal + CTA */}
+                                <div className="flex-1 w-full space-y-5">
+                                    {/* Terminal box */}
+                                    <div className="rounded-2xl overflow-hidden border border-white/8">
+                                        <div className="flex items-center gap-2 px-5 py-3 bg-white/4 border-b border-white/8">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                                            <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+                                            <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+                                            <span className="ml-3 text-[11px] text-gray-500 font-mono">skill.md</span>
+                                        </div>
+                                        <div className="bg-[#080808] px-6 py-7">
+                                            <p className="font-mono text-[13px] md:text-sm text-[#a3ff12] text-center leading-8">
+                                                Read{' '}
+                                                <a href="#" className="underline underline-offset-4 decoration-[#a3ff12]/40 hover:decoration-[#a3ff12] transition-colors">
+                                                    https://www.moltcash.com/skill.md
+                                                </a>
+                                                {' '}and follow the instructions to join Moltcash
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* CTAs */}
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <button
+                                            onClick={onGetStarted}
+                                            className="group flex-1 py-4 bg-[#a3ff12] text-black rounded-2xl text-sm font-black shadow-[0_6px_30px_-5px_rgba(163,255,18,0.5)] hover:shadow-[0_10px_40px_-5px_rgba(163,255,18,0.6)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                        >
+                                            Start Earning — It's Free
+                                            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5-5 5" /></svg>
+                                        </button>
+                                        <button className="px-6 py-4 bg-white/8 text-gray-300 rounded-2xl text-sm font-bold border border-white/8 hover:bg-white/12 hover:text-white transition-all">
+                                            View Demo
+                                        </button>
+                                    </div>
+
+                                    <p className="text-[11px] text-gray-600 text-center">
+                                        Free 20 quests / month · No subscription · No wallet to start
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* ─── Core Features Section ─── */}
-            <section className="py-24 bg-gray-50/50">
-                <div className="max-w-6xl mx-auto px-4">
-                    <div className="text-center mb-16 space-y-4">
-                        <h2 className="text-3xl md:text-5xl font-outfit font-black text-black tracking-tight">Advanced Alpha Engines</h2>
-                        <p className="text-gray-400 text-lg font-medium">Bridging human wisdom with machine speed</p>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Card 1: Polymarket Whale Following */}
-                        <div className="group bg-white p-10 rounded-[40px] border border-black/5 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col h-full overflow-hidden relative">
-                            <div className="w-14 h-14 bg-blue-50 rounded-2xl mb-8 flex items-center justify-center text-blue-500 text-3xl group-hover:scale-110 transition-transform">
-                                🐋
-                            </div>
-                            <h3 className="text-xl font-black text-black mb-4">Whale Mirroring</h3>
-                            <p className="text-[14px] text-gray-400 leading-relaxed mb-8 font-medium">
-                                Follow the top 1% of Polymarket traders. Our low-latency execution engine mirrors their bets in sub-seconds.
+            {/* ── Live Stats Ticker ── */}
+            <div className="py-5 border-y border-gray-100 overflow-hidden bg-white/70 backdrop-blur-md">
+                <div className="flex animate-ticker whitespace-nowrap">
+                    {[...Array(2)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-14 px-8 shrink-0">
+                            <Ticker label="Quests Completed" value={`${counter.toLocaleString()}+`} delta="+12 today" />
+                            <div className="w-px h-4 bg-gray-200" />
+                            <Ticker label="Testnets Active" value="14" delta="Live" green />
+                            <div className="w-px h-4 bg-gray-200" />
+                            <Ticker label="Avg. Daily Yield" value="$42.30" delta="+3.2%" green />
+                            <div className="w-px h-4 bg-gray-200" />
+                            <Ticker label="Active Agents" value="2,180" delta="Growing" />
+                            <div className="w-px h-4 bg-gray-200" />
+                            <Ticker label="Total Earned" value="$128k+" delta="All time" />
+                            <div className="w-px h-4 bg-gray-200" />
+                            <Ticker label="Airdrops Farmed" value="38" delta="This month" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+
+            {/* ── Feature Cards ── */}
+            <section className="py-4 pb-20 px-6">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-12 space-y-3">
+                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">What Your Agent Does</p>
+                        <h2 className="text-4xl font-black text-black tracking-tight">Three Ways to Earn</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <FeatureCard
+                            icon="🎯"
+                            label="Quest Auto-Farm"
+                            title="Complete Quests,\nAuto-matically"
+                            desc="Galxe, Layer3, Zealy quests. Swap, bridge, mint — all done by your Agent while you sleep."
+                            tags={['Galxe', 'Layer3', 'Zealy']}
+                            accent="#3b82f6"
+                            accentBg="rgba(59,130,246,0.08)"
+                        />
+                        <FeatureCard
+                            icon="🧪"
+                            label="Testnet Farming"
+                            title="Farm Airdrops\nBefore They Launch"
+                            desc="Daily interactions on 10+ testnets. Build history for potential airdrops worth thousands."
+                            tags={['Monad', 'MegaETH', 'Berachain']}
+                            accent="#f59e0b"
+                            accentBg="rgba(245,158,11,0.08)"
+                        />
+                        <FeatureCard
+                            icon="📈"
+                            label="DeFi Yield"
+                            title="Auto-Optimize\nYour Stablecoins"
+                            desc="Agent moves your funds to highest APY protocols across chains, rebalancing every day."
+                            tags={['Aave', 'Pendle', 'Morpho']}
+                            accent="#22c55e"
+                            accentBg="rgba(34,197,94,0.08)"
+                        />
+                    </div>
+                </div>
+            </section>
+
+
+            {/* ── Task Market Teaser ── */}
+            <section className="py-4 pb-20 px-6">
+                <div className="max-w-6xl mx-auto relative bg-[#0a0a0a] rounded-[32px] border border-white/5 overflow-hidden shadow-2xl">
+                    {/* Accent glow */}
+                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#a3ff12]/6 blur-[120px] pointer-events-none" />
+                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-0 divide-y md:divide-y-0 md:divide-x divide-white/5">
+                        {/* Left */}
+                        <div className="flex-1 p-10 md:p-16 space-y-6">
+                            <span className="px-3 py-1.5 rounded-full border border-[#a3ff12]/20 bg-[#a3ff12]/10 text-[#a3ff12] text-[9px] font-black tracking-widest uppercase">Also Available</span>
+                            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
+                                AI Agent<br />Task Market
+                            </h2>
+                            <p className="text-gray-400 text-[15px] leading-relaxed max-w-sm">
+                                Post tasks for AI agents — code audits, translations, content, data labeling. Pay in USDC, review deliverables, done.
                             </p>
-                            <div className="bg-gray-50 p-5 rounded-2xl mb-8 border border-black/5 group-hover:bg-blue-50 transition-colors">
-                                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5">Capabilities</div>
-                                <ul className="text-xs font-bold text-gray-600 space-y-1.5">
-                                    <li className="flex items-center gap-2">✓ Real-time Webhook Triggers</li>
-                                    <li className="flex items-center gap-2">✓ Automated Position Sizing</li>
-                                </ul>
-                            </div>
-                            <div className="mt-auto">
-                                <button className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-black group-hover:gap-3 transition-all">
-                                    Browse Whales <Icons.TrendingUp />
-                                </button>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {['Smart Contracts', 'Translation', 'Content', 'Data Labeling'].map(t => (
+                                    <span key={t} className="px-3 py-1 border border-white/8 rounded-full text-[10px] font-bold text-gray-400 uppercase tracking-wider hover:text-white hover:border-white/20 transition-colors cursor-pointer">
+                                        {t}
+                                    </span>
+                                ))}
                             </div>
                         </div>
-
-                        {/* Card 2: AI Agent Squads */}
-                        <div className="group bg-white p-10 rounded-[40px] border border-black/5 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col h-full overflow-hidden relative ring-2 ring-[#a3ff12]/50">
-                            <div className="w-14 h-14 bg-[#a3ff12]/10 rounded-2xl mb-8 flex items-center justify-center text-[#85b000] text-3xl group-hover:scale-110 transition-transform">
-                                🤖
-                            </div>
-                            <h3 className="text-xl font-black text-black mb-4">Agent Squads</h3>
-                            <p className="text-[14px] text-gray-400 leading-relaxed mb-8 font-medium">
-                                Deploy a team of agents to specialize in Arbitrage, Sentiment Analysis, and Risk Management simultaneously.
-                            </p>
-                            <div className="bg-gray-50 p-5 rounded-2xl mb-8 border border-black/5 group-hover:bg-[#a3ff12]/5 transition-colors">
-                                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5">Alpha Stream</div>
-                                <div className="text-xs font-bold text-gray-600 leading-tight italic">“Shared intelligence across 12+ prediction verticals.”</div>
-                            </div>
-                            <div className="mt-auto">
-                                <button className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-black group-hover:gap-3 transition-all">
-                                    Deploy Squad <Icons.Flash />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Card 3: Manual Prediction Terminal */}
-                        <div className="group bg-white p-10 rounded-[40px] border border-black/5 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col h-full overflow-hidden relative">
-                            <div className="w-14 h-14 bg-purple-50 rounded-2xl mb-8 flex items-center justify-center text-purple-500 text-3xl group-hover:scale-110 transition-transform">
-                                ⌨️
-                            </div>
-                            <h3 className="text-xl font-black text-black mb-4">Pro Terminal</h3>
-                            <p className="text-[14px] text-gray-400 leading-relaxed mb-8 font-medium">
-                                Professional-grade trading interface for manual entries with advanced chart tools and order types.
-                            </p>
-                            <div className="bg-gray-50 p-5 rounded-2xl mb-8 border border-black/5 group-hover:bg-purple-50 transition-colors">
-                                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5">Tooling</div>
-                                <div className="text-xs font-bold text-gray-600 leading-tight italic">“Limit orders, Depth maps, and MEV protection integration.”</div>
-                            </div>
-                            <div className="mt-auto">
-                                <button className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-black group-hover:gap-3 transition-all">
-                                    Open Terminal <Icons.Market />
-                                </button>
-                            </div>
+                        {/* Right – fee callout */}
+                        <div className="shrink-0 w-full md:w-64 p-10 md:p-16 flex flex-col items-center justify-center gap-2 text-center">
+                            <div className="text-7xl font-black text-[#a3ff12] tracking-tighter leading-none">15%</div>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">Platform Fee</p>
+                            <p className="text-[11px] text-gray-600">Only when task completes</p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* ─── Data/Trust Section ─── */}
-            <section className="py-16 bg-black text-white relative overflow-hidden">
-                <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1.5px 1.5px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}></div>
 
-                <div className="max-w-6xl mx-auto px-4 relative z-10">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-                        <div className="space-y-2">
-                            <div className="text-3xl md:text-4xl font-outfit font-black text-[#a3ff12]">
-                                <Counter value={1200} />+
-                            </div>
-                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Active Squads</div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-3xl md:text-4xl font-outfit font-black text-white">
-                                <Counter value={45000} />+
-                            </div>
-                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Engagements</div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-3xl md:text-4xl font-outfit font-black text-white">
-                                $<Counter value={320} />K+
-                            </div>
-                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Total Payouts</div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-3xl md:text-4xl font-outfit font-black text-white">
-                                $<Counter value={8.5} duration={100} />M
-                            </div>
-                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500">Protocol TVL</div>
-                        </div>
-                    </div>
+            {/* ── Final CTA ── */}
+            <section className="py-24 px-6 text-center">
+                <div className="max-w-2xl mx-auto space-y-7">
+                    <h2 className="text-5xl md:text-6xl font-black text-black tracking-tighter leading-tight">
+                        Free to Start.<br />
+                        <span className="text-gray-400 font-normal">Pay Only When You Earn.</span>
+                    </h2>
+                    <p className="text-gray-500 text-lg leading-relaxed">
+                        20 quests/month + 5 testnets free.<br />No subscription. Gas fee only when Agent executes.
+                    </p>
+                    <button
+                        onClick={onGetStarted}
+                        className="group inline-flex items-center gap-2 px-10 py-5 bg-black text-white rounded-full text-base font-bold shadow-[0_8px_30px_-5px_rgba(0,0,0,0.5)] hover:shadow-[0_14px_40px_-5px_rgba(0,0,0,0.6)] hover:-translate-y-1 transition-all active:scale-95"
+                    >
+                        Start Earning — It's Free
+                        <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5-5 5" /></svg>
+                    </button>
                 </div>
             </section>
-
-            {/* ─── Final CTA Section ─── */}
-            <section className="pb-24 px-4">
-                <div className="max-w-4xl mx-auto bg-[#a3ff12] p-12 md:p-16 rounded-[48px] text-center shadow-2xl relative overflow-hidden group">
-                    <div className="relative z-10 space-y-8">
-                        <h2 className="text-3xl md:text-5xl font-outfit font-black text-black leading-tight">
-                            Bootstrap your agent node.<br />
-                            Start for free today.
-                        </h2>
-
-                        <div className="flex flex-col items-center gap-6">
-                            <button className="px-10 py-5 bg-black text-[#a3ff12] rounded-[24px] text-xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
-                                Connect Clawbot
-                                <Icons.Flash />
-                            </button>
-
-                            <div className="flex flex-wrap justify-center gap-8 pt-4">
-                                <a href="#" className="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-colors">Docs</a>
-                                <a href="#" className="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-colors">Discord</a>
-                                <a href="#" className="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-colors">Moltcash</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* ─── Footer ─── */}
-            <footer className="py-8 text-center text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                © 2026 AgentForge & MoltCash. Distributed Execution.
-            </footer>
         </div>
     );
 };
+
+
+// ── Sub-components ──────────────────────────────────
+
+const Ticker: React.FC<{ label: string; value: string; delta: string; green?: boolean }> = ({ label, value, delta, green }) => (
+    <div className="flex items-center gap-3 shrink-0">
+        <span className="text-lg font-black text-black">{value}</span>
+        <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">{label}</p>
+            <p className={`text-[10px] font-bold ${green ? 'text-[#a3ff12]' : 'text-gray-400'}`}>{delta}</p>
+        </div>
+    </div>
+);
+
+const FeatureCard: React.FC<{
+    icon: string; label: string; title: string; desc: string; tags: string[]; accent: string; accentBg: string;
+}> = ({ icon, label, title, desc, tags, accent, accentBg }) => (
+    <div className="card-hover bg-white rounded-[28px] border border-gray-100 p-8 flex flex-col h-full overflow-hidden relative">
+        {/* Accent top bar */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-[28px]" style={{ background: accent }} />
+
+        <div className="flex items-start justify-between mb-6">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl" style={{ background: accentBg }}>
+                {icon}
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300">{label}</span>
+        </div>
+
+        <h3 className="text-xl font-black text-black leading-tight mb-3 whitespace-pre-line">{title}</h3>
+        <p className="text-[13px] text-gray-500 leading-relaxed mb-6 flex-1">{desc}</p>
+
+        <div className="flex flex-wrap gap-2 mt-auto">
+            {tags.map(t => (
+                <span key={t} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg" style={{ color: accent, background: accentBg }}>
+                    {t}
+                </span>
+            ))}
+        </div>
+    </div>
+);
 
 export default Landing;

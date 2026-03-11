@@ -1,60 +1,62 @@
-
-export interface TreasuryStats {
-  tvl: number;
-  collateralRatio: number;
-  treasuryRevenue: number;
-  lastPoR: string;
-  reserveAllocation: {
-    tBills: number;
-    liquidity: number;
-    operations: number;
-  };
-}
-
-export interface MarketAsset {
-  id: string;
-  title: string;
-  subtitle: string;
-  category: 'Compute' | 'SaaS' | 'E-commerce';
-  issuer: string;
-  faceValue: number;
-  askPrice: number;
-  apy: number;
-  durationDays: number;
-  creditScore: number;
-  status: 'Fundraising' | 'Ending Soon' | 'Sold Out' | 'Failed' | 'Funded';
-  targetAmount: number;
-  raisedAmount: number;
-  backersCount: number;
-  remainingCap: number;
-  coverageRatio: number;
-  verifiedSource: string;
-  description: string;
-  useOfFunds: string;
-  monthlyRevenue: { month: string; amount: number }[];
-  coverImage: string;
-  issuerLogo: string;
-}
-
-export interface HistoryItem {
-  timestamp: string;
-  type: 'MINT' | 'REDEEM' | 'INTEREST' | 'DEPOSIT';
-  amount: number;
-  asset: string;
-  status: 'COMPLETED' | 'PENDING' | 'QUEUED';
-}
-
 export enum Page {
   LANDING = 'LANDING',
-  DASHBOARD = 'DASHBOARD',
-  SWAP = 'SWAP',
-  MARKET = 'MARKET',
-  PORTFOLIO = 'PORTFOLIO',
-  AGENT = 'AGENT',
-  CHAT = 'CHAT',
-  SETTINGS = 'SETTINGS',
-  TASKS = 'TASKS',
-  LEADERBOARD = 'LEADERBOARD',
+  OPPORTUNITIES = 'OPPORTUNITIES',
+  FARM_DETAIL = 'FARM_DETAIL',
   TASK_DETAIL = 'TASK_DETAIL',
-  GROUPS = 'GROUPS'
+  PUBLISH_TASK = 'PUBLISH_TASK',
+  MY_DASHBOARD = 'MY_DASHBOARD',
+}
+
+// ── Farm (薅羊毛) ──────────────────────────────────
+
+export type FarmType = 'quest' | 'testnet' | 'yield';
+
+export interface FarmItem {
+  id: string;
+  type: FarmType;
+  title: string;
+  description: string;
+  source: string;           // 'Galxe' | 'Monad' | 'Aave'
+  chain: string;            // 'zkSync Era' | 'Base' | 'Multi'
+  reward: string;           // '500 XP' | '🎰 Potential Airdrop' | '8.2% APY'
+  rewardType: 'fixed' | 'potential' | 'apy';
+  estimatedGas: string;     // '$0.12' | 'Free'
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  timeEstimate?: string;
+  tags: string[];
+  isHot?: boolean;
+  isNew?: boolean;
+  participantCount?: number;
+  deadline?: string;
+  steps?: FarmStep[];
+}
+
+export interface FarmStep {
+  action: string;
+  protocol: string;
+  gas: string;
+}
+
+// ── Tasks (做任务) ─────────────────────────────────
+
+export type TaskCategory = 'bounty' | 'airdrop' | 'platform';
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  platform: string;
+  category: TaskCategory;
+  reward: string;
+  rewardAmount?: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  timeEstimate: string;
+  tags: string[];
+  status: 'open' | 'assigned' | 'in_progress' | 'submitted' | 'completed' | 'cancelled';
+  rating?: number;
+  executionCount?: number;
+  recentFeedback?: string;
+  applicants?: number;
+  deadline?: string;
+  url?: string;
 }

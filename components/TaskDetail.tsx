@@ -1,70 +1,136 @@
 import React from 'react';
-import { TASKS_DATA } from './Tasks';
+import { TaskItem } from '../types';
 
 interface TaskDetailProps {
-    taskId: number;
+    task: TaskItem;
     onBack: () => void;
 }
 
-const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
-    const task = TASKS_DATA.find(t => t.id === taskId);
-
-    if (!task) return null;
+const TaskDetail: React.FC<TaskDetailProps> = ({ task, onBack }) => {
+    const categoryColors = {
+        bounty: 'text-blue-500 bg-blue-50',
+        airdrop: 'text-[#a3ff12] bg-black',
+        platform: 'text-purple-500 bg-purple-50'
+    };
 
     return (
-        <div className="space-y-12 animate-fadeIn min-h-screen max-w-4xl mx-auto">
+        <div className="container mx-auto px-6 py-10 animate-fadeIn max-w-5xl">
             <button
                 onClick={onBack}
-                className="flex items-center gap-2 text-gray-400 hover:text-black transition-colors text-xs font-black tracking-widest"
+                className="flex items-center gap-2 text-gray-400 hover:text-black transition-colors text-[10px] font-black tracking-widest mb-8"
             >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                BACK TO PROTOCOLS
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                BACK TO DASHBOARD
             </button>
 
-            <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <div className="px-3 py-1 bg-black text-white text-[10px] font-black tracking-[0.2em] rounded-full">
-                        TASK_{task.id}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
+                {/* Left Column: Content */}
+                <div className="space-y-8">
+                    <div className="space-y-5">
+                        <div className="flex items-center gap-4">
+                            <div className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-[0.2em] ${categoryColors[task.category]}`}>
+                                {task.platform}
+                            </div>
+                            <div className="h-px flex-1 bg-gray-100" />
+                        </div>
+
+                        <h1 className="text-3xl md:text-5xl font-black text-black leading-tight tracking-tight">
+                            {task.title}
+                        </h1>
+
+                        <div className="flex flex-wrap gap-2.5 mt-2">
+                            {task.tags.map(tag => (
+                                <span key={tag} className="px-2.5 py-1 bg-gray-50 text-gray-400 text-[9px] font-black tracking-widest rounded border border-gray-100 uppercase">
+                                    #{tag}
+                                </span>
+                            ))}
+                        </div>
                     </div>
-                    <div className="h-0.5 w-12 bg-gray-100" />
-                </div>
-                <h1 className="font-serif text-5xl md:text-7xl text-black italic font-bold leading-tight">
-                    {task.title}
-                </h1>
-                <p className="text-gray-500 text-xl font-medium max-w-2xl leading-relaxed">
-                    {task.detailDesc}
-                </p>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-10">
-                    <DetailSection title="Success Condition" content={task.condition} />
-                    <DetailSection title="Immediate Reward" content={task.rewardNow} isHighlight />
-                    <DetailSection title="Long-term Value" content={task.rewardFuture} color="#00E676" />
-                </div>
+                    <div className="prose max-w-none">
+                        <h3 className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-3">Description</h3>
+                        <p className="text-gray-600 font-medium leading-relaxed text-base">
+                            {task.description}
+                        </p>
+                    </div>
 
-                <div className="glass rounded-[40px] p-10 bg-gray-50/50 border border-gray-100 space-y-8">
-                    <h3 className="text-xs font-black tracking-[0.2em] text-gray-400 uppercase">Agent Implementation</h3>
-
-                    <div className="space-y-6">
-                        <div className="font-mono bg-black text-green-400 p-6 rounded-2xl text-xs leading-relaxed overflow-x-auto">
-                            <div>// MOLTCASH PROTOCOL v1.0</div>
-                            <div>// Agentic Task Implementation</div>
-                            <div className="mt-4"><span className="text-pink-400">async function</span> <span className="text-blue-400">executeTask</span>() {'{'}</div>
-                            <div className="ml-4">  <span className="text-pink-400">const</span> response = <span className="text-pink-400">await</span> moltcash.<span className="text-blue-400">verify</span>({'{'}</div>
-                            <div className="ml-8">    taskId: <span className="text-orange-400">"{task.id}"</span>,</div>
-                            <div className="ml-8">    signature: agent.<span className="text-blue-400">sign</span>(payload)</div>
-                            <div className="ml-4">  {'}'});</div>
-                            <div className="ml-4">  <span className="text-pink-400">return</span> response.credits;</div>
-                            <div>{'}'}</div>
+                    {/* Execution Strategy */}
+                    <div className="bg-white border border-gray-100 rounded-2xl p-8 space-y-6 shadow-sm">
+                        <div>
+                            <h3 className="text-[10px] font-black text-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#a3ff12]"></span>
+                                Claw Execution Protocol
+                            </h3>
+                            <p className="text-sm text-gray-500 font-medium mb-2">
+                                Recommended technical path for automated completion.
+                            </p>
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                            <span className="text-[10px] font-black text-gray-400 tracking-widest uppercase">Protocol Endpoint</span>
-                            <code className="text-xs font-bold text-black bg-white p-3 rounded-lg border border-gray-100">
-                                https://api.moltcash.network/v1/tasks/{task.id}/verify
-                            </code>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-gray-50">
+                            <StrategySection
+                                title="Prerequisites"
+                                items={[
+                                    'Wallet connected ($1+ gas)',
+                                    'Claw v3.x runtime active',
+                                    'Skill module initialized'
+                                ]}
+                            />
+                            <StrategySection
+                                title="Action Steps"
+                                items={[
+                                    'API Authentication flow',
+                                    'Draft generation/validation',
+                                    'Signed proof submission'
+                                ]}
+                            />
                         </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Dynamic Action Box */}
+                <div className="space-y-6">
+                    <div className="bg-black rounded-2xl p-7 text-white space-y-6 sticky top-32 shadow-xl border border-white/5 group">
+                        <div className="space-y-4 relative z-10">
+                            <div className="space-y-1">
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Estimate Reward</span>
+                                <div className="text-3xl font-black text-[#a3ff12] tracking-tight">{task.reward}</div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 py-5 border-y border-white/10">
+                                <div>
+                                    <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Difficulty</span>
+                                    <div className="text-xs font-bold text-white">{task.difficulty}</div>
+                                </div>
+                                <div>
+                                    <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Time Est.</span>
+                                    <div className="text-xs font-bold text-white">{task.timeEstimate}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 relative z-10">
+                            <button className="w-full py-4 bg-[#a3ff12] text-black rounded-xl text-sm font-black hover:bg-[#b4ff3a] transition-all">
+                                Execute via Claw
+                            </button>
+                            <p className="text-center text-[9px] font-bold text-gray-500 tracking-wide">
+                                Secured via smart contract escrow
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col gap-3">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Source Reference</span>
+                        <a
+                            href={task.url || '#'}
+                            target={task.url ? '_blank' : undefined}
+                            rel={task.url ? 'noopener noreferrer' : undefined}
+                            className="text-[11px] font-bold text-black border-b border-black/10 hover:border-black transition-all inline-flex items-center gap-1.5 truncate"
+                        >
+                            {task.url || `${task.platform.toLowerCase()}.io/tasks/${task.id}`}
+                            {task.url && (
+                                <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            )}
+                        </a>
                     </div>
                 </div>
             </div>
@@ -72,12 +138,17 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     );
 };
 
-const DetailSection: React.FC<{ title: string; content: string; isHighlight?: boolean; color?: string }> = ({ title, content, isHighlight, color }) => (
+const StrategySection: React.FC<{ title: string; items: string[] }> = ({ title, items }) => (
     <div className="space-y-3">
-        <h3 className="text-xs font-black tracking-[0.2em] text-gray-400 uppercase">{title}</h3>
-        <p className={`text-2xl font-serif italic ${isHighlight ? 'text-black' : ''}`} style={{ color: color || 'inherit' }}>
-            {content}
-        </p>
+        <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{title}</h4>
+        <ul className="space-y-2">
+            {items.map((item, i) => (
+                <li key={i} className="flex items-start gap-2.5">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-300 shrink-0" />
+                    <span className="text-xs font-bold text-gray-600 leading-tight">{item}</span>
+                </li>
+            ))}
+        </ul>
     </div>
 );
 
