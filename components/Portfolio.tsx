@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid, YAxis, XAxis } from 'recharts';
 import { Icons } from '../constants';
 
@@ -35,7 +35,12 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const [isHidden, setIsHidden] = useState(false);
   const [greeting, setGreeting] = useState('Good Morning');
 
-  const walletAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+  const { user } = usePrivy();
+  const linkedWallets = (user?.linkedAccounts ?? []).filter(
+    (acc) => (acc.type === 'wallet' || acc.type === 'smart_wallet') && 'address' in acc
+  ) as Array<{ address: string; walletClientType?: string }>;
+  const privyEmbeddedWallet = linkedWallets.find((w) => w.walletClientType === 'privy');
+  const walletAddress = privyEmbeddedWallet?.address ?? linkedWallets[0]?.address ?? '';
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'holdings' | 'activity'>('holdings');
   const [timeframe, setTimeframe] = useState('7D');
@@ -141,7 +146,10 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0" />
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-black text-black tracking-tight">{walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}</h2>
+                      <h2 className="text-xl font-black text-black tracking-tight">
+                        {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Setting up wallet...'}
+                      </h2>
+                      {walletAddress && (
                       <button onClick={handleCopy} className="text-gray-400 hover:text-black transition-colors" title="Copy Address">
                         {copied ? (
                           <svg className="w-4 h-4 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
@@ -149,6 +157,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                         )}
                       </button>
+                      )}
                     </div>
                     <p className="text-[11px] font-medium text-gray-400">Joined Nov {new Date().getFullYear()}</p>
                   </div>

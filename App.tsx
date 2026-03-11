@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Icons, COLORS } from './constants';
 import { Page } from './types';
 import Dashboard from './components/Dashboard';
@@ -10,6 +10,7 @@ import Portfolio from './components/Portfolio';
 import Chat from './components/Chat';
 import RiskModal from './components/RiskModal';
 import AuthModal from './components/AuthModal';
+import OAuthCallbackHandler from './components/OAuthCallbackHandler';
 import TxModal from './components/TxModal';
 import Landing from './components/Landing';
 import Settings from './components/Settings';
@@ -20,9 +21,13 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.CHAT);
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const { ready, authenticated } = usePrivy();
+  const { logout } = useLogout({
+    onSuccess: () => setCurrentPage(Page.CHAT),
+  });
+  const isWalletConnected = ready && authenticated;
 
   useEffect(() => {
     const hasSeenRisk = localStorage.getItem('loka_risk_accepted');
@@ -66,7 +71,6 @@ const App: React.FC = () => {
   };
 
   const handleLogin = () => {
-    setIsWalletConnected(true);
     setShowAuthModal(false);
   };
 
@@ -74,6 +78,7 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex overflow-hidden selection:bg-black selection:text-white bg-white">
+      <OAuthCallbackHandler />
       {/* Toast Notification */}
       <div className={`fixed top-6 right-6 z-[100] transition-all duration-500 transform ${showComingSoon ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0 pointer-events-none'
         }`}>
@@ -147,10 +152,7 @@ const App: React.FC = () => {
           {currentPage === Page.SWAP && <Swap />}
           {currentPage === Page.MARKET && <Market />}
           {currentPage === Page.AGENT && <AgentMode />}
-          {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} onLogout={() => {
-            setIsWalletConnected(false);
-            setCurrentPage(Page.CHAT);
-          }} />}
+          {currentPage === Page.PORTFOLIO && <Portfolio isWalletConnected={isWalletConnected} onConnect={connectWallet} onSettingsClick={() => setCurrentPage(Page.SETTINGS)} onLogout={() => logout()} />}
           {currentPage === Page.SETTINGS && <Settings onBack={() => setCurrentPage(Page.PORTFOLIO)} />}
           {currentPage === Page.CHAT && <Chat />}
           {currentPage === Page.GROUPS && <Groups />}
