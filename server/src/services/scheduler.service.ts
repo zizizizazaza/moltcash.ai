@@ -1,10 +1,174 @@
 import prisma from '../db.js';
 import { recordCreditEvent, ISSUER_EVENTS, INVESTOR_EVENTS } from './credit.service.js';
+import { notifyMany } from './notification.service.js';
+import { getIO } from '../socket/index.js';
 
 // Interval handles for cleanup
 let overdueInterval: ReturnType<typeof setInterval> | null = null;
 let holdTimeInterval: ReturnType<typeof setInterval> | null = null;
 let proposalInterval: ReturnType<typeof setInterval> | null = null;
+let fundraiseInterval: ReturnType<typeof setInterval> | null = null;
+
+// ==================== Expired Fundraise Detection ====================
+// Auto-fail fundraises that pass durationDays without reaching Soft Cap
+// Auto-fund fundraises that pass durationDays and have reached Soft Cap
+async function checkExpiredFundraises() {
+  try {
+    const now = new Date();
+
+    // Get all active fundraising projects
+    const projects = await prisma.project.findMany({
+      where: { status: { in: ['Fundraising', 'Ending Soon'] } },
+    });
+
+    for (const project of projects) {
+      // Calculate end date: createdAt + durationDays
+      const endDate = new Date(project.createdAt);
+      endDate.setDate(endDate.getDate() + project.durationDays);
+
+      if (now < endDate) continue; // Not expired yet
+
+      const softCap = project.targetAmount * 0.5;
+      const reachedSoftCap = project.raisedAmount >= softCap;
+
+      if (reachedSoftCap) {
+        // Soft cap reached → mark as Funded
+        await prisma.project.update({
+          where: { id: project.id },
+          data: { status: 'Funded' },
+        });
+
+        console.log(`[Scheduler] Project "${project.title}" ended with soft cap reached → Funded ($${project.raisedAmount}/$${project.targetAmount})`);
+
+        // Notify investors of success
+        const investments = await prisma.investment.findMany({
+          where: { projectId: project.id, status: 'active' },
+          select: { userId: true },
+        });
+        const investorIds = [...new Set(investments.map(i => i.userId))];
+        if (investorIds.length) {
+          notifyMany(investorIds, {
+            type: 'investment',
+            title: 'Fundraise Successful',
+            body: `"${project.title}" has been funded! Your investment is now locked.`,
+            refType: 'project',
+            refId: project.id,
+          }).catch(() => {});
+        }
+
+        // Broadcast project update
+        try { getIO().emit('project:updated', { projectId: project.id, status: 'Funded' }); } catch {}
+      } else {
+        // Soft cap NOT reached → Failed, refund all investors
+        await refundFailedProject(project);
+      }
+    }
+  } catch (err) {
+    console.error('[Scheduler] Expired fundraise check failed:', err);
+  }
+}
+
+// Refund all investors and mark project as Failed
+async function refundFailedProject(project: any) {
+  try {
+    const investments = await prisma.investment.findMany({
+      where: { projectId: project.id, status: 'active' },
+    });
+
+    if (investments.length === 0) {
+      // No investors, just mark failed
+      await prisma.project.update({
+        where: { id: project.id },
+        data: { status: 'Failed', raisedAmount: 0, remainingCap: project.targetAmount, backersCount: 0 },
+      });
+      return;
+    }
+
+    // Process refunds in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Create REDEEM transactions for each investor
+      for (const inv of investments) {
+        await tx.transaction.create({
+          data: {
+            userId: inv.userId,
+            type: 'REDEEM',
+            amount: inv.amount,
+            asset: `AIUSD-${project.title}`,
+            status: 'COMPLETED',
+          },
+        });
+
+        // Remove portfolio holding
+        const holdingAsset = `AIUSD-${project.title}`;
+        const holding = await tx.portfolioHolding.findUnique({
+          where: { userId_asset: { userId: inv.userId, asset: holdingAsset } },
+        });
+        if (holding) {
+          if (holding.amount <= inv.shares) {
+            await tx.portfolioHolding.delete({ where: { id: holding.id } });
+          } else {
+            await tx.portfolioHolding.update({
+              where: { id: holding.id },
+              data: { amount: holding.amount - inv.shares },
+            });
+          }
+        }
+      }
+
+      // Mark all investments as refunded (use 'sold' status to indicate closed)
+      await tx.investment.updateMany({
+        where: { projectId: project.id, status: 'active' },
+        data: { status: 'sold' },
+      });
+
+      // Mark project as Failed
+      await tx.project.update({
+        where: { id: project.id },
+        data: {
+          status: 'Failed',
+          raisedAmount: 0,
+          remainingCap: project.targetAmount,
+          backersCount: 0,
+        },
+      });
+    });
+
+    // Credit penalty for issuer (find via enterprise verification)
+    const enterprise = await prisma.enterpriseVerification.findFirst({
+      where: { status: 'verified' },
+    });
+    if (enterprise) {
+      try {
+        await recordCreditEvent(
+          enterprise.userId,
+          'fundraise_failed',
+          ISSUER_EVENTS.FUNDRAISE_FAILED.delta,
+          `${ISSUER_EVENTS.FUNDRAISE_FAILED.reason}: "${project.title}"`,
+          project.id,
+        );
+      } catch { /* non-critical */ }
+    }
+
+    // Notify investors
+    const investorIds = [...new Set(investments.map((i: any) => i.userId))] as string[];
+    if (investorIds.length) {
+      notifyMany(investorIds, {
+        type: 'investment',
+        title: 'Fundraise Failed — Refund Issued',
+        body: `"${project.title}" did not reach its funding goal. Your investment of has been refunded.`,
+        refType: 'project',
+        refId: project.id,
+      }).catch(() => {});
+    }
+
+    // Broadcast project failure
+    try { getIO().emit('project:updated', { projectId: project.id, status: 'Failed' }); } catch {}
+
+    console.log(`[Scheduler] Project "${project.title}" failed (${project.raisedAmount}/${project.targetAmount * 0.5} soft cap). Refunded ${investments.length} investors.`);
+  } catch (err) {
+    console.error(`[Scheduler] Refund failed for project ${project.id}:`, err);
+  }
+}
 
 // ==================== Overdue Detection ====================
 // Mark overdue payments + apply credit penalties
@@ -53,6 +217,22 @@ async function checkOverduePayments() {
           projectId,
         );
       } catch { /* non-critical */ }
+
+      // Notify investors about overdue
+      const investments = await prisma.investment.findMany({
+        where: { projectId, status: 'active' },
+        select: { userId: true },
+      });
+      const investorIds = [...new Set(investments.map(i => i.userId))];
+      if (investorIds.length) {
+        notifyMany(investorIds, {
+          type: 'repayment',
+          title: 'Payment Overdue',
+          body: `A project you invested in has ${totalOverdue} overdue payment(s).`,
+          refType: 'project',
+          refId: projectId,
+        }).catch(() => {});
+      }
     }
 
     console.log(`[Scheduler] Marked ${newlyOverdue.length} payments overdue across ${projectIds.length} projects`);
@@ -62,67 +242,51 @@ async function checkOverduePayments() {
 }
 
 // ==================== Hold Time Milestones ====================
-// Check investments for 30-day and 90-day hold bonuses
+// Check investments for 30/90/180/360-day hold bonuses
+const HOLD_MILESTONES = [
+  { days: 360, eventType: 'hold_360_days', event: INVESTOR_EVENTS.HOLD_360_DAYS },
+  { days: 180, eventType: 'hold_180_days', event: INVESTOR_EVENTS.HOLD_180_DAYS },
+  { days: 90, eventType: 'hold_90_days', event: INVESTOR_EVENTS.HOLD_90_DAYS },
+  { days: 30, eventType: 'hold_30_days', event: INVESTOR_EVENTS.HOLD_30_DAYS },
+] as const;
+
 async function checkHoldTimeMilestones() {
   try {
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    let totalAwarded = 0;
 
-    // Find investments held for 90+ days that haven't received the 90-day bonus
-    const hold90 = await prisma.investment.findMany({
-      where: {
-        status: 'active',
-        createdAt: { lt: ninetyDaysAgo },
-      },
-      select: { id: true, userId: true, projectId: true },
-    });
+    for (const milestone of HOLD_MILESTONES) {
+      const threshold = new Date(now.getTime() - milestone.days * 24 * 60 * 60 * 1000);
 
-    for (const inv of hold90) {
-      // Check if already awarded
-      const existing = await prisma.creditScoreEvent.findFirst({
-        where: { userId: inv.userId, eventType: 'hold_90_days', refId: inv.id },
+      const investments = await prisma.investment.findMany({
+        where: {
+          status: 'active',
+          createdAt: { lt: threshold },
+        },
+        select: { id: true, userId: true, projectId: true },
       });
-      if (!existing) {
-        try {
-          await recordCreditEvent(
-            inv.userId, 'hold_90_days',
-            INVESTOR_EVENTS.HOLD_90_DAYS.delta,
-            INVESTOR_EVENTS.HOLD_90_DAYS.reason,
-            inv.id,
-          );
-        } catch { /* non-critical */ }
+
+      for (const inv of investments) {
+        // Check if already awarded
+        const existing = await prisma.creditScoreEvent.findFirst({
+          where: { userId: inv.userId, eventType: milestone.eventType, refId: inv.id },
+        });
+        if (!existing) {
+          try {
+            await recordCreditEvent(
+              inv.userId, milestone.eventType,
+              milestone.event.delta,
+              milestone.event.reason,
+              inv.id,
+            );
+            totalAwarded++;
+          } catch { /* non-critical */ }
+        }
       }
     }
 
-    // Find investments held for 30+ days that haven't received the 30-day bonus
-    const hold30 = await prisma.investment.findMany({
-      where: {
-        status: 'active',
-        createdAt: { lt: thirtyDaysAgo },
-      },
-      select: { id: true, userId: true, projectId: true },
-    });
-
-    for (const inv of hold30) {
-      const existing = await prisma.creditScoreEvent.findFirst({
-        where: { userId: inv.userId, eventType: 'hold_30_days', refId: inv.id },
-      });
-      if (!existing) {
-        try {
-          await recordCreditEvent(
-            inv.userId, 'hold_30_days',
-            INVESTOR_EVENTS.HOLD_30_DAYS.delta,
-            INVESTOR_EVENTS.HOLD_30_DAYS.reason,
-            inv.id,
-          );
-        } catch { /* non-critical */ }
-      }
-    }
-
-    const awarded = hold90.length + hold30.length;
-    if (awarded > 0) {
-      console.log(`[Scheduler] Checked ${awarded} investments for hold-time milestones`);
+    if (totalAwarded > 0) {
+      console.log(`[Scheduler] Awarded ${totalAwarded} hold-time milestone bonuses`);
     }
   } catch (err) {
     console.error('[Scheduler] Hold time check failed:', err);
@@ -167,6 +331,9 @@ async function finalizeExpiredProposals() {
 export function startScheduler() {
   console.log('[Scheduler] Starting background jobs...');
 
+  // Check expired fundraises every 30 minutes
+  fundraiseInterval = setInterval(checkExpiredFundraises, 30 * 60 * 1000);
+
   // Check overdue payments every hour
   overdueInterval = setInterval(checkOverduePayments, 60 * 60 * 1000);
 
@@ -176,8 +343,9 @@ export function startScheduler() {
   // Finalize expired proposals every 30 minutes
   proposalInterval = setInterval(finalizeExpiredProposals, 30 * 60 * 1000);
 
-  // Run once immediately on startup
+  // Run once immediately on startup (after 5s delay for DB warmup)
   setTimeout(() => {
+    checkExpiredFundraises();
     checkOverduePayments();
     checkHoldTimeMilestones();
     finalizeExpiredProposals();
@@ -185,6 +353,7 @@ export function startScheduler() {
 }
 
 export function stopScheduler() {
+  if (fundraiseInterval) clearInterval(fundraiseInterval);
   if (overdueInterval) clearInterval(overdueInterval);
   if (holdTimeInterval) clearInterval(holdTimeInterval);
   if (proposalInterval) clearInterval(proposalInterval);

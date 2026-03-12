@@ -1,6 +1,6 @@
 # LOKA AIUSD Dashboard — 开发进度总览
 
-> 最后更新：2026-03-11  
+> 最后更新：2026-03-12  
 > 整体进度：**~75%**（Phase 0-11 后端 + API 完成，前端已对接，Privy OAuth 已集成）
 
 ---
@@ -69,7 +69,7 @@
 - [x] **募资状态机**
   - [x] 项目状态流转：Fundraising → Funded（达到硬顶自动关闭）
   - [x] 达到硬顶自动关闭
-  - [ ] 到期未达软顶自动失败 + 退款逻辑（需定时任务，后续实现）
+  - [x] 到期未达软顶自动失败 + 退款逻辑（Scheduler 定时任务）
 - [x] **DELETE /api/projects/:id/revoke-investment** — 募资期内取消投资
 - [x] **投资确认弹窗**（Market AssetDetail 内置 Pledge Box）
 - [x] **投资成功后 Portfolio 实时刷新**
@@ -81,8 +81,8 @@
 - [x] **POST /api/portfolio/mint** — AIUSD Mint（USDC→AIUSD，含 PortfolioHolding 更新 + Transaction 记录）
 - [x] **POST /api/portfolio/redeem** — AIUSD Redeem（AIUSD→USDC，余额检查 + Transaction 记录）
 - [x] **Swap.tsx** — 对接铸造/赎回接口（根据 mode 自动调用 mint/redeem）
-- [ ] **Swap.tsx** — 展示真实收益数据（替换假图表）
-- [ ] 汇率 / 费率计算逻辑
+- [x] **Swap.tsx** — 展示真实收益数据（替换假图表）
+- [x] 汇率 / 费率计算逻辑（基于信用等级的分级费率 + swap-quote 接口）
 
 ---
 
@@ -170,7 +170,7 @@
 - [x] **POST /api/repayment/check-overdue** — 逾期检测 + 自动标记
 - [x] 还款到账 → 创建 INTEREST Transaction + 触发信用加分（REPAYMENT_ON_TIME）
 - [x] 前端 API 方法（getRepaymentSchedule）
-- [ ] 定时任务 cron 调度（自动执行 check-overdue）— 需 cron 基础设施
+- [x] 定时任务 cron 调度（setInterval 自动执行 check-overdue + 持仓奖励 + 提案到期）
 - [ ] 前端还款管理 UI
 
 ---
@@ -186,7 +186,7 @@
 - [x] **GET /api/liquidation/:projectId/events** — 查询清算事件
 - [x] **POST /api/liquidation/:projectId/trigger** — 触发清算（检测逾期 ≥3 期，扣押抵押物，失败项目）
 - [x] 前端 API 方法（getCollateral, getLiquidationEvents）
-- [ ] 瀑布分配具体算法（优先级：Senior → Unsecured → Equity）— 需业务决策
+- [x] 瀑布分配算法（Senior → Unsecured → Equity，按投资比例分配回收）
 - [ ] 智能合约对接（链上抵押物管理）
 - [ ] 前端清算管理 UI
 
@@ -204,7 +204,7 @@
 - [x] 投票逻辑（投票权重 = 持仓份额）+ 治理参与信用加分
 - [x] 前端 API 方法（getProposals, createProposal, voteOnProposal）
 - [x] **前端治理 UI** — 已在 Groups 群组中实现（投票入口 + 交互逻辑）
-- [ ] 参数调整自动生效逻辑（等级阈值、费率等）— 需业务决策
+- [x] 参数调整自动生效逻辑（解析提案 JSON 参数 + treasury rebalance 写入）
 - [ ] 国库再平衡算法
 
 ---
@@ -224,11 +224,10 @@
 
 - [x] 全局 Toast 通知系统（Coming Soon toast + Swap/Trade 成功/错误提示）
 - [x] 错误边界（ErrorBoundary 组件 + index.tsx 包裹）
-- [ ] 移动端响应式适配完善
+- [x] 移动端响应式适配（底部 Tab Bar + 卡片自适应 + safe-area）
 - [ ] 页面加载骨架屏（Skeleton）
 - [ ] 路由系统升级（替换 Enum 为 React Router）
 - [ ] 状态管理优化（Context / Zustand）
-- [ ] 国际化 i18n（中英双语）
 
 ---
 

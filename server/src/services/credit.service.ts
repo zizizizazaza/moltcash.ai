@@ -83,6 +83,8 @@ export const INVESTOR_EVENTS = {
   DIVERSIFIED_5: { delta: 25, reason: 'Portfolio diversified (5+ projects)' },
   HOLD_30_DAYS: { delta: 10, reason: '30-day hold bonus' },
   HOLD_90_DAYS: { delta: 20, reason: '90-day hold bonus' },
+  HOLD_180_DAYS: { delta: 40, reason: '180-day hold bonus' },
+  HOLD_360_DAYS: { delta: 80, reason: '360-day hold bonus' },
   GOVERNANCE_VOTE: { delta: 5, reason: 'Participated in governance vote' },
   REFERRAL: { delta: 15, reason: 'Successful referral' },
   EARLY_REVOKE: { delta: -5, reason: 'Early investment revocation' },

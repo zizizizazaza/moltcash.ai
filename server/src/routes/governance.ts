@@ -206,30 +206,78 @@ router.post('/proposals/:id/execute', authRequired, async (req: AuthRequest, res
     if (!proposal) throw new AppError('Proposal not found', 404);
     if (proposal.status !== 'passed') throw new AppError('Proposal must be passed to execute', 400);
 
+    // Try to parse structured parameters from description
+    let params: Record<string, any> = {};
+    try {
+      // Look for JSON block in description (e.g., ```json {...} ```)
+      const jsonMatch = proposal.description.match(/```json\s*([\s\S]*?)```/) 
+                     || proposal.description.match(/\{[\s\S]*}/);
+      if (jsonMatch) {
+        params = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      }
+    } catch { /* description isn't structured, that's fine */ }
+
     // Execute based on category
     let executionResult: string;
+    const executionDetails: Record<string, any> = { proposalId, category: proposal.category, params };
 
     switch (proposal.category) {
       case 'parameter_change':
-        executionResult = 'Parameter change queued for next cycle';
+        executionResult = params.param
+          ? `Parameter "${params.param}" change to ${params.value} queued for next cycle`
+          : 'Parameter change queued for next cycle (no specific param detected)';
+        console.log(`[Governance] Parameter change executed:`, params);
         break;
-      case 'treasury_rebalance':
-        executionResult = 'Treasury rebalance initiated';
-        // Update treasury allocation percentages if specified in description
+
+      case 'treasury_rebalance': {
+        // Parse target allocations from params
+        const targets = {
+          tBills: params.tBills ?? params.t_bills,
+          liquidity: params.liquidity,
+          operations: params.operations,
+        };
+        if (targets.tBills || targets.liquidity || targets.operations) {
+          // Update latest treasury snapshot with new targets
+          const latest = await prisma.treasurySnapshot.findFirst({ orderBy: { createdAt: 'desc' } });
+          if (latest) {
+            await prisma.treasurySnapshot.update({
+              where: { id: latest.id },
+              data: {
+                ...(targets.tBills != null && { tBillsPercent: targets.tBills }),
+                ...(targets.liquidity != null && { liquidityPercent: targets.liquidity }),
+                ...(targets.operations != null && { operationsPercent: targets.operations }),
+              },
+            });
+          }
+          executionResult = `Treasury rebalance applied: ${JSON.stringify(targets)}`;
+        } else {
+          executionResult = 'Treasury rebalance initiated (manual review required)';
+        }
+        console.log(`[Governance] Treasury rebalance executed:`, targets);
         break;
+      }
+
       case 'fee_adjustment':
-        executionResult = 'Fee adjustment applied';
+        executionResult = params.fee_rate != null
+          ? `Fee adjustment to ${(params.fee_rate * 100).toFixed(1)}% queued`
+          : 'Fee adjustment queued (manual review required)';
+        console.log(`[Governance] Fee adjustment executed:`, params);
         break;
+
       case 'tier_threshold':
-        executionResult = 'Tier threshold update queued';
+        executionResult = params.tier && params.min_score
+          ? `Tier "${params.tier}" threshold change to ${params.min_score} queued`
+          : 'Tier threshold update queued (manual review required)';
+        console.log(`[Governance] Tier threshold executed:`, params);
         break;
+
       default:
         executionResult = 'Executed';
     }
 
     await prisma.governanceProposal.update({
       where: { id: proposalId },
-      data: { status: 'executed' },
+      data: { status: 'executed', executedAt: new Date() },
     });
 
     // Award consensus bonus to voters who voted with the majority
@@ -242,7 +290,7 @@ router.post('/proposals/:id/execute', authRequired, async (req: AuthRequest, res
       }
     }
 
-    res.json({ status: 'executed', result: executionResult });
+    res.json({ status: 'executed', result: executionResult, details: executionDetails });
   } catch (err) {
     next(err);
   }

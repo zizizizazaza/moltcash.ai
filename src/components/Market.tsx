@@ -1283,4 +1283,5 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
   );
 };
 
+export { AssetDetail, mapApiProject };
 export default Market;

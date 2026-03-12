@@ -208,7 +208,7 @@ const Groups: React.FC = () => {
         mockGroups.forEach(g => { init[g.id] = [...g.messages]; });
         return init;
     });
-    const [showMembers, setShowMembers] = useState(true);
+    const [showMembers, setShowMembers] = useState(typeof window !== 'undefined' && window.innerWidth >= 768);
     const [showGroupList, setShowGroupList] = useState(true);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);

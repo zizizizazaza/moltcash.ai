@@ -162,6 +162,23 @@ class ApiClient {
     });
   }
 
+  async swapToken(data: { token: string; tokenSymbol: string; action: 'buy' | 'sell'; amount: number; amountType?: 'token' | 'usd'; estimatedUSD?: number; chain?: string }) {
+    return this.request<{
+      transaction: any;
+      action: string;
+      token: string;
+      tokenAmount: number;
+      pricePerToken: number;
+      totalUSD: number;
+      slippage: number;
+      gasFee: number;
+      chain: string;
+    }>('/portfolio/swap', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ============ Chat / AI ============
 
   async getChatHistory() {

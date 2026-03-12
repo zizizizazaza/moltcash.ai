@@ -228,7 +228,7 @@ const Trade: React.FC = () => {
                         {showProjectDropdown && (
                             <>
                                 <div className="fixed inset-0 z-40" onClick={() => setShowProjectDropdown(false)} />
-                                <div className="absolute right-0 top-12 z-50 bg-white border border-gray-100 rounded-2xl shadow-2xl py-2 min-w-[280px] animate-fadeIn">
+                                <div className="absolute left-0 sm:left-auto sm:right-0 top-12 z-50 bg-white border border-gray-100 rounded-2xl shadow-2xl py-2 min-w-[220px] sm:min-w-[280px] max-w-[calc(100vw-2rem)] animate-fadeIn">
                                     <button
                                         onClick={() => { setProjectFilter('All'); setShowProjectDropdown(false); }}
                                         className={`w-full text-left px-5 py-3 text-xs font-bold transition-all ${projectFilter === 'All' ? 'text-black bg-gray-50' : 'text-gray-500 hover:bg-gray-50 hover:text-black'}`}

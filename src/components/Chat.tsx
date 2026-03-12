@@ -1,8 +1,40 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import { Icons } from '../constants';
+import { MarketAsset } from '../types';
 import { api } from '../services/api';
+import { AssetDetail, mapApiProject } from './Market';
 import { useVoice } from '../hooks/useVoice';
+
+// Parse [TRADE_ACTION]...[/TRADE_ACTION] blocks from AI responses
+interface TradeAction {
+    type: 'swap' | 'invest' | 'mint';
+    action: 'buy' | 'sell' | 'mint' | 'redeem';
+    token?: string;
+    tokenSymbol?: string;
+    amount: string;
+    amountType?: 'token' | 'usd';
+    estimatedUSD?: string;
+    chain?: string;
+    projectName?: string;
+    unit?: string;
+    apy?: string;
+    term?: string;
+    minInvestment?: string;
+}
+
+function parseTradeAction(content: string): { text: string; action: TradeAction | null } {
+    const regex = /\[TRADE_ACTION\]\s*([\s\S]*?)\s*\[\/TRADE_ACTION\]/;
+    const match = content.match(regex);
+    if (!match) return { text: content, action: null };
+    try {
+        const action = JSON.parse(match[1]) as TradeAction;
+        const text = content.replace(regex, '').trim();
+        return { text, action };
+    } catch {
+        return { text: content, action: null };
+    }
+}
 
 const Chat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
@@ -19,6 +51,9 @@ const Chat: React.FC = () => {
     const [selectedAssetName, setSelectedAssetName] = useState<string | null>(null);
     const [showActionMenu, setShowActionMenu] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
+    const [marketAssets, setMarketAssets] = useState<MarketAsset[]>([]);
+    const [detailAsset, setDetailAsset] = useState<MarketAsset | null>(null);
+    const [tradeExecuting, setTradeExecuting] = useState<Record<number, 'pending' | 'success' | 'error'>>({});
     const abortControllerRef = useRef<AbortController | null>(null);
     const pendingVoiceSendRef = useRef(false);
 
@@ -50,11 +85,11 @@ const Chat: React.FC = () => {
 
     useEffect(() => {
         const phrases = [
-            'Ask about any asset or start a transaction...',
+            'Buy 0.1 ETH on Base...',
+            'Invest $5,000 in ComputeDAO...',
             'Compare yields across all active pools...',
             'Show me the top performing assets...',
-            'Analyze ComputeDAO risk profile...',
-            'How much can I earn with $5,000?',
+            'Swap 500 USDC to WBTC...',
         ];
         let phraseIdx = 0;
         let charIdx = 0;
@@ -91,6 +126,14 @@ const Chat: React.FC = () => {
         tick();
         return () => clearTimeout(timeout);
     }, [isInputFocused, inputText]);
+
+    // Fetch market assets for project detail view
+    useEffect(() => {
+        api.getProjects().then(data => {
+            if (Array.isArray(data) && data.length > 0) setMarketAssets(data.map(mapApiProject));
+        }).catch(() => {});
+    }, []);
+
     useEffect(() => {
         const pendingProject = sessionStorage.getItem('pending_chat_project');
         if (pendingProject) {
@@ -126,11 +169,9 @@ const Chat: React.FC = () => {
         return () => window.removeEventListener('loka-set-chat-agent', handleSetAgent);
     }, []);
 
-    // Auto-login for demo purposes
+    // Auto-login for demo purposes (always refresh to avoid stale token)
     useEffect(() => {
-        if (!api.isAuthenticated) {
-            api.loginEmail('demo@loka.finance').catch(() => {});
-        }
+        api.loginEmail('demo@loka.finance').catch(() => {});
     }, []);
 
     const sendToAI = async (text: string) => {
@@ -150,7 +191,7 @@ const Chat: React.FC = () => {
             const token = sessionStorage.getItem('loka_token');
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const response = await fetch('/api/chat/stream', {
+            const response = await fetch('https://nftkashai.online/lokacash/api/chat/stream', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ content: text, agentId: activeAgent }),
@@ -383,17 +424,105 @@ const Chat: React.FC = () => {
         sendToAI(userMsgText);
     };
 
-    const handleActionResponse = (index: number, confirm: boolean) => {
+    const handleActionResponse = async (index: number, confirm: boolean) => {
         setMessages(prev => prev.map((m, i) => i === index ? { ...m, actionCompleted: true } : m));
 
         const userMsg = { role: 'user', content: confirm ? 'Confirm' : 'Reject', timestamp: new Date().toLocaleTimeString() };
         setMessages(prev => [...prev, userMsg]);
 
-        if (confirm) {
+        if (!confirm) return;
+
+        const msg = messages[index];
+        const parsed = msg?.content ? parseTradeAction(msg.content) : { action: null };
+        const action = msg?.tradeAction || parsed.action;
+
+        if (!action) {
             setTimeout(() => {
-                const aiMsg = { role: 'assistant', content: 'Transaction executed successfully.', timestamp: new Date().toLocaleTimeString() };
-                setMessages(prev => [...prev, aiMsg]);
-            }, 1000);
+                setMessages(prev => [...prev, { role: 'assistant', content: 'Transaction confirmed. Processing your request...', timestamp: new Date().toLocaleTimeString() }]);
+            }, 500);
+            return;
+        }
+
+        setTradeExecuting(prev => ({ ...prev, [index]: 'pending' }));
+
+        try {
+            if (action.type === 'invest' && action.action === 'buy') {
+                // Cash flow asset investment — use real API
+                const matchedAsset = marketAssets.find(a =>
+                    a.title.toLowerCase().includes((action.projectName || '').toLowerCase()) ||
+                    (action.projectName || '').toLowerCase().includes(a.title.toLowerCase())
+                );
+                if (matchedAsset) {
+                    const amount = parseFloat(action.amount);
+                    if (amount < 10) throw new Error('Minimum investment is $10 USDC');
+                    await api.investInProject(matchedAsset.id, amount);
+                    setTradeExecuting(prev => ({ ...prev, [index]: 'success' }));
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        content: `✅ Successfully invested **$${amount.toLocaleString()} USDC** in ${matchedAsset.title}!\n\nExpected APY: ${action.apy || matchedAsset.apy + '%'}\nTerm: ${action.term || matchedAsset.durationDays + 'd'}\n\nYou can track this investment in your Portfolio. You've also been added to the project's Group Chat.`,
+                        timestamp: new Date().toLocaleTimeString()
+                    }]);
+                } else {
+                    throw new Error(`Project "${action.projectName}" not found in marketplace.`);
+                }
+            } else if (action.type === 'invest' && action.action === 'sell') {
+                // Revoke investment
+                const matchedAsset = marketAssets.find(a =>
+                    a.title.toLowerCase().includes((action.projectName || '').toLowerCase())
+                );
+                if (matchedAsset) {
+                    await api.revokeInvestment(matchedAsset.id);
+                    setTradeExecuting(prev => ({ ...prev, [index]: 'success' }));
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        content: `✅ Investment in ${matchedAsset.title} has been revoked. Your USDC has been refunded.`,
+                        timestamp: new Date().toLocaleTimeString()
+                    }]);
+                } else {
+                    throw new Error(`Project "${action.projectName}" not found.`);
+                }
+            } else if (action.type === 'swap') {
+                // Web3 token swap — call backend API
+                const tokenAmount = parseFloat(action.amount);
+                const result = await api.swapToken({
+                    token: action.token || action.tokenSymbol || '',
+                    tokenSymbol: action.tokenSymbol || action.token || '',
+                    action: action.action as 'buy' | 'sell',
+                    amount: tokenAmount,
+                    amountType: (action.amountType as 'token' | 'usd') || 'token',
+                    estimatedUSD: action.estimatedUSD ? parseFloat(action.estimatedUSD) : undefined,
+                    chain: action.chain || 'base',
+                });
+                setTradeExecuting(prev => ({ ...prev, [index]: 'success' }));
+                const actionLabel = result.action === 'buy' ? 'Purchased' : 'Sold';
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: `✅ ${actionLabel} **${result.tokenAmount} ${result.token}** at $${result.pricePerToken.toLocaleString()}/token.\n\nTotal: **$${result.totalUSD.toLocaleString()} USDC** (incl. ${result.slippage} slippage + $${result.gasFee} gas)\nTx: \`${result.transaction.txHash?.slice(0, 18)}...\`\nChain: ${result.chain}\n\nYour portfolio has been updated. Check the Portfolio tab for your holdings.`,
+                    timestamp: new Date().toLocaleTimeString()
+                }]);
+            } else if (action.type === 'mint') {
+                // Mint/redeem AIUSD
+                const amount = parseFloat(action.amount);
+                if (action.action === 'mint') {
+                    await api.mintAIUSD(amount);
+                } else {
+                    await api.redeemAIUSD(amount);
+                }
+                setTradeExecuting(prev => ({ ...prev, [index]: 'success' }));
+                const label = action.action === 'mint' ? 'Minted' : 'Redeemed';
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: `✅ ${label} **${amount.toLocaleString()} AIUSD** successfully. Your portfolio has been updated.`,
+                    timestamp: new Date().toLocaleTimeString()
+                }]);
+            }
+        } catch (err: any) {
+            setTradeExecuting(prev => ({ ...prev, [index]: 'error' }));
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: `❌ Transaction failed: ${err.message || 'Unknown error'}. Please try again or check your balance.`,
+                timestamp: new Date().toLocaleTimeString()
+            }]);
         }
     };
 
@@ -427,6 +556,11 @@ const Chat: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full bg-[#fafafa] text-black overflow-hidden font-sans">
+            {detailAsset ? (
+                <div className="flex-1 overflow-y-auto bg-white">
+                    <AssetDetail asset={detailAsset} onClose={() => setDetailAsset(null)} />
+                </div>
+            ) : (
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Chat History Sidebar */}
                 <div className={`h-full bg-[#fafafa] border-r border-gray-100 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${leftSidebarCollapsed ? 'w-0 overflow-hidden opacity-0' : 'w-full absolute inset-0 z-40 md:relative md:w-64 opacity-100'}`}>
@@ -800,13 +934,13 @@ const Chat: React.FC = () => {
                                         ) : (
                                             <div className="flex items-center w-full relative">
                                                 {!inputText && !isInputFocused && !voice.isRecording && (
-                                                    <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
-                                                        <span className="text-gray-400 text-base font-medium">{typedPlaceholder}</span>
+                                                    <div className="absolute left-3 sm:left-6 right-24 sm:right-28 top-1/2 -translate-y-1/2 pointer-events-none flex items-center overflow-hidden">
+                                                        <span className="text-gray-400 text-base font-medium truncate">{typedPlaceholder}</span>
                                                         <span className="inline-block w-[2px] h-5 bg-green-400 ml-[1px] animate-[cursorBlink_1s_steps(2)_infinite]" />
                                                     </div>
                                                 )}
                                                 {voice.isRecording && (
-                                                    <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-3">
+                                                    <div className="absolute left-3 sm:left-6 right-24 sm:right-28 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-3">
                                                         <span className="text-violet-500 text-base font-bold animate-pulse">Listening...</span>
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
@@ -1050,68 +1184,65 @@ const Chat: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-w-5xl mx-auto">
-                                    {/* Expandable Project Details Card at top of chat */}
+                                    {/* Project Details Card at top of chat — click to open full detail */}
+                                    {(() => {
+                                        const matchedAsset = marketAssets.find(a => a.title === selectedCurrent.title || selectedCurrent.title.includes(a.title) || a.title.includes(selectedCurrent.title));
+                                        const displayApy = matchedAsset ? `${matchedAsset.apy}%` : (selectedCurrent.apy || '15.5%');
+                                        const displayTarget = matchedAsset ? `$${(matchedAsset.targetAmount / 1000).toFixed(0)}k` : '$500k';
+                                        const displayTerm = matchedAsset ? `${matchedAsset.durationDays}d` : (selectedCurrent.term || '60d');
+                                        const displayProgress = matchedAsset ? Math.min(100, Math.round((matchedAsset.raisedAmount / matchedAsset.targetAmount) * 100)) : (selectedCurrent.progress || progress);
+                                        const coverImg = matchedAsset ? matchedAsset.issuerLogo : selectedCurrent.image;
+                                        return (
                                     <div className="w-full bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
-                                        {/* Compact Header - always visible */}
                                         <div
                                             className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 cursor-pointer group"
-                                            onClick={() => setProjectCardExpanded(!projectCardExpanded)}
+                                            onClick={() => {
+                                                if (matchedAsset) {
+                                                    setDetailAsset(matchedAsset);
+                                                } else {
+                                                    setProjectCardExpanded(!projectCardExpanded);
+                                                }
+                                            }}
                                         >
                                             <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                                                <img src={selectedCurrent.image} className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border border-gray-100 shrink-0" alt={selectedCurrent.title} />
+                                                <img src={coverImg} className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border border-gray-100 shrink-0" alt={selectedCurrent.title} />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <h3 className="text-sm font-black text-black truncate">{selectedCurrent.title}</h3>
                                                         <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-[8px] font-black rounded tracking-wider shrink-0">VERIFIED</span>
                                                     </div>
-                                                    <p className="text-[11px] text-gray-400 font-medium leading-snug line-clamp-1">{selectedCurrent.desc}</p>
+                                                    <p className="text-[11px] text-gray-400 font-medium leading-snug line-clamp-1">{matchedAsset?.subtitle || selectedCurrent.desc}</p>
                                                 </div>
-                                                {/* Expand/Collapse Chevron */}
-                                                <div className={`w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all sm:hidden ${projectCardExpanded ? 'rotate-180' : ''}`}>
-                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                                                {/* Arrow icon */}
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all">
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3 sm:gap-5 shrink-0 sm:pl-4 sm:border-l border-gray-100 overflow-x-auto">
                                                 <div className="text-left sm:text-right">
                                                     <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">Yield</p>
-                                                    <p className="text-sm font-black text-black">15.5%</p>
+                                                    <p className="text-sm font-black text-black">{displayApy}</p>
                                                 </div>
                                                 <div className="text-left sm:text-right">
                                                     <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">Raise</p>
-                                                    <p className="text-sm font-black text-black">$500k</p>
+                                                    <p className="text-sm font-black text-black">{displayTarget}</p>
                                                 </div>
                                                 <div className="text-left sm:text-right">
                                                     <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">Term</p>
-                                                    <p className="text-sm font-bold text-black">60d</p>
+                                                    <p className="text-sm font-bold text-black">{displayTerm}</p>
                                                 </div>
                                                 {/* Progress bar inline */}
                                                 <div className="flex items-center gap-2 shrink-0 pl-3 sm:pl-4 border-l border-gray-100">
                                                     <div className="w-16 sm:w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-black rounded-full" style={{ width: `${progress}%` }} />
+                                                        <div className="h-full bg-black rounded-full" style={{ width: `${displayProgress}%` }} />
                                                     </div>
-                                                    <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">{progress}%</span>
-                                                </div>
-                                                {/* Expand/Collapse Chevron — desktop only */}
-                                                <div className={`hidden sm:flex w-8 h-8 rounded-full bg-gray-50 items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all ${projectCardExpanded ? 'rotate-180' : ''}`}>
-                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                                                    <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">{displayProgress}%</span>
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Expanded Content */}
-                                        {projectCardExpanded && (
-                                            <div className="border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                {/* Full Project Brief */}
-                                                <div className="p-6">
-                                                    {renderProjectBrief()}
-                                                </div>
-                                                {/* Tabs */}
-                                                <div className="px-6 pb-8">
-                                                    {renderTabContent()}
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
+                                        );
+                                    })()}
 
                                     {/* Voice Mode Status Bar */}
                                     {voice.voiceMode && (
@@ -1287,13 +1418,117 @@ const Chat: React.FC = () => {
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}{msg.isStreaming && <span className="inline-block w-1.5 h-4 bg-black/70 ml-0.5 animate-pulse" />}</div>
-                                                            {msg.type === 'action' && !msg.actionCompleted && (
-                                                                <div className="mt-4 flex gap-2">
-                                                                    <button onClick={() => handleActionResponse(i, true)} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition-all">Confirm</button>
-                                                                    <button onClick={() => handleActionResponse(i, false)} className="px-4 py-2 bg-gray-100 text-black text-xs font-bold rounded-lg hover:bg-gray-200 transition-all">Reject</button>
-                                                                </div>
-                                                            )}
+                                                            {(() => {
+                                                                const { text: cleanText, action: tradeAction } = msg.role === 'assistant' && msg.content ? parseTradeAction(msg.content) : { text: msg.content, action: null };
+                                                                return (
+                                                                    <>
+                                                                        <div className="text-sm leading-relaxed whitespace-pre-wrap">{cleanText}{msg.isStreaming && <span className="inline-block w-1.5 h-4 bg-black/70 ml-0.5 animate-pulse" />}</div>
+
+                                                                        {/* Trade Confirmation Card */}
+                                                                        {tradeAction && !msg.actionCompleted && !msg.isStreaming && (
+                                                                            <div className="mt-4 p-4 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm ${
+                                                                                        tradeAction.type === 'swap' ? 'bg-blue-100 text-blue-600' :
+                                                                                        tradeAction.type === 'invest' ? 'bg-green-100 text-green-600' :
+                                                                                        'bg-violet-100 text-violet-600'
+                                                                                    }`}>
+                                                                                        {tradeAction.type === 'swap' ? '⇄' : tradeAction.type === 'invest' ? '📈' : '🪙'}
+                                                                                    </div>
+                                                                                    <div className="flex-1">
+                                                                                        <p className="text-xs font-black text-black tracking-wide">
+                                                                                            {tradeAction.type === 'swap' ? `${tradeAction.action === 'buy' ? 'Buy' : 'Sell'} ${tradeAction.tokenSymbol || tradeAction.token}` :
+                                                                                             tradeAction.type === 'invest' ? `${tradeAction.action === 'buy' ? 'Invest in' : 'Revoke from'} ${tradeAction.projectName}` :
+                                                                                             `${tradeAction.action === 'mint' ? 'Mint' : 'Redeem'} AIUSD`}
+                                                                                        </p>
+                                                                                        <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">
+                                                                                            {tradeAction.type === 'swap' ? `On ${tradeAction.chain || 'Base'} Network` :
+                                                                                             tradeAction.type === 'invest' ? 'Cash Flow Marketplace' : 'AIUSD Protocol'}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    {tradeExecuting[i] === 'pending' && (
+                                                                                        <div className="w-6 h-6 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                                                                                    )}
+                                                                                    {tradeExecuting[i] === 'success' && (
+                                                                                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                                                                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {tradeExecuting[i] === 'error' && (
+                                                                                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                                                                                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                {/* Details Grid */}
+                                                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                                                    <div className="p-2.5 bg-white rounded-xl border border-gray-100">
+                                                                                        <p className="text-[8px] font-black text-gray-400 tracking-widest uppercase">Amount</p>
+                                                                                        <p className="text-sm font-black text-black mt-0.5">
+                                                                                            {tradeAction.amount} {tradeAction.type === 'swap' ? (tradeAction.amountType === 'usd' ? 'USD' : (tradeAction.tokenSymbol || tradeAction.token)) : (tradeAction.unit || 'USDC')}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    {tradeAction.estimatedUSD && (
+                                                                                        <div className="p-2.5 bg-white rounded-xl border border-gray-100">
+                                                                                            <p className="text-[8px] font-black text-gray-400 tracking-widest uppercase">Est. Cost</p>
+                                                                                            <p className="text-sm font-black text-black mt-0.5">${parseFloat(tradeAction.estimatedUSD).toLocaleString()} USDC</p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {tradeAction.apy && (
+                                                                                        <div className="p-2.5 bg-white rounded-xl border border-gray-100">
+                                                                                            <p className="text-[8px] font-black text-gray-400 tracking-widest uppercase">APY</p>
+                                                                                            <p className="text-sm font-black text-green-500 mt-0.5">{tradeAction.apy}</p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {tradeAction.term && (
+                                                                                        <div className="p-2.5 bg-white rounded-xl border border-gray-100">
+                                                                                            <p className="text-[8px] font-black text-gray-400 tracking-widest uppercase">Term</p>
+                                                                                            <p className="text-sm font-black text-black mt-0.5">{tradeAction.term}</p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {tradeAction.chain && tradeAction.type === 'swap' && (
+                                                                                        <div className="p-2.5 bg-white rounded-xl border border-gray-100">
+                                                                                            <p className="text-[8px] font-black text-gray-400 tracking-widest uppercase">Network</p>
+                                                                                            <p className="text-sm font-black text-black mt-0.5 capitalize">{tradeAction.chain}</p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                {/* Confirm / Reject Buttons */}
+                                                                                {!tradeExecuting[i] && (
+                                                                                    <div className="flex gap-2 pt-1">
+                                                                                        <button
+                                                                                            onClick={() => handleActionResponse(i, true)}
+                                                                                            className="flex-1 py-2.5 bg-black text-white text-xs font-black rounded-xl hover:bg-gray-800 transition-all shadow-lg shadow-black/10 tracking-wide flex items-center justify-center gap-2"
+                                                                                        >
+                                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                                                                            Confirm {tradeAction.type === 'swap' ? 'Swap' : tradeAction.type === 'invest' ? 'Investment' : 'Transaction'}
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => handleActionResponse(i, false)}
+                                                                                            className="px-5 py-2.5 bg-gray-100 text-gray-600 text-xs font-black rounded-xl hover:bg-gray-200 transition-all tracking-wide"
+                                                                                        >
+                                                                                            Cancel
+                                                                                        </button>
+                                                                                    </div>
+                                                                                )}
+                                                                                {tradeExecuting[i] === 'pending' && (
+                                                                                    <p className="text-[10px] font-bold text-gray-400 text-center animate-pulse">Processing transaction...</p>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Legacy action type (fallback) */}
+                                                                        {msg.type === 'action' && !msg.actionCompleted && !tradeAction && (
+                                                                            <div className="mt-4 flex gap-2">
+                                                                                <button onClick={() => handleActionResponse(i, true)} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition-all">Confirm</button>
+                                                                                <button onClick={() => handleActionResponse(i, false)} className="px-4 py-2 bg-gray-100 text-black text-xs font-bold rounded-lg hover:bg-gray-200 transition-all">Reject</button>
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                );
+                                                            })()}
                                                         </>
                                                     )}
                                                     <div className={`flex items-center gap-2 mt-4 ${msg.role === 'user' ? 'justify-end' : 'justify-between'}`}>
@@ -1511,6 +1746,7 @@ const Chat: React.FC = () => {
                     )}
                 </main>
             </div>
+            )}
         </div>
     );
 };
