@@ -1,11 +1,14 @@
 import { Router } from 'express';
+import multer from 'multer';
 import prisma from '../db.js';
 import { authRequired, type AuthRequest } from '../middleware/auth.js';
 import { z } from 'zod';
 import { LokaAIService, type ChatMessage } from '../services/ai.service.js';
+import { config } from '../config.js';
 
 const router = Router();
 const aiService = new LokaAIService();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
 
 // Get chat history
 router.get('/history', authRequired, async (req: AuthRequest, res, next) => {
@@ -166,6 +169,56 @@ router.delete('/history', authRequired, async (req: AuthRequest, res, next) => {
       where: { userId: req.userId },
     });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Transcribe audio (Whisper-compatible API for iOS/Firefox fallback)
+router.post('/transcribe', authRequired, upload.single('audio'), async (req: AuthRequest, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'No audio file provided' });
+      return;
+    }
+
+    const language = (req.body?.language as string) || 'en';
+
+    // If we have an OpenAI-compatible API configured, use it
+    const apiKey = config.lokaAi.apiKey;
+    const baseUrl = config.lokaAi.baseUrl;
+
+    if (!apiKey || !baseUrl) {
+      // No API configured — return a helpful error
+      res.status(503).json({ error: 'Speech transcription service not configured' });
+      return;
+    }
+
+    // Build OpenAI-compatible Whisper request
+    const whisperUrl = `${baseUrl.replace(/\/v1\/?$/, '')}/v1/audio/transcriptions`;
+
+    const formData = new FormData();
+    formData.append('file', new Blob([file.buffer], { type: file.mimetype }), file.originalname || 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('language', language.split('-')[0]); // 'en-US' → 'en'
+    formData.append('response_format', 'json');
+
+    const response = await fetch(whisperUrl, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error('[Transcribe] Whisper API error:', response.status, errBody);
+      res.status(502).json({ error: 'Transcription service error' });
+      return;
+    }
+
+    const result = await response.json() as { text?: string };
+    res.json({ text: result.text || '' });
   } catch (err) {
     next(err);
   }

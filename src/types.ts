@@ -66,6 +66,31 @@ export interface TradeOrder {
   soldAt?: string;
 }
 
+export interface RepaymentSchedule {
+  id: string;
+  projectId: string;
+  periodNumber: number;
+  dueDate: string;
+  principalDue: number;
+  interestDue: number;
+  totalDue: number;
+  paidAmount: number;
+  status: 'upcoming' | 'due' | 'paid' | 'overdue' | 'defaulted';
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface LiquidationSummary {
+  outstandingDebt: number;
+  totalCollateralValue: number;
+  totalRecoverable: number;
+  recoveryRate: number;
+  investorCount: number;
+  totalInvested: number;
+  waterfall: Array<{ tier: string; label: string; recoveryRate: number; recoverable: number }>;
+  collaterals: Array<{ id: string; type: string; description: string; value: number; status: string }>;
+}
+
 export enum Page {
   LANDING = 'LANDING',
   DASHBOARD = 'DASHBOARD',

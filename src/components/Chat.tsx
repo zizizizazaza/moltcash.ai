@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import { Icons } from '../constants';
 import { api } from '../services/api';
-import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+import { useVoice } from '../hooks/useVoice';
 
 const Chat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
@@ -16,39 +16,37 @@ const Chat: React.FC = () => {
     const [projectCardExpanded, setProjectCardExpanded] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
     const [isInputFocused, setIsInputFocused] = useState(false);
-    const [isRecording, setIsRecording] = useState(false);
     const [selectedAssetName, setSelectedAssetName] = useState<string | null>(null);
     const [showActionMenu, setShowActionMenu] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
+    const pendingVoiceSendRef = useRef(false);
 
-    // 语音识别 hooks
-    const {
-        transcript,
-        listening,
-        resetTranscript,
-        browserSupportsSpeechRecognition
-    } = useSpeechRecognition();
+    // Voice hook — handles ASR + TTS + voice mode
+    const voice = useVoice({
+        language: 'en-US',
+        onTranscript: (text) => {
+            setInputText(text);
+        },
+        onRecordingEnd: (text) => {
+            if (text.trim()) {
+                setInputText(text);
+                pendingVoiceSendRef.current = true;
+            }
+        },
+    });
 
+    // Auto-send after voice recognition ends
     useEffect(() => {
-        if (!isRecording) return;
-        if (!browserSupportsSpeechRecognition) {
-            setIsRecording(false);
-            alert('当前浏览器不支持语音识别');
-            return;
+        if (pendingVoiceSendRef.current && inputText.trim() && !isStreaming) {
+            pendingVoiceSendRef.current = false;
+            const text = inputText.trim();
+            const userMsg = { role: 'user', content: text, timestamp: new Date().toLocaleTimeString() };
+            setMessages(prev => [...prev, userMsg]);
+            setInputText('');
+            sendToAI(text);
         }
-        SpeechRecognition.startListening({ continuous: false, language: 'en-US' });
-        return () => {
-            SpeechRecognition.stopListening();
-        };
-    }, [isRecording, browserSupportsSpeechRecognition]);
-
-    useEffect(() => {
-        if (!isRecording) return;
-        if (transcript && transcript.length > 0) {
-            setInputText(transcript);
-        }
-    }, [transcript, isRecording]);
+    }, [inputText]);
 
     useEffect(() => {
         const phrases = [
@@ -207,6 +205,10 @@ const Chat: React.FC = () => {
                 }
                 return updated;
             });
+            // Auto-speak in voice mode
+            if (voice.voiceMode && fullContent) {
+                voice.speak(fullContent);
+            }
         } catch (err: any) {
             if (err.name === 'AbortError') return;
             // Fallback: try non-streaming
@@ -341,28 +343,18 @@ const Chat: React.FC = () => {
     };
 
     const handleVoiceInput = () => {
-        if (isRecording) {
-            setIsRecording(false);
-            const voiceText = "Show me the top performing AI agents.";
-
-            const userMsg = { role: 'user', content: voiceText, timestamp: new Date().toLocaleTimeString() };
-            setMessages(prev => [...prev, userMsg]);
-
-            setTimeout(() => {
-                const aiMsg = {
-                    role: 'assistant',
-                    content: "Here are the top performing AI agents currently active in the marketplace, sorted by APY and historical completion rate.",
-                    type: 'action',
-                    actionCompleted: false,
-                    timestamp: new Date().toLocaleTimeString()
-                };
-                setMessages(prev => [...prev, aiMsg]);
-            }, 1000);
-
+        voice.toggleRecording();
+        if (!voice.isRecording) {
             setInputText('');
+        }
+    };
+
+    // TTS: speak AI reply, with option to stop
+    const handleSpeak = (text: string) => {
+        if (voice.isSpeaking) {
+            voice.stopSpeaking();
         } else {
-            setIsRecording(true);
-            setInputText(''); // Clear input
+            voice.speak(text);
         }
     };
 
@@ -807,63 +799,89 @@ const Chat: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="flex items-center w-full relative">
-                                                {!inputText && !isInputFocused && !isRecording && (
+                                                {!inputText && !isInputFocused && !voice.isRecording && (
                                                     <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
                                                         <span className="text-gray-400 text-base font-medium">{typedPlaceholder}</span>
                                                         <span className="inline-block w-[2px] h-5 bg-green-400 ml-[1px] animate-[cursorBlink_1s_steps(2)_infinite]" />
                                                     </div>
                                                 )}
-                                                {isRecording && (
+                                                {voice.isRecording && (
                                                     <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-3">
-                                                        <span className="text-red-500 text-base font-bold animate-pulse">Listening...</span>
+                                                        <span className="text-violet-500 text-base font-bold animate-pulse">Listening...</span>
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
-                                                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
-                                                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '400ms' }} />
+                                                            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
+                                                            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
+                                                            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '400ms' }} />
                                                         </div>
                                                     </div>
                                                 )}
                                                 <input
                                                     type="text"
-                                                    value={isRecording ? "" : inputText}
+                                                    value={voice.isRecording ? "" : inputText}
                                                     onChange={(e) => setInputText(e.target.value)}
                                                     onFocus={() => setIsInputFocused(true)}
                                                     onBlur={() => setIsInputFocused(false)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSend()}
+                                                    onKeyDown={(e) => e.key === 'Enter' && !voice.isRecording && handleSend()}
                                                     placeholder=""
-                                                    disabled={isRecording}
-                                                    className={`flex-1 bg-transparent border-none outline-none text-black text-base px-3 sm:px-6 py-5 sm:py-6 font-medium relative z-10 ${isRecording ? 'opacity-0' : ''} transition-opacity`}
+                                                    disabled={voice.isRecording}
+                                                    className={`flex-1 bg-transparent border-none outline-none text-black text-base px-3 sm:px-6 py-5 sm:py-6 font-medium relative z-10 ${voice.isRecording ? 'opacity-0' : ''} transition-opacity`}
                                                 />
                                                 <button
                                                     onClick={handleVoiceInput}
-                                                    className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-all mr-1 sm:mr-2 shrink-0 relative ${isRecording
-                                                        ? 'bg-red-50 text-red-500 ring-2 ring-red-500/50 shadow-lg shadow-red-500/20 scale-105'
+                                                    className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-all mr-1 sm:mr-2 shrink-0 relative ${voice.isRecording
+                                                        ? 'bg-violet-50 text-violet-500 ring-2 ring-violet-500/50 shadow-lg shadow-violet-500/20 scale-105'
                                                         : 'text-gray-400 hover:text-black hover:bg-gray-50'
                                                         }`}
-                                                    title={isRecording ? "Stop Recording" : "Voice Input"}
+                                                    title={voice.isRecording ? "Stop Recording" : "Voice Input"}
                                                 >
-                                                    {isRecording && (
-                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                                                    {voice.isRecording && (
+                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-violet-500 rounded-full animate-ping" />
                                                     )}
-                                                    {isRecording && (
-                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+                                                    {voice.isRecording && (
+                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-violet-500 rounded-full" />
                                                     )}
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                                                 </button>
                                                 <button
                                                     onClick={handleSend}
-                                                    disabled={isRecording}
-                                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600'}`}
+                                                    disabled={voice.isRecording}
+                                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !voice.isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white'}`}
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                                                 </button>
-                                                <button
-                                                    onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
-                                                    className="px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95 bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm"
-                                                >
-                                                    <span className="text-base leading-none">@</span>
-                                                    Asset
-                                                </button>
+                                            </div>
+                                        )}
+                                        {/* Quick Actions Row */}
+                                        <div className="flex gap-2 px-3 sm:px-6 pb-3 pt-2 border-t border-gray-100/50 items-center flex-wrap">
+                                            {/* @Asset Button */}
+                                            {(() => {
+                                                const selectedAsset = selectedAssetName ? cashFlowAssets.find(a => a.title === selectedAssetName) : null;
+                                                return selectedAsset ? (
+                                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border border-green-300 rounded-full text-[11px] font-bold text-green-700">
+                                                        <button
+                                                            onClick={() => handleProjectClick(selectedAsset.title)}
+                                                            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                                                        >
+                                                            <img src={selectedAsset.image} alt={selectedAsset.title} className="w-4 h-4 rounded-full object-cover" />
+                                                            <span className="max-w-[120px] truncate">@{selectedAsset.title}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedAssetName(null); }}
+                                                            className="ml-0.5 text-green-400 hover:text-red-500 transition-colors flex items-center"
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
+                                                        className="px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95 bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm"
+                                                    >
+                                                        <span className="text-base leading-none">@</span>
+                                                        Asset
+                                                    </button>
+                                                );
+                                            })()}
 
                                             {/* + Action Menu Button */}
                                             <div className="relative">
@@ -1096,6 +1114,22 @@ const Chat: React.FC = () => {
                                         )}
                                     </div>
 
+                                    {/* Voice Mode Status Bar */}
+                                    {voice.voiceMode && (
+                                        <div className="flex items-center justify-center gap-3 py-3 px-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-100 animate-in fade-in duration-300">
+                                            <div className={`w-3 h-3 rounded-full ${voice.isRecording ? 'bg-violet-500 animate-pulse' : voice.isSpeaking ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`} />
+                                            <span className="text-xs font-bold text-gray-600">
+                                                {voice.isRecording ? '🎤 Listening...' : voice.isSpeaking ? '🔊 Speaking...' : '✨ Voice Mode Active — Speak to chat'}
+                                            </span>
+                                            <button
+                                                onClick={() => voice.toggleVoiceMode()}
+                                                className="ml-auto text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+                                            >
+                                                Exit
+                                            </button>
+                                        </div>
+                                    )}
+
                                     {messages.map((msg, i) => (
                                         <div key={i} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                                             <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -1263,7 +1297,23 @@ const Chat: React.FC = () => {
                                                             )}
                                                         </>
                                                     )}
-                                                    <p className={`text-[10px] mt-4 opacity-40 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-500'}`}>{msg.timestamp}</p>
+                                                    <div className={`flex items-center gap-2 mt-4 ${msg.role === 'user' ? 'justify-end' : 'justify-between'}`}>
+                                                        <p className={`text-[10px] opacity-40 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-500'}`}>{msg.timestamp}</p>
+                                                        {msg.role === 'assistant' && msg.content && !msg.isStreaming && (
+                                                            <button
+                                                                onClick={() => handleSpeak(msg.content)}
+                                                                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${voice.isSpeaking ? 'bg-blue-50 text-blue-500' : 'text-gray-300 hover:text-gray-600 hover:bg-gray-50'}`}
+                                                                title={voice.isSpeaking ? "Stop Speaking" : "Read Aloud"}
+                                                            >
+                                                                {voice.isSpeaking ? (
+                                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" /><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" /></svg>
+                                                                ) : (
+                                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                                                                )}
+                                                                {voice.isSpeaking ? 'Stop' : 'Listen'}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1330,45 +1380,45 @@ const Chat: React.FC = () => {
                                 ) : (
                                     <>
                                         <div className="flex items-center w-full relative">
-                                            {isRecording && (
+                                            {voice.isRecording && (
                                                 <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1.5 z-20">
-                                                    <span className="text-red-500 text-xs font-bold animate-pulse">Listening...</span>
+                                                    <span className="text-violet-500 text-xs font-bold animate-pulse">Listening...</span>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
-                                                        <span className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
-                                                        <span className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '400ms' }} />
+                                                        <span className="w-1 h-1 bg-violet-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
+                                                        <span className="w-1 h-1 bg-violet-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
+                                                        <span className="w-1 h-1 bg-violet-400 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '400ms' }} />
                                                     </div>
                                                 </div>
                                             )}
                                             <input
                                                 type="text"
-                                                value={isRecording ? "" : inputText}
+                                                value={voice.isRecording ? "" : inputText}
                                                 onChange={(e) => setInputText(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSend()}
-                                                placeholder={isRecording ? "" : "Ask your assistant..."}
-                                                disabled={isRecording}
-                                                className={`flex-1 bg-transparent border-none outline-none text-black text-sm px-6 py-3 placeholder:text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis ${isRecording ? 'opacity-0' : ''} transition-opacity z-10`}
+                                                onKeyDown={(e) => e.key === 'Enter' && !voice.isRecording && handleSend()}
+                                                placeholder={voice.isRecording ? "" : "Ask your assistant..."}
+                                                disabled={voice.isRecording}
+                                                className={`flex-1 bg-transparent border-none outline-none text-black text-sm px-6 py-3 placeholder:text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis ${voice.isRecording ? 'opacity-0' : ''} transition-opacity z-10`}
                                             />
                                             <button
                                                 onClick={handleVoiceInput}
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all mr-2 shrink-0 relative z-20 ${isRecording
-                                                    ? 'bg-red-50 text-red-500 ring-1 ring-red-500/50 shadow-sm scale-110'
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all mr-2 shrink-0 relative z-20 ${voice.isRecording
+                                                    ? 'bg-violet-50 text-violet-500 ring-1 ring-violet-500/50 shadow-sm scale-110'
                                                     : 'text-gray-400 hover:text-black hover:bg-gray-100'
                                                     }`}
-                                                title={isRecording ? "Stop Recording" : "Voice Input"}
+                                                title={voice.isRecording ? "Stop Recording" : "Voice Input"}
                                             >
-                                                {isRecording && (
-                                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                                                {voice.isRecording && (
+                                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-violet-500 rounded-full animate-ping" />
                                                 )}
-                                                {isRecording && (
-                                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
+                                                {voice.isRecording && (
+                                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-violet-500 rounded-full" />
                                                 )}
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                                             </button>
                                             <button
                                                 onClick={handleSend}
-                                                disabled={isRecording}
-                                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-black/5 shrink-0 mr-1 z-20 ${isRecording
+                                                disabled={voice.isRecording}
+                                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-black/5 shrink-0 mr-1 z-20 ${voice.isRecording
                                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed scale-95 opacity-50'
                                                     : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white active:scale-90 group-focus-within/bottominput:bg-green-500 group-focus-within/bottominput:text-white'
                                                     }`}

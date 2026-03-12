@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid, YAxis, XAxis } from 'recharts';
 import { Icons } from '../constants';
 import { api } from '../services/api';
+import type { RepaymentSchedule } from '../types';
 
 // Generate 90 days of dummy data
 const generateChartData = () => {
@@ -38,6 +39,9 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const [apiHoldings, setApiHoldings] = useState<any[]>([]);
   const [apiInvestments, setApiInvestments] = useState<any[]>([]);
   const [apiHistory, setApiHistory] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'holdings' | 'activity'>('holdings');
+  const [enterpriseDeductions, setEnterpriseDeductions] = useState<Record<string, { schedule: RepaymentSchedule[]; project: any }>>({});
+  const enterpriseFetched = useRef(false);
 
   const { user } = usePrivy();
   const linkedWallets = (user?.linkedAccounts ?? []).filter(
@@ -46,7 +50,6 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const privyEmbeddedWallet = linkedWallets.find((w) => w.walletClientType === 'privy');
   const walletAddress = privyEmbeddedWallet?.address ?? linkedWallets[0]?.address ?? '';
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'holdings' | 'activity'>('holdings');
   const [timeframe, setTimeframe] = useState('7D');
   const [profileTab, setProfileTab] = useState<'personal' | 'enterprise'>('personal');
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -80,6 +83,54 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
       if (Array.isArray(hist) && hist.length > 0) setApiHistory(hist);
     });
   }, [isWalletConnected]);
+
+  // Fetch enterprise deduction data when enterprise tab is active
+  useEffect(() => {
+    if (profileTab !== 'enterprise' || !isWalletConnected) return;
+    if (enterpriseFetched.current) return;
+    enterpriseFetched.current = true;
+    (async () => {
+      try {
+        // Try applications first (auth-required)
+        let hasData = false;
+        if (api.isAuthenticated) {
+          const apps = await api.getApplications().catch(() => []);
+          if (Array.isArray(apps) && apps.length > 0) {
+            const results: Record<string, { schedule: RepaymentSchedule[]; project: any }> = {};
+            await Promise.all(
+              apps.filter((a: any) => a.projectId).map(async (app: any) => {
+                const schedule = await api.getRepaymentSchedule(app.projectId).catch(() => []);
+                if (Array.isArray(schedule) && schedule.length > 0) {
+                  results[app.projectId] = { schedule, project: { id: app.projectId, title: app.projectName || app.projectId } };
+                }
+              })
+            );
+            if (Object.keys(results).length > 0) {
+              setEnterpriseDeductions(results);
+              hasData = true;
+            }
+          }
+        }
+        // Fallback: use all projects that have repayment schedules
+        if (!hasData) {
+          const projects = await api.getProjects().catch(() => []);
+          if (Array.isArray(projects)) {
+            const fundedProjects = projects.filter((p: any) => p.status === 'Funded' || p.status === 'Sold Out');
+            const results: Record<string, { schedule: RepaymentSchedule[]; project: any }> = {};
+            await Promise.all(
+              fundedProjects.map(async (p: any) => {
+                const schedule = await api.getRepaymentSchedule(p.id).catch(() => []);
+                if (Array.isArray(schedule) && schedule.length > 0) {
+                  results[p.id] = { schedule, project: { id: p.id, title: p.title } };
+                }
+              })
+            );
+            setEnterpriseDeductions(results);
+          }
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [profileTab, isWalletConnected, enterpriseDeductions]);
 
   const getFilteredData = () => {
     if (timeframe === '7D') return chartData.slice(-7);
@@ -595,6 +646,89 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   </div>
                 </div>
               </div>
+            </section>
+
+            {/* Platform Deductions (Issuer view: auto-deduction records) */}
+            <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
+                  <span className="text-lg">🔄</span>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-black">Platform Deductions</h2>
+                  <p className="text-[10px] text-gray-400 font-medium">Auto-deducted from project revenue for investor repayments</p>
+                </div>
+              </div>
+
+              {Object.keys(enterpriseDeductions).length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-400 font-medium">No deduction records yet</p>
+                  <p className="text-xs text-gray-300 mt-1">Records appear once your funded projects begin repayment cycles</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(enterpriseDeductions).map(([projectId, { schedule, project }]) => {
+                    const paidPeriods = schedule.filter(s => s.status === 'paid');
+                    const totalDeducted = paidPeriods.reduce((sum, s) => sum + s.paidAmount, 0);
+                    const totalPeriods = schedule.length;
+                    const overduePeriods = schedule.filter(s => s.status === 'overdue');
+
+                    return (
+                      <div key={projectId} className="border border-gray-100 rounded-2xl overflow-hidden">
+                        {/* Project header */}
+                        <div className="p-4 bg-gray-50/50 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center font-black text-white text-xs shrink-0">
+                              {(project.title || 'P')[0]}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-black truncate">{project.title || projectId}</h4>
+                              <p className="text-[9px] text-gray-400">{paidPeriods.length}/{totalPeriods} periods deducted</p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-black text-black">${totalDeducted.toLocaleString()}</p>
+                            <p className="text-[9px] text-gray-400">total deducted</p>
+                          </div>
+                        </div>
+
+                        {/* Overdue warning */}
+                        {overduePeriods.length > 0 && (
+                          <div className="px-4 py-2.5 bg-red-50 border-t border-red-100 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                            <p className="text-[10px] font-bold text-red-600">
+                              {overduePeriods.length} period{overduePeriods.length > 1 ? 's' : ''} pending deduction — revenue shortfall detected
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Deduction records */}
+                        {paidPeriods.length > 0 && (
+                          <div className="divide-y divide-gray-50">
+                            {paidPeriods.slice(-5).reverse().map((s) => (
+                              <div key={s.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50 transition-colors">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center">
+                                    <svg className="w-3 h-3 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                  </div>
+                                  <div>
+                                    <p className="text-[11px] font-bold text-black">Period {s.periodNumber}</p>
+                                    <p className="text-[9px] text-gray-400">{s.paidAt ? new Date(s.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[11px] font-bold text-black">-${s.paidAmount.toFixed(2)}</p>
+                                  <p className="text-[9px] text-gray-400">P: ${s.principalDue.toFixed(2)} + I: ${s.interestDue.toFixed(2)}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
           </div>

@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Icons, COLORS } from '../constants';
-import { MarketAsset } from '../types';
+import { MarketAsset, RepaymentSchedule } from '../types';
 import { api } from '../services/api';
 
 // Cover image SVG generator — gradient + icon composition (same approach as Chat.tsx)
@@ -477,11 +477,23 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
   const [revoking, setRevoking] = useState(false);
   const [investError, setInvestError] = useState<string | null>(null);
   const [investSuccess, setInvestSuccess] = useState<string | null>(null);
+  const [repaymentSchedule, setRepaymentSchedule] = useState<RepaymentSchedule[]>([]);
+  const [repaymentLoading, setRepaymentLoading] = useState(false);
   const progress = Math.min(100, (asset.raisedAmount / asset.targetAmount) * 100);
   const allTimeRevenue = asset.monthlyRevenue.reduce((sum, m) => sum + m.amount, 0);
   const mrr = asset.monthlyRevenue[asset.monthlyRevenue.length - 1]?.amount || 0;
 
   const canInvest = ['Fundraising', 'Ending Soon'].includes(asset.status);
+  const isFunded = ['Funded', 'Sold Out'].includes(asset.status);
+
+  // Fetch repayment schedule for funded projects
+  useEffect(() => {
+    if (!isFunded) return;
+    setRepaymentLoading(true);
+    api.getRepaymentSchedule(asset.id).then(data => {
+      if (Array.isArray(data)) setRepaymentSchedule(data);
+    }).catch(() => {}).finally(() => setRepaymentLoading(false));
+  }, [asset.id, isFunded]);
 
   const handleInvest = async () => {
     const amount = parseFloat(pledgeAmount);
@@ -993,6 +1005,106 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
 
         {activeTab === 'FINANCIALS' && (
           <div className="space-y-8 animate-fadeIn">
+            {/* Repayment Progress — only for funded projects with schedule data */}
+            {isFunded && repaymentSchedule.length > 0 && (() => {
+              const paidCount = repaymentSchedule.filter(s => s.status === 'paid').length;
+              const overdueCount = repaymentSchedule.filter(s => s.status === 'overdue').length;
+              const totalPeriods = repaymentSchedule.length;
+
+              return (
+                <section className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-base font-bold text-black">Repayment Progress</h3>
+                    <span className="text-[11px] font-bold text-gray-400">{paidCount}/{totalPeriods} periods</span>
+                    <div className="h-px flex-1 bg-gray-100" />
+                    {overdueCount > 0 ? (
+                      <span className="px-3 py-1 bg-red-50 text-red-600 text-[10px] font-black rounded-full border border-red-200/50 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                        {overdueCount} Overdue
+                      </span>
+                    ) : paidCount === totalPeriods ? (
+                      <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-full border border-green-200/50">✓ Completed</span>
+                    ) : (
+                      <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-full border border-blue-200/50">On Track</span>
+                    )}
+                  </div>
+
+                  {/* Period bars with hover tooltip */}
+                  <div className="p-4 sm:p-5 bg-white border border-gray-100 rounded-2xl shadow-sm space-y-3">
+                    <div className="flex gap-1">
+                      {repaymentSchedule.map((s, i) => {
+                        const dueDate = new Date(s.dueDate);
+                        const monthLabel = dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                        const dueDateStr = dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                        const statusLabel = s.status === 'paid' ? 'Paid' : s.status === 'overdue' ? 'Overdue' : s.status === 'due' ? 'Due' : s.status === 'defaulted' ? 'Defaulted' : 'Upcoming';
+                        return (
+                          <div
+                            key={i}
+                            className={`relative h-3 flex-1 rounded-full cursor-pointer transition-all peer ${
+                              s.status === 'paid' ? 'bg-green-400 hover:bg-green-500' :
+                              s.status === 'overdue' ? 'bg-red-400 animate-pulse hover:bg-red-500' :
+                              s.status === 'defaulted' ? 'bg-gray-400 hover:bg-gray-500' :
+                              s.status === 'due' ? 'bg-amber-400 hover:bg-amber-500' :
+                              'bg-gray-200 hover:bg-gray-300'
+                            }`}
+                            style={{ zIndex: 1 }}
+                            onMouseEnter={(e) => {
+                              const tip = e.currentTarget.querySelector('[data-tip]') as HTMLElement;
+                              if (tip) {
+                                tip.style.opacity = '1';
+                                // Reposition if overflowing
+                                const rect = tip.getBoundingClientRect();
+                                if (rect.left < 8) tip.style.transform = `translateX(${8 - rect.left}px)`;
+                                else if (rect.right > window.innerWidth - 8) tip.style.transform = `translateX(${window.innerWidth - 8 - rect.right}px)`;
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              const tip = e.currentTarget.querySelector('[data-tip]') as HTMLElement;
+                              if (tip) { tip.style.opacity = '0'; tip.style.transform = ''; }
+                            }}
+                          >
+                            <div data-tip className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 transition-opacity pointer-events-none" style={{ zIndex: 50 }}>
+                              <div className="bg-gray-900 text-white rounded-xl px-3 py-2.5 text-[10px] font-medium whitespace-nowrap shadow-lg space-y-1">
+                                <p className="font-bold text-[11px]">{monthLabel}</p>
+                                <p>Due: {dueDateStr}</p>
+                                <p>Amount: ${s.status === 'paid' ? s.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : s.totalDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                <p>Status: <span className={
+                                  s.status === 'paid' ? 'text-green-400' :
+                                  s.status === 'overdue' ? 'text-red-400' :
+                                  s.status === 'due' ? 'text-amber-400' :
+                                  'text-gray-400'
+                                }>{statusLabel}</span></p>
+                              </div>
+                              <div className="w-2 h-2 bg-gray-900 rotate-45 mx-auto -mt-1" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {[
+                        { color: 'bg-green-400', label: 'Paid' },
+                        { color: 'bg-amber-400', label: 'Due' },
+                        { color: 'bg-red-400', label: 'Overdue' },
+                        { color: 'bg-gray-200', label: 'Upcoming' },
+                      ].map(l => (
+                        <div key={l.label} className="flex items-center gap-1.5">
+                          <div className={`w-2 h-2 rounded-full ${l.color}`} />
+                          <span className="text-[9px] font-bold text-gray-400">{l.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              );
+            })()}
+
+            {isFunded && repaymentLoading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-6 h-6 border-2 border-gray-200 border-t-black rounded-full animate-spin" />
+              </div>
+            )}
+
             {/* 1. Live Monitor */}
             <section className="space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">

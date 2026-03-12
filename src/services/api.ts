@@ -293,6 +293,10 @@ class ApiClient {
   async getLiquidationEvents(projectId: string) {
     return this.request<any[]>(`/liquidation/${encodeURIComponent(projectId)}/events`);
   }
+
+  async getLiquidationSummary(projectId: string) {
+    return this.request<any>(`/liquidation/${encodeURIComponent(projectId)}/summary`);
+  }
 }
 
 // Singleton instance
