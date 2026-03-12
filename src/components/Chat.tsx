@@ -977,7 +977,6 @@ const Chat: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        )}
                                     </div>
 
                                     {/* Cash Flow Assets Slider */}
