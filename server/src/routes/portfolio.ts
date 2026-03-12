@@ -4,6 +4,7 @@ import prisma from '../db.js';
 type Tx = Omit<typeof prisma, '$transaction' | '$connect' | '$disconnect' | '$on' | '$extends'>;
 import { authRequired, type AuthRequest } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { financialLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -62,7 +63,7 @@ const mintSchema = z.object({
   amount: z.number().positive(),
 });
 
-router.post('/mint', authRequired, async (req: AuthRequest, res, next) => {
+router.post('/mint', authRequired, financialLimiter, async (req: AuthRequest, res, next) => {
   try {
     const { amount } = mintSchema.parse(req.body);
     const userId = req.userId as string;
@@ -102,7 +103,7 @@ router.post('/mint', authRequired, async (req: AuthRequest, res, next) => {
 });
 
 // ============ Redeem AIUSD (AIUSD → USDC) ============
-router.post('/redeem', authRequired, async (req: AuthRequest, res, next) => {
+router.post('/redeem', authRequired, financialLimiter, async (req: AuthRequest, res, next) => {
   try {
     const { amount } = mintSchema.parse(req.body);
     const userId = req.userId as string;

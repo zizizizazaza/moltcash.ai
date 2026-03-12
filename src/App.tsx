@@ -127,7 +127,7 @@ const App: React.FC = () => {
         <div className="mt-auto flex flex-col gap-6 w-full px-3 relative">
           <SideNavButton
             active={false}
-            onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }))}
+            onClick={() => isWalletConnected ? window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' })) : connectWallet()}
             icon={<Icons.CreditCard />}
             label="Deposit"
           />
@@ -165,7 +165,7 @@ const App: React.FC = () => {
         <MobileTabButton active={currentPage === Page.CHAT} onClick={() => setCurrentPage(Page.CHAT)} icon={<Icons.Assets />} label="Assets" />
         <MobileTabButton active={currentPage === Page.GROUPS} onClick={() => setCurrentPage(Page.GROUPS)} icon={<Icons.Groups />} label="Groups" />
         <MobileTabButton active={currentPage === Page.TRADE} onClick={() => setCurrentPage(Page.TRADE)} icon={<Icons.Market />} label="Market" />
-        <MobileTabButton active={false} onClick={() => window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' }))} icon={<Icons.CreditCard />} label="Deposit" />
+        <MobileTabButton active={false} onClick={() => isWalletConnected ? window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' })) : connectWallet()} icon={<Icons.CreditCard />} label="Deposit" />
         <MobileTabButton
           active={currentPage === Page.PORTFOLIO}
           onClick={() => { if (!isWalletConnected) connectWallet(); else setCurrentPage(Page.PORTFOLIO); }}
@@ -191,10 +191,10 @@ const SideNavButton: React.FC<{ active: boolean; label: string; icon: React.Reac
 const MobileTabButton: React.FC<{ active: boolean; label: string; icon: React.ReactNode; onClick: () => void; customClass?: string }> = ({ active, label, icon, onClick, customClass = '' }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 min-w-[56px] rounded-xl transition-all ${active ? 'text-black' : 'text-gray-400'}`}
+    className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 min-w-[60px] rounded-xl transition-all ${active ? 'text-black' : 'text-gray-400'}`}
   >
     <div className={`${customClass}`}>{icon}</div>
-    <span className="text-[9px] font-bold tracking-wide">{label}</span>
+    <span className="text-[10px] font-bold tracking-wide">{label}</span>
   </button>
 );
 

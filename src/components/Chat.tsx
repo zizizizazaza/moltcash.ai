@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import { Icons } from '../constants';
 import { api } from '../services/api';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
 const Chat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
@@ -21,6 +21,34 @@ const Chat: React.FC = () => {
     const [showActionMenu, setShowActionMenu] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
+
+    // 语音识别 hooks
+    const {
+        transcript,
+        listening,
+        resetTranscript,
+        browserSupportsSpeechRecognition
+    } = useSpeechRecognition();
+
+    useEffect(() => {
+        if (!isRecording) return;
+        if (!browserSupportsSpeechRecognition) {
+            setIsRecording(false);
+            alert('当前浏览器不支持语音识别');
+            return;
+        }
+        SpeechRecognition.startListening({ continuous: false, language: 'en-US' });
+        return () => {
+            SpeechRecognition.stopListening();
+        };
+    }, [isRecording, browserSupportsSpeechRecognition]);
+
+    useEffect(() => {
+        if (!isRecording) return;
+        if (transcript && transcript.length > 0) {
+            setInputText(transcript);
+        }
+    }, [transcript, isRecording]);
 
     useEffect(() => {
         const phrases = [
@@ -377,6 +405,11 @@ const Chat: React.FC = () => {
         }
     };
 
+    const chatGradientSvg = (c1: string, c2: string, emoji: string, w = 400, h = 300) => {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#g)"/><text x="50%" y="55%" font-size="${Math.round(h * 0.25)}" text-anchor="middle" dominant-baseline="middle">${emoji}</text></svg>`;
+        return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    };
+
     const cashFlowAssets = [
         { title: 'AI Agent Marketplace', category: 'Platform', image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop', desc: 'Making it easier for AI agent markets to showcase themselves on a platform that facilitates exchanges.', progress: 21, apy: '18.5%', term: '30 Days', backers: 4 },
         { title: 'Climapp.io Utility', category: 'Software', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop', desc: 'AI-enabled platform that helps you understand and manage your utility bills — all in one place.', progress: 2, apy: '14.2%', term: '90 Days', backers: 2 },
@@ -409,7 +442,7 @@ const Chat: React.FC = () => {
                         <h2 className="text-xs font-black text-black tracking-widest uppercase">History</h2>
                         <button
                             onClick={() => setLeftSidebarCollapsed(true)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-all"
+                            className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-all"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
                         </button>
@@ -730,8 +763,8 @@ const Chat: React.FC = () => {
                             );
 
                             return messages.length === 0 ? (
-                                <div className="min-h-full w-full flex flex-col max-w-5xl mx-auto px-4 sm:px-10 pt-14 sm:pt-32 pb-20 sm:pb-32">
-                                    <div className="flex flex-col items-center mb-6 sm:mb-10">
+                                <div className="min-h-full w-full flex flex-col max-w-5xl mx-auto px-4 sm:px-10 pt-16 sm:pt-32 pb-8 sm:pb-32">
+                                    <div className="flex flex-col items-center mb-8 sm:mb-10">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-xl flex items-center justify-center text-black font-black shadow-lg text-sm sm:text-base">
                                                 L
@@ -740,7 +773,7 @@ const Chat: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className={`bg-white border rounded-2xl p-2 sm:p-4 w-full flex flex-col max-w-3xl mx-auto mb-8 sm:mb-12 relative transition-all duration-500 group/input ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : isInputFocused ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200/80 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] hover:border-green-200 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] idle-input-glow'}`}>
+                                    <div className={`bg-white border rounded-2xl p-3 sm:p-4 w-full flex flex-col max-w-3xl mx-auto mb-8 sm:mb-12 relative transition-all duration-500 group/input ${activeForm ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : isInputFocused ? 'border-green-400/60 shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] scale-[1.01]' : 'border-gray-200/80 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] hover:border-green-200 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] idle-input-glow'}`}>
                                         {/* Input Row — switches between normal input and inline sentence */}
                                         {activeForm ? (
                                             <div className="flex items-center w-full px-3 sm:px-6 py-4 sm:py-5 gap-2 flex-wrap">
@@ -776,13 +809,13 @@ const Chat: React.FC = () => {
                                             <div className="flex items-center w-full relative">
                                                 {!inputText && !isInputFocused && !isRecording && (
                                                     <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
-                                                        <span className="text-gray-400 text-sm sm:text-base font-medium">{typedPlaceholder}</span>
+                                                        <span className="text-gray-400 text-base font-medium">{typedPlaceholder}</span>
                                                         <span className="inline-block w-[2px] h-5 bg-green-400 ml-[1px] animate-[cursorBlink_1s_steps(2)_infinite]" />
                                                     </div>
                                                 )}
                                                 {isRecording && (
                                                     <div className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-3">
-                                                        <span className="text-red-500 text-sm sm:text-base font-bold animate-pulse">Listening...</span>
+                                                        <span className="text-red-500 text-base font-bold animate-pulse">Listening...</span>
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1s', animationDelay: '0ms' }} />
                                                             <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" style={{ animationDuration: '1.2s', animationDelay: '200ms' }} />
@@ -799,7 +832,7 @@ const Chat: React.FC = () => {
                                                     onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSend()}
                                                     placeholder=""
                                                     disabled={isRecording}
-                                                    className={`flex-1 bg-transparent border-none outline-none text-black text-sm sm:text-base px-3 sm:px-6 py-4 sm:py-6 font-medium relative z-10 ${isRecording ? 'opacity-0' : ''} transition-opacity`}
+                                                    className={`flex-1 bg-transparent border-none outline-none text-black text-base px-3 sm:px-6 py-5 sm:py-6 font-medium relative z-10 ${isRecording ? 'opacity-0' : ''} transition-opacity`}
                                                 />
                                                 <button
                                                     onClick={handleVoiceInput}
@@ -820,35 +853,7 @@ const Chat: React.FC = () => {
                                                 <button
                                                     onClick={handleSend}
                                                     disabled={isRecording}
-                                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600 hover:text-white'} ${isRecording ? 'opacity-50 cursor-not-allowed scale-95 hover:bg-green-100 hover:text-green-600' : ''}`}
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {/* Quick Actions — always visible */}
-                                        <div className={`flex gap-2 sm:gap-3 px-3 sm:px-5 pb-2 pt-2 border-t transition-colors duration-500 items-center ${activeForm || isInputFocused ? 'border-gray-100' : 'border-transparent'}`}>
-                                            {/* @Asset Button */}
-                                            {(() => {
-                                                const selectedAsset = selectedAssetName ? cashFlowAssets.find(a => a.title === selectedAssetName) : null;
-                                                return selectedAsset ? (
-                                                    <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-300 rounded-full text-[11px] font-bold text-green-700">
-                                                        <button
-                                                            onClick={() => handleProjectClick(selectedAsset.title)}
-                                                            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                                                        >
-                                                            <img src={selectedAsset.image} alt={selectedAsset.title} className="w-5 h-5 rounded-full object-cover" />
-                                                            <span className="max-w-[120px] truncate">@{selectedAsset.title}</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setSelectedAssetName(null); }}
-                                                            className="ml-0.5 text-green-400 hover:text-red-500 transition-colors flex items-center"
-                                                        >
-                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                        </button>
-                                                    </div>
-                                                ) : (
+                                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-60
                                                     <button
                                                         onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
                                                         className="px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95 bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm"
@@ -871,37 +876,37 @@ const Chat: React.FC = () => {
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                                 </button>
                                                 {showActionMenu && (
-                                                    <div className="absolute bottom-full left-0 mb-3 w-56 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12)] p-2 z-[100] animate-fadeIn">
-                                                        <div className="absolute bottom-[-6px] left-4 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
+                                                    <div className="absolute bottom-full left-0 mb-3 w-52 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12)] p-2 z-[100] animate-fadeIn">
+                                                        <div className="absolute bottom-[-6px] left-3 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
                                                         {!selectedAssetName && (
-                                                            <p className="text-[10px] text-amber-600 font-bold px-3 py-2 bg-amber-50 rounded-xl mb-1.5 flex items-center gap-1.5">
-                                                                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" /></svg>
+                                                            <p className="text-[9px] text-amber-600 font-bold px-3 py-1.5 bg-amber-50 rounded-xl mb-1 flex items-center gap-1.5">
+                                                                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" /></svg>
                                                                 Please select an asset first
                                                             </p>
                                                         )}
                                                         <button
                                                             onClick={() => { if (selectedAssetName) { setActiveForm('buy'); setFormAmount(''); setShowActionMenu(false); } }}
                                                             disabled={!selectedAssetName}
-                                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${selectedAssetName
+                                                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all ${selectedAssetName
                                                                 ? 'text-black hover:bg-green-50 cursor-pointer'
                                                                 : 'text-gray-300 cursor-not-allowed'
                                                                 }`}
                                                         >
-                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-green-100' : 'bg-gray-100'}`}>
-                                                                <svg className={`w-3.5 h-3.5 ${selectedAssetName ? 'text-green-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                                                <svg className={`w-3 h-3 ${selectedAssetName ? 'text-green-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                                             </div>
                                                             Buy Asset
                                                         </button>
                                                         <button
                                                             onClick={() => { if (selectedAssetName) { setActiveForm('sell'); setFormAmount(''); setShowActionMenu(false); } }}
                                                             disabled={!selectedAssetName}
-                                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${selectedAssetName
+                                                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all ${selectedAssetName
                                                                 ? 'text-black hover:bg-red-50 cursor-pointer'
                                                                 : 'text-gray-300 cursor-not-allowed'
                                                                 }`}
                                                         >
-                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-red-100' : 'bg-gray-100'}`}>
-                                                                <svg className={`w-3.5 h-3.5 ${selectedAssetName ? 'text-red-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${selectedAssetName ? 'bg-red-100' : 'bg-gray-100'}`}>
+                                                                <svg className={`w-3 h-3 ${selectedAssetName ? 'text-red-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
                                                             </div>
                                                             Sell Asset
                                                         </button>
@@ -966,8 +971,9 @@ const Chat: React.FC = () => {
                                                 View All <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                                             </button>
                                         </div>
-                                        <div className="w-full overflow-x-auto pb-6 pt-4 -mt-4 cursor-grab active:cursor-grabbing selection:bg-transparent [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                            <div className="flex w-max gap-3 sm:gap-5 px-0 sm:px-2">
+                                        {/* Mobile: vertical scroll, Desktop: horizontal scroll */}
+                                        <div className="w-full sm:overflow-x-auto pb-6 pt-4 -mt-4 sm:cursor-grab sm:active:cursor-grabbing selection:bg-transparent [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                            <div className="flex flex-col sm:flex-row sm:w-max gap-3 sm:gap-5 px-0 sm:px-2">
                                                 {cashFlowAssets.slice(0, 5).map((asset, idx) => (
                                                     <div
                                                         key={idx}
@@ -976,7 +982,7 @@ const Chat: React.FC = () => {
                                                             window.dispatchEvent(new CustomEvent('loka-nav-market'));
                                                             setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: asset.title })), 100);
                                                         }}
-                                                        className={`w-[70vw] max-w-[280px] sm:w-72 bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 p-4 sm:p-5 shrink-0 shadow-sm hover:border-black/10 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all group flex flex-col gap-3 sm:gap-4 cursor-pointer`}
+                                                        className={`w-full sm:w-72 bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 p-4 sm:p-5 shrink-0 shadow-sm hover:border-black/10 hover:shadow-[0_12px_50px_-15px_rgba(0,0,0,0.1)] sm:hover:-translate-y-1 transition-all group flex flex-col gap-3 sm:gap-4 cursor-pointer`}
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-3 w-full">
@@ -1010,7 +1016,7 @@ const Chat: React.FC = () => {
                                                         <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
                                                             <div>
                                                                 <p className="text-[9px] text-gray-400 font-black tracking-widest uppercase mb-0.5">Target Yield</p>
-                                                                <p className="text-base font-black text-black">{asset.apy || '15.5%'} <span className="text-[9px] text-gray-400 font-bold italic">APY</span></p>
+                                                                <p className="text-base font-black text-black">{asset.apy || '15.5%'}</p>
                                                             </div>
                                                             <div className="text-right">
                                                                 <p className="text-[9px] text-gray-400 font-black tracking-widest uppercase mb-0.5">Lock Term</p>

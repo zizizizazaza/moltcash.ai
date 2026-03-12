@@ -3,6 +3,9 @@ import prisma from '../db.js';
 type Tx = Omit<typeof prisma, '$transaction' | '$connect' | '$disconnect' | '$on' | '$extends'>;
 import { authRequired, authOptional, type AuthRequest } from '../middleware/auth.js';
 import { z } from 'zod';
+import { recordCreditEvent, INVESTOR_EVENTS } from '../services/credit.service.js';
+import { financialLimiter } from '../middleware/rateLimiter.js';
+import { idempotency } from '../middleware/idempotency.js';
 
 const router = Router();
 
@@ -45,7 +48,7 @@ const createOrderSchema = z.object({
   shares: z.number().positive(),
 });
 
-router.post('/', authRequired, async (req: AuthRequest, res, next) => {
+router.post('/', authRequired, financialLimiter, async (req: AuthRequest, res, next) => {
   try {
     const { projectId, listPrice, shares } = createOrderSchema.parse(req.body);
 
@@ -80,7 +83,7 @@ router.post('/', authRequired, async (req: AuthRequest, res, next) => {
 });
 
 // Buy an existing trade order
-router.post('/:id/buy', authRequired, async (req: AuthRequest, res, next) => {
+router.post('/:id/buy', authRequired, financialLimiter, idempotency, async (req: AuthRequest, res, next) => {
   try {
     const orderId = req.params.id as string;
     const buyerId = req.userId as string;
@@ -134,6 +137,11 @@ router.post('/:id/buy', authRequired, async (req: AuthRequest, res, next) => {
 
       return updated;
     });
+
+    // Credit event for buyer (non-blocking)
+    try {
+      await recordCreditEvent(buyerId, 'investment_active', INVESTOR_EVENTS.INVESTMENT_ACTIVE.delta, 'Secondary market purchase', orderId);
+    } catch { /* non-critical */ }
 
     res.json(result);
   } catch (err) {

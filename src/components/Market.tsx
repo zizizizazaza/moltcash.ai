@@ -5,6 +5,30 @@ import { Icons, COLORS } from '../constants';
 import { MarketAsset } from '../types';
 import { api } from '../services/api';
 
+// Cover image SVG generator — gradient + icon composition (same approach as Chat.tsx)
+const coverSvg = (c1: string, c2: string, icon: string, w = 800, h = 400) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#bg)"/><circle cx="160" cy="200" r="120" fill="rgba(255,255,255,0.06)"/><circle cx="640" cy="100" r="180" fill="rgba(255,255,255,0.04)"/><circle cx="500" cy="350" r="100" fill="rgba(255,255,255,0.05)"/><rect x="60" y="60" width="680" height="280" rx="24" fill="rgba(255,255,255,0.07)"/><text x="400" y="220" font-size="120" text-anchor="middle" dominant-baseline="middle">${icon}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+// Logo SVG generator
+const logoSvg = (c1: string, c2: string, letter: string, w = 100, h = 100) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="${w}" height="${h}" rx="20" fill="url(#bg)"/><text x="50%" y="58%" font-family="system-ui" font-size="48" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-weight="900">${letter}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+// Visual config per project
+const PROJECT_VISUALS: Record<string, { c1: string; c2: string; icon: string; letter: string }> = {
+  'AI Agent Marketplace': { c1: '#4f46e5', c2: '#7c3aed', icon: '🤖', letter: 'A' },
+  'Climapp.io Utility':   { c1: '#047857', c2: '#0d9488', icon: '🌿', letter: 'C' },
+  'Market Maker AI':      { c1: '#0f172a', c2: '#334155', icon: '📈', letter: 'M' },
+  'MEV Searcher Agent':   { c1: '#b45309', c2: '#dc2626', icon: '⚡', letter: 'M' },
+  'Copy Trading AI':      { c1: '#9333ea', c2: '#db2777', icon: '🔄', letter: 'C' },
+  'Cloudflare Capacity':  { c1: '#0369a1', c2: '#4f46e5', icon: '☁️', letter: 'C' },
+  'DigitalOcean Tier':    { c1: '#0e7490', c2: '#0f766e', icon: '🌊', letter: 'D' },
+};
+const getVisual = (title: string) => PROJECT_VISUALS[title] || { c1: '#64748b', c2: '#334155', icon: '💰', letter: '?' };
+
 const MOCK_ASSETS: MarketAsset[] = [
   {
     id: '1',
@@ -225,30 +249,46 @@ const MOCK_ASSETS: MarketAsset[] = [
   }
 ];
 
-const mapApiProject = (p: any): MarketAsset => ({
-  id: p.id,
-  title: p.title,
-  subtitle: p.subtitle || '',
-  category: p.category as MarketAsset['category'],
-  issuer: p.issuer,
-  issuerLogo: p.issuerLogo || '',
-  coverImage: p.coverImage || '',
-  faceValue: p.faceValue,
-  askPrice: p.askPrice,
-  apy: p.apy,
-  durationDays: p.durationDays,
-  creditScore: p.creditScore,
-  status: p.status as MarketAsset['status'],
-  targetAmount: p.targetAmount,
-  raisedAmount: p.raisedAmount,
-  backersCount: p.backersCount,
-  remainingCap: p.remainingCap,
-  coverageRatio: p.coverageRatio,
-  verifiedSource: p.verifiedSource || '',
-  description: p.description || '',
-  useOfFunds: p.useOfFunds || '',
-  monthlyRevenue: (p.monthlyRevenue || []).map((m: any) => ({ month: m.month, amount: m.amount })),
-});
+// Unsplash image map per project (realistic photos)
+const PROJECT_IMAGES: Record<string, { cover: string; logo: string }> = {
+  'AI Agent Marketplace': { cover: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=100&h=100&fit=crop' },
+  'Climapp.io Utility':   { cover: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&h=100&fit=crop' },
+  'Market Maker AI':      { cover: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=100&h=100&fit=crop' },
+  'MEV Searcher Agent':   { cover: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=100&h=100&fit=crop' },
+  'Copy Trading AI':      { cover: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=100&h=100&fit=crop' },
+  'Cloudflare Capacity':  { cover: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=100&h=100&fit=crop' },
+  'DigitalOcean Tier':    { cover: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=100&h=100&fit=crop' },
+};
+
+const mapApiProject = (p: any): MarketAsset => {
+  const v = getVisual(p.title);
+  const imgs = PROJECT_IMAGES[p.title];
+  const firstLetter = (p.issuer || p.title || '?')[0].toUpperCase();
+  return {
+    id: p.id,
+    title: p.title,
+    subtitle: p.subtitle || '',
+    category: p.category as MarketAsset['category'],
+    issuer: p.issuer,
+    issuerLogo: p.issuerLogo || (imgs?.logo) || logoSvg(v.c1, v.c2, firstLetter),
+    coverImage: p.coverImage || (imgs?.cover) || coverSvg(v.c1, v.c2, v.icon),
+    faceValue: p.faceValue,
+    askPrice: p.askPrice,
+    apy: p.apy,
+    durationDays: p.durationDays,
+    creditScore: p.creditScore,
+    status: p.status as MarketAsset['status'],
+    targetAmount: p.targetAmount,
+    raisedAmount: p.raisedAmount,
+    backersCount: p.backersCount,
+    remainingCap: p.remainingCap,
+    coverageRatio: p.coverageRatio,
+    verifiedSource: p.verifiedSource || '',
+    description: p.description || '',
+    useOfFunds: p.useOfFunds || '',
+    monthlyRevenue: (p.monthlyRevenue || []).map((m: any) => ({ month: m.month, amount: m.amount })),
+  };
+};
 
 const Market: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<MarketAsset | null>(null);
@@ -305,19 +345,26 @@ const Market: React.FC = () => {
           <h2 className="text-3xl sm:text-5xl text-black tracking-tight" style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 900 }}>Cash Flow Market.</h2>
           <p className="text-gray-400 mt-3 font-medium">Invest in the future cash flow of verified businesses.</p>
         </div>
-        <div className="flex justify-center">
-          <div className="flex bg-white glass p-1 rounded-full border border-gray-100 shadow-sm overflow-x-auto">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
+          <div className="flex bg-white glass p-1 rounded-full border border-gray-100 shadow-sm overflow-x-auto max-w-full">
             {['All', 'Fundraising', 'Funded', 'Failed'].map(cat => (
               <button
                 key={cat}
                 onClick={() => setFilter(cat as any)}
-                className={`px-6 py-2 rounded-full text-xs font-bold tracking-wide transition-all whitespace-nowrap ${filter === cat ? 'bg-black text-white shadow-md' : 'text-gray-500 hover:text-black hover:bg-gray-50'
+                className={`px-4 sm:px-6 py-2 rounded-full text-xs font-bold tracking-wide transition-all whitespace-nowrap ${filter === cat ? 'bg-black text-white shadow-md' : 'text-gray-500 hover:text-black hover:bg-gray-50'
                   }`}
               >
                 {cat}
               </button>
             ))}
           </div>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-groups'))}
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#00E676] text-black rounded-full text-xs font-black tracking-wide shadow-md hover:bg-[#00C853] transition-all active:scale-[0.97] whitespace-nowrap"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Apply
+          </button>
         </div>
       </section>
 
@@ -388,15 +435,15 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-            <p className="text-[7px] font-bold text-gray-400  tracking-widest mb-1">Target</p>
+            <p className="text-[8px] font-bold text-gray-400  tracking-wide sm:tracking-widest mb-1">Target</p>
             <p className="text-[10px] font-bold text-black">${(asset.targetAmount / 1000).toFixed(0)}k</p>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-            <p className="text-[7px] font-bold text-gray-400  tracking-widest mb-1">APY</p>
+            <p className="text-[8px] font-bold text-gray-400  tracking-wide sm:tracking-widest mb-1">APY</p>
             <p className="text-[10px] font-bold text-[#00E676]">{asset.apy}%</p>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-            <p className="text-[7px] font-bold text-gray-400  tracking-widest mb-1">Term</p>
+            <p className="text-[8px] font-bold text-gray-400  tracking-wide sm:tracking-widest mb-1">Term</p>
             <p className="text-[10px] font-bold text-black">{asset.durationDays}d</p>
           </div>
         </div>
@@ -488,41 +535,38 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
 
   return (
     <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full">
-      {/* Breadcrumb / Back Navigation */}
-      <div className="flex items-center gap-2 text-[12px] font-bold text-gray-400 mb-8 cursor-pointer hover:text-black transition-colors w-fit" onClick={onClose}>
-        <span className="text-gray-300">Cash Flow Market</span>
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-        <span className="text-gray-300">{asset.category}</span>
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-        <span className="text-black">{asset.title}</span>
-      </div>
+      {/* Back Navigation */}
+      <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group mb-6 sm:mb-8">
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        Cash Flow Market
+      </button>
 
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row gap-6 md:items-start justify-between mb-6">
-        <div className="flex gap-6 items-start">
-          <img src={asset.issuerLogo} className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0" alt={asset.title} />
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-black tracking-tight mb-3">{asset.title}</h1>
-            <p className="text-[14px] text-gray-500 font-medium leading-relaxed max-w-2xl min-h-[44px]">
+      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:items-start justify-between mb-6">
+        <div className="flex gap-3 sm:gap-6 items-start">
+          <img src={asset.issuerLogo} className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0" alt={asset.title} />
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-black tracking-tight mb-2 sm:mb-3 truncate sm:whitespace-normal" title={asset.title}>{asset.title}</h1>
+            <p className="text-[12px] sm:text-[14px] text-gray-500 font-medium leading-relaxed max-w-2xl line-clamp-2 sm:line-clamp-none" title={asset.subtitle}>
               {asset.subtitle}
             </p>
           </div>
         </div>
 
-        <div className="flex gap-3 shrink-0">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-black rounded-xl font-bold text-sm hover:bg-gray-50 hover:border-black transition-all shadow-sm h-fit">
+        <div className="flex gap-2 sm:gap-3 shrink-0">
+          <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-gray-200 text-black rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 hover:border-black transition-all shadow-sm h-fit">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-            Share
+            <span className="hidden sm:inline">Share</span>
           </button>
-          <button onClick={handleAddToChat} className="flex items-center gap-2 px-6 py-2.5 bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] h-fit">
+          <button onClick={handleAddToChat} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-black text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] h-fit">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-            Add to Chat
+            <span className="hidden sm:inline">Add to</span> Chat
           </button>
         </div>
       </div>
 
       {/* Progress Bar Section (Compact & Premium) */}
-      <div className="mb-10 flex flex-col md:flex-row items-center gap-8 bg-white border border-gray-100 rounded-[28px] p-6 shadow-sm">
+      <div className="mb-6 sm:mb-10 flex flex-col md:flex-row items-stretch md:items-center gap-4 sm:gap-8 bg-white border border-gray-100 rounded-2xl sm:rounded-[28px] p-4 sm:p-6 shadow-sm">
         <div className="flex-1 w-full space-y-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -549,12 +593,12 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
 
         <div className="hidden md:block w-px h-12 bg-gradient-to-b from-transparent via-gray-100 to-transparent" />
 
-        <div className="flex items-center gap-8 shrink-0">
+        <div className="flex items-center gap-4 sm:gap-8 shrink-0 flex-wrap">
           <div className="space-y-1">
             <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Currently Pledged</p>
             <div className="flex items-baseline gap-1.5">
-              <p className="text-3xl font-black text-black tracking-tight">${asset.raisedAmount.toLocaleString()}</p>
-              <p className="text-lg font-black text-gray-400 tracking-tight">/ ${(asset.targetAmount / 1000).toFixed(0)}k</p>
+              <p className="text-xl sm:text-3xl font-black text-black tracking-tight">${asset.raisedAmount.toLocaleString()}</p>
+              <p className="text-sm sm:text-lg font-black text-gray-400 tracking-tight">/ ${(asset.targetAmount / 1000).toFixed(0)}k</p>
             </div>
           </div>
           <div className="flex flex-col items-end">
@@ -573,47 +617,47 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
       </div>
 
       {/* Primary Metrics Grid (4 Cards) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
-          <div className="flex items-center gap-1.5 mb-4">
-            <p className="text-[11px] font-bold text-gray-500">All-time revenue</p>
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
+          <div className="flex items-center gap-1.5 mb-2 sm:mb-4">
+            <p className="text-[10px] sm:text-[11px] font-bold text-gray-500">All-time revenue</p>
           </div>
-          <p className="text-2xl font-black text-black mb-1">${allTimeRevenue.toLocaleString()}</p>
-          <p className="text-[10px] text-gray-400 font-medium">Coverage ratio: {asset.coverageRatio}x</p>
+          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate" title={`$${allTimeRevenue.toLocaleString()}`}>${allTimeRevenue.toLocaleString()}</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate">Coverage ratio: {asset.coverageRatio}x</p>
         </div>
 
-        <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
-          <div className="flex items-center gap-1.5 mb-4">
-            <p className="text-[11px] font-bold text-gray-500">MRR (verified)</p>
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
+          <div className="flex items-center gap-1.5 mb-2 sm:mb-4">
+            <p className="text-[10px] sm:text-[11px] font-bold text-gray-500">MRR (verified)</p>
             <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <p className="text-2xl font-black text-black mb-1">${mrr.toLocaleString()}</p>
-          <p className="text-[10px] text-gray-400 font-medium">{asset.verifiedSource}</p>
+          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate">${mrr.toLocaleString()}</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate" title={asset.verifiedSource}>{asset.verifiedSource}</p>
         </div>
 
-        <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
-          <p className="text-[11px] font-bold text-gray-500 mb-4">Issuer Profile</p>
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
+          <p className="text-[10px] sm:text-[11px] font-bold text-gray-500 mb-2 sm:mb-4">Issuer Profile</p>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-bold border border-gray-200 shrink-0 overflow-hidden">
               <img src={asset.issuerLogo} className="w-full h-full object-cover" />
             </div>
-            <p className="text-sm font-black text-black truncate">{asset.issuer}</p>
+            <p className="text-xs sm:text-sm font-black text-black truncate" title={asset.issuer}>{asset.issuer}</p>
             <div className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[7px] text-white shrink-0">{'\u2713'}</div>
           </div>
-          <p className="text-[10px] text-gray-400 font-medium">{asset.backersCount} investors backing</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{asset.backersCount} investors backing</p>
         </div>
 
-        <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all flex flex-col justify-between">
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all flex flex-col justify-between">
           <div>
-            <p className="text-[11px] font-bold text-gray-500 mb-1">Yield Rules</p>
-            <p className="text-xl font-black text-[#00E676]">{asset.apy}% APY</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-gray-500 mb-1">Yield Rules</p>
+            <p className="text-lg sm:text-xl font-black text-[#00E676]">{asset.apy}% APY</p>
           </div>
-          <p className="text-[10px] text-gray-400 font-medium mt-auto bg-gray-50 w-fit px-2 py-1 rounded-md border border-gray-100">{asset.durationDays} Days Lock-up Term</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-auto bg-gray-50 w-fit px-2 py-1 rounded-md border border-gray-100 truncate" title={`${asset.durationDays} Days Lock-up Term`}>{asset.durationDays} Days Lock-up</p>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-gray-100 gap-10 mt-12 mb-8">
+      <div className="flex border-b border-gray-100 gap-4 sm:gap-10 mt-8 sm:mt-12 mb-6 sm:mb-8 overflow-x-auto">
         {[
           { id: 'STORY', label: 'Background' },
           { id: 'FINANCIALS', label: 'Financial Health' },
@@ -622,7 +666,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`pb-5 pt-2 text-sm font-bold transition-all relative ${activeTab === tab.id ? 'text-black' : 'text-gray-400 hover:text-gray-600'
+            className={`pb-4 sm:pb-5 pt-2 text-xs sm:text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === tab.id ? 'text-black' : 'text-gray-400 hover:text-gray-600'
               }`}
           >
             {tab.label}
@@ -637,27 +681,27 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
         {activeTab === 'STORY' && (
           <div className="space-y-12 animate-fadeIn">
             {/* 1. Issuer Profile */}
-            <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-gray-100/50">
-              <div className="flex items-center gap-4">
-                <img src={asset.issuerLogo} className="w-16 h-16 rounded-2xl object-cover border border-gray-100 shadow-sm" />
-                <div>
-                  <h4 className="text-xl font-black tracking-tight text-black flex items-center gap-2">
-                    {asset.issuer}
+            <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 pb-6 border-b border-gray-100/50">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <img src={asset.issuerLogo} className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0" />
+                <div className="min-w-0">
+                  <h4 className="text-base sm:text-xl font-black tracking-tight text-black flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <span className="truncate max-w-[150px] sm:max-w-none" title={asset.issuer}>{asset.issuer}</span>
                     <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white italic shadow-sm">✓</div>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 leading-none ml-1 flex items-center gap-1 text-gray-500">
                       {asset.issuer === 'ComputeDAO LLC' ? <><Icons.Crown className="w-2.5 h-2.5 text-amber-500" /> 1000+</> : asset.issuer === 'DropStream LLC' ? <><Icons.Diamond className="w-2.5 h-2.5 text-blue-500" /> 500+</> : <><Icons.Compass className="w-2.5 h-2.5 text-emerald-500" /> 200+</>}
                     </span>
                   </h4>
-                  <p className="text-[12px] text-gray-400 font-medium">Singapore (ACRA ID: 20230812X) • Founded 2023</p>
+                  <p className="text-[11px] sm:text-[12px] text-gray-400 font-medium truncate" title="Singapore (ACRA ID: 20230812X) • Founded 2023">Singapore (ACRA ID: 20230812X) • Founded 2023</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {[
                   { label: 'Twitter', icon: '🐦' },
                   { label: 'LinkedIn', icon: '🔗' },
                   { label: 'GitHub', icon: '💻' }
                 ].map(social => (
-                  <div key={social.label} className="px-3 py-1.5 bg-white hover:bg-gray-50 transition-colors rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1.5 text-gray-600 border border-gray-100 shadow-sm cursor-pointer lg:px-4 lg:py-2">
+                  <div key={social.label} className="px-2.5 py-1.5 sm:px-3 bg-white hover:bg-gray-50 transition-colors rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1 sm:gap-1.5 text-gray-600 border border-gray-100 shadow-sm cursor-pointer lg:px-4 lg:py-2">
                     <span>{social.icon}</span>
                     {social.label}
                     <span className="text-[#00E676] text-[10px] ml-1">✓</span>
@@ -770,7 +814,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
             {/* 1. Fundraising Mechanics */}
             <section className="space-y-6">
               <h3 className="text-base font-bold text-black">Campaign Rules & Mechanics</h3>
-              <div className="p-8 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-8">
+              <div className="p-4 sm:p-8 bg-white border border-gray-100 rounded-2xl sm:rounded-3xl shadow-sm space-y-6 sm:space-y-8">
                 {/* Visual Timeline */}
                 <div className="relative pt-6 pb-2">
                   {/* Background Bar */}
@@ -837,7 +881,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
             {/* 2. Asset Structure Flow */}
             <section className="space-y-8">
               <h3 className="text-base font-bold text-black">Fund Flow & Asset Structure</h3>
-              <div className="p-10 bg-gray-50 rounded-[32px] border border-gray-100 flex flex-wrap items-center justify-center gap-x-4 gap-y-8 text-center relative overflow-hidden">
+              <div className="p-4 sm:p-10 bg-gray-50 rounded-2xl sm:rounded-[32px] border border-gray-100 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-4 sm:gap-y-8 text-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4">
                   <div className="px-2 py-0.5 bg-white/80 backdrop-blur rounded text-[9px] font-bold text-gray-400 border border-gray-100">Immutable Smart Contract</div>
                 </div>
@@ -863,7 +907,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
             {/* 3. Key Rights & Protections */}
             <section className="space-y-6">
               <h3 className="text-base font-bold text-black">Key Rights & Protections</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {[
                   {
                     icon: '🥇',
@@ -890,7 +934,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                     plainEnglish: 'Revenue is intercepted by SDK and flows directly into on-chain contracts. It is tamper-proof and automatically distributed at maturity.'
                   }
                 ].map((item, i) => (
-                  <div key={i} className="group relative bg-white border border-gray-100 p-6 rounded-[32px] hover:border-black transition-all duration-300 shadow-sm overflow-hidden h-48 flex flex-col justify-between">
+                  <div key={i} className="group relative bg-white border border-gray-100 p-4 sm:p-6 rounded-2xl sm:rounded-[32px] hover:border-black transition-all duration-300 shadow-sm overflow-hidden h-40 sm:h-48 flex flex-col justify-between">
                     {/* Normal State */}
                     <div className="space-y-3">
                       <div className="text-2xl">{item.icon}</div>
@@ -906,7 +950,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                     </div>
 
                     {/* Hover State - Explanation */}
-                    <div className="absolute inset-0 bg-black/95 p-6 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0 cursor-default">
+                    <div className="absolute inset-0 bg-black/95 p-3 sm:p-6 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0 cursor-default">
                       <p className="text-[13px] text-white font-medium leading-relaxed italic text-center">
                         "{item.plainEnglish}"
                       </p>
@@ -963,15 +1007,15 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
               </div>
 
               {/* High Level Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {[
                   { label: '30d Gross Flow', value: `$1,245,600`, sub: 'Up 11.2% MoM', trend: 'up' },
                   { label: 'Coverage Ratio', value: '2.49x', sub: 'Calculated at Maturity', trend: 'safe' },
                   { label: 'MRR', value: '$42,000', sub: 'Enterprise Focus', trend: 'up' }
                 ].map((stat, i) => (
-                  <div key={i} className="p-6 bg-white glass rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                    <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-3">{stat.label}</p>
-                    <p className="text-3xl font-black text-black mb-1 tracking-tight">{stat.value}</p>
+                  <div key={i} className="p-4 sm:p-6 bg-white glass rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                    <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-2 sm:mb-3">{stat.label}</p>
+                    <p className="text-xl sm:text-3xl font-black text-black mb-1 tracking-tight">{stat.value}</p>
                     <p className="text-[10px] font-bold text-[#00E676]  tracking-tighter flex items-center gap-1">
                       {stat.trend === 'up' && '▲'} {stat.sub}
                     </p>
@@ -982,10 +1026,10 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
               {/* Detailed Analysis Section */}
               <div className="space-y-6">
                 {/* Revenue History Light Area Chart */}
-                <div className="bg-white rounded-[24px] border border-gray-100 p-8 space-y-8 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+                <div className="bg-white rounded-2xl sm:rounded-[24px] border border-gray-100 p-4 sm:p-8 space-y-6 sm:space-y-8 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-baseline gap-3">
-                      <h4 className="text-3xl font-black text-black">$79,479</h4>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <h4 className="text-xl sm:text-3xl font-black text-black">$79,479</h4>
                       <p className="text-[#00E676] text-xs font-bold flex items-center gap-1">↑ 139.3% <span className="text-gray-400 font-medium">vs. prev period</span></p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1001,7 +1045,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                     </div>
                   </div>
 
-                  <div className="h-[280px] w-full mt-4">
+                  <div className="h-[200px] sm:h-[280px] w-full mt-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={asset.monthlyRevenue}>
                         <defs>
@@ -1074,16 +1118,16 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                 <h3 className="text-base font-bold text-black">Loka AI Risk scoring</h3>
                 <div className="h-px flex-1 bg-gray-100" />
               </div>
-              <div className="p-8 bg-purple-50 rounded-[40px] border-2 border-purple-100/50 relative overflow-hidden group">
+              <div className="p-4 sm:p-8 bg-purple-50 rounded-2xl sm:rounded-[40px] border-2 border-purple-100/50 relative overflow-hidden group">
                 <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-purple-200/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
                 <div className="relative z-10 space-y-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <div className="p-2 bg-purple-600 rounded-lg w-fit text-white text-xs">Loka AI v2.4</div>
-                      <p className="text-[10px] font-bold text-purple-400 mt-2">Analysis Engine: Predictive Default Model</p>
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="p-2 bg-purple-600 rounded-lg w-fit text-white text-[10px] sm:text-xs">Loka AI v2.4</div>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-purple-400 mt-2">Analysis Engine: Predictive Default Model</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-5xl font-serif italic text-purple-600">AAA</div>
+                    <div className="text-right shrink-0">
+                      <div className="text-3xl sm:text-5xl font-serif italic text-purple-600">AAA</div>
                       <p className="text-xs font-bold text-purple-400">98/100 Confidence</p>
                     </div>
                   </div>
@@ -1119,93 +1163,6 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                   </div>
                 </div>
               </div>
-            </section>
-
-            {/* 3. Pledge / Invest Box */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-4">
-                <h3 className="text-base font-bold text-black">Invest</h3>
-                <div className="h-px flex-1 bg-gray-100" />
-              </div>
-
-              {canInvest ? (
-                <div className="p-6 bg-white rounded-[28px] border-2 border-gray-100 shadow-sm space-y-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">Available Capacity</p>
-                      <p className="text-2xl font-black text-black">${asset.remainingCap.toLocaleString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">Price per Note</p>
-                      <p className="text-2xl font-black text-black">${asset.askPrice}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-gray-500">Pledge Amount (AIUSD)</label>
-                    <div className="flex gap-3">
-                      <div className="relative flex-1">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                        <input
-                          type="number"
-                          min="10"
-                          max={asset.remainingCap}
-                          step="10"
-                          value={pledgeAmount}
-                          onChange={(e) => { setPledgeAmount(e.target.value); setInvestError(null); setInvestSuccess(null); }}
-                          placeholder="100"
-                          className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-black focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-300 transition-all"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        {[100, 500, 1000].map(v => (
-                          <button key={v} onClick={() => { setPledgeAmount(String(Math.min(v, asset.remainingCap))); setInvestError(null); }} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-[11px] font-bold rounded-lg transition-colors text-gray-600">
-                            ${v >= 1000 ? `${v/1000}k` : v}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {pledgeAmount && parseFloat(pledgeAmount) > 0 && (
-                      <p className="text-[10px] text-gray-400 font-medium">
-                        ≈ {(parseFloat(pledgeAmount) / asset.askPrice).toFixed(2)} shares · {asset.apy}% APY · {asset.durationDays} days
-                      </p>
-                    )}
-                  </div>
-
-                  {investError && (
-                    <div className="px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-bold text-red-600">{investError}</div>
-                  )}
-                  {investSuccess && (
-                    <div className="px-4 py-2 bg-green-50 border border-green-100 rounded-xl text-xs font-bold text-green-700">{investSuccess}</div>
-                  )}
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleInvest}
-                      disabled={investing || !pledgeAmount}
-                      className="flex-1 py-3.5 bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {investing ? 'Processing...' : 'Pledge Now'}
-                    </button>
-                    {api.isAuthenticated && (
-                      <button
-                        onClick={handleRevoke}
-                        disabled={revoking}
-                        className="px-5 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all disabled:opacity-50"
-                      >
-                        {revoking ? '...' : 'Revoke'}
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-[10px] text-gray-400 text-center italic">By investing, you agree to the terms of the offering agreement.</p>
-                </div>
-              ) : (
-                <div className="p-6 bg-gray-50 rounded-[28px] border border-gray-100 text-center space-y-2">
-                  <p className="text-sm font-bold text-gray-500">This project is {asset.status.toLowerCase()}</p>
-                  <p className="text-[11px] text-gray-400">Investment is no longer available for this project.</p>
-                </div>
-              )}
             </section>
           </div>
         )}

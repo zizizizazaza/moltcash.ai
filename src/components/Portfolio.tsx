@@ -116,7 +116,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
 
   return (
     <>
-      <div className="max-w-7xl mx-auto animate-fadeIn pb-24 px-4 space-y-6">
+      <div className="max-w-7xl mx-auto animate-fadeIn pb-28 md:pb-24 px-4 space-y-6">
 
         {/* Top bar: Tabs + Settings/Logout */}
         <div className="pt-10 pb-4 flex items-center justify-between">
@@ -159,15 +159,15 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-0 pb-6">
 
               {/* --- Left Card: Profile & Overview --- */}
-              <div className="md:col-span-5 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between space-y-6">
+              <div className="md:col-span-5 bg-white border border-gray-100 rounded-3xl shadow-sm p-4 sm:p-6 flex flex-col justify-between space-y-4 sm:space-y-6">
 
                 {/* User Profile */}
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3 sm:gap-4">
                   {/* Gradient Avatar Mock */}
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0" />
-                  <div className="flex flex-col gap-1">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0" />
+                  <div className="flex flex-col gap-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-black text-black tracking-tight">
+                      <h2 className="text-base sm:text-xl font-black text-black tracking-tight truncate">
                         {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Setting up wallet...'}
                       </h2>
                       {walletAddress && (
@@ -185,24 +185,24 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 </div>
 
                 {/* Stats Grid */}
-                <div className="flex flex-wrap justify-between items-center py-2 border-y border-gray-50/80 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-between sm:items-center py-2 border-y border-gray-50/80">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Net Worth</span>
-                    <span className="text-lg font-black text-black">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-base sm:text-lg font-black text-black">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="w-px h-8 bg-gray-100"></div>
+                  <div className="hidden sm:block w-px h-8 bg-gray-100"></div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Total Yield</span>
-                    <span className="text-lg font-black text-[#00E676]">+$340.00</span>
+                    <span className="text-base sm:text-lg font-black text-[#00E676]">+$340.00</span>
                   </div>
-                  <div className="w-px h-8 bg-gray-100"></div>
+                  <div className="hidden sm:block w-px h-8 bg-gray-100"></div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-400 font-bold  tracking-widest mb-1">Assets</span>
-                    <span className="text-lg font-black text-black">4</span>
+                    <span className="text-base sm:text-lg font-black text-black">4</span>
                   </div>
-                  <div className="w-px h-8 bg-gray-100 mx-1"></div>
+                  <div className="hidden sm:block w-px h-8 bg-gray-100 mx-1"></div>
                   <div
-                    className="flex flex-col justify-center cursor-pointer group px-4 py-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl border border-violet-100/60 hover:border-violet-200 hover:shadow-md transition-all shadow-sm"
+                    className="col-span-2 sm:col-span-1 flex flex-col justify-center cursor-pointer group px-4 py-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl border border-violet-100/60 hover:border-violet-200 hover:shadow-md transition-all shadow-sm"
                     onClick={() => setShowCreditModal(true)}
                   >
                     <span className="text-[8px] text-violet-400 font-black tracking-widest flex items-center gap-1">
@@ -236,26 +236,26 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
               </div>
 
               {/* --- Right Card: Chart & History --- */}
-              <div className="md:col-span-7 bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col justify-between">
+              <div className="md:col-span-7 bg-white border border-gray-100 rounded-3xl shadow-sm p-4 sm:p-6 flex flex-col justify-between">
 
                 {/* Chart Header */}
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
                   <div>
                     <div className="flex items-center gap-1.5 mb-2">
                       <div className="w-2.5 h-2.5 rounded-full bg-[#00E676] animate-pulse"></div>
                       <span className="text-[10px] text-gray-500 font-bold tracking-widest ">Profit / Loss</span>
                     </div>
-                    <h2 className="text-3xl font-black text-black">+${(340.00).toFixed(2)}</h2>
+                    <h2 className="text-2xl sm:text-3xl font-black text-black">+${(340.00).toFixed(2)}</h2>
                     <p className="text-[11px] font-bold text-gray-400 mt-1  tracking-widest">{timeframe === 'ALL' ? 'All Time' : `Past ${timeframe}`}</p>
                   </div>
 
                   {/* Toggles */}
-                  <div className="flex bg-gray-50 p-1 rounded-full border border-gray-100 gap-0.5">
+                  <div className="flex bg-gray-50 p-1 rounded-full border border-gray-100 gap-0.5 mt-3 sm:mt-0 self-start">
                     {['7D', '30D', '3M', 'ALL'].map(t => (
                       <button
                         key={t}
                         onClick={() => setTimeframe(t)}
-                        className={`px-3.5 py-1.5 text-[10px] font-black rounded-full transition-all ${timeframe === t ? 'bg-white text-black shadow-sm border border-gray-200/50' : 'text-gray-400 hover:text-black'}`}
+                        className={`px-3 py-1.5 text-[10px] font-black rounded-full transition-all ${timeframe === t ? 'bg-white text-black shadow-sm border border-gray-200/50' : 'text-gray-400 hover:text-black'}`}
                       >
                         {t}
                       </button>
@@ -264,7 +264,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 </div>
 
                 {/* Chart Container */}
-                <div className="h-[150px] w-full mt-6 -mx-1">
+                <div className="h-[150px] w-full mt-6 overflow-hidden">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={filteredChartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                       <defs>
@@ -392,7 +392,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   </section>
                 ) : (
                   <section className="space-y-4 animate-fadeIn">
-                    <div className="glass rounded-[32px] overflow-hidden bg-white shadow-sm border border-gray-100">
+                    <div className="glass rounded-2xl sm:rounded-[32px] overflow-hidden bg-white shadow-sm border border-gray-100">
                       <ActivityItem
                         title="Daily Interest Payout"
                         time="Today, 08:00 AM"
@@ -430,7 +430,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
           <div className="space-y-6 animate-fadeIn">
 
             {/* Company Info Card - Simplified */}
-            <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-6">
+            <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-black text-black">Company Information</h2>
                 <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-full border border-green-200/50 flex items-center gap-1">
@@ -452,13 +452,13 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   <span className="text-[11px] text-gray-400 font-medium">Registration No.</span>
                   <span className="text-[13px] font-bold text-black">202312345A</span>
                 </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-[11px] text-gray-400 font-medium">Registered Address</span>
-                  <span className="text-[13px] font-bold text-black">1 Raffles Place, #20-01, Singapore 048616</span>
+                <div className="flex items-start sm:items-center justify-between py-3 gap-2">
+                  <span className="text-[11px] text-gray-400 font-medium shrink-0">Registered Address</span>
+                  <span className="text-[13px] font-bold text-black text-right">1 Raffles Place, #20-01, Singapore 048616</span>
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-3 flex-wrap">
+              <div className="mt-4 flex items-center gap-2 sm:gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 rounded-full border border-violet-100">
                   <span className="text-xs">🔗</span>
                   <span className="text-[10px] font-bold text-violet-600">SBT #1024</span>
@@ -476,8 +476,8 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
             </section>
 
             {/* Submitted Projects */}
-            <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-5">
+            <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-5 gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                     <span className="text-lg">📋</span>
@@ -500,20 +500,25 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 {/* Project 1 - Active/Fundraising */}
                 <div
                   onClick={() => {
-                    window.dispatchEvent(new CustomEvent('loka-nav-swap'));
+                    window.dispatchEvent(new CustomEvent('loka-nav-market'));
                     setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
                   }}
                   className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center font-black text-white text-sm">C</div>
-                      <div>
-                        <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors">ComputeDAO - GPU Expansion</h3>
-                        <p className="text-[10px] text-gray-400 font-medium">Target: $500,000 · Duration: 60 days · 15.5% APY</p>
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center font-black text-white text-sm shrink-0">C</div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors truncate">ComputeDAO - GPU Expansion</h3>
+                        <p className="text-[10px] text-gray-400 font-medium">Target: $500,000 · 60d · 15.5% APY</p>
+                        <div className="flex items-center gap-2 mt-1.5 sm:hidden">
+                          <span className="text-xs font-bold text-black">$375,000</span>
+                          <span className="text-[9px] text-gray-400">75%</span>
+                          <span className="px-2 py-0.5 bg-green-50 text-green-600 text-[9px] font-black rounded-full border border-green-200/50">Fundraising</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-sm font-bold text-black">$375,000</p>
                         <p className="text-[10px] text-gray-400">75% funded</p>
@@ -521,26 +526,31 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-full border border-green-200/50">● Fundraising</span>
                       <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                     </div>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors sm:hidden shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
 
                 {/* Project 2 - Under Review */}
                 <div
                   onClick={() => {
-                    window.dispatchEvent(new CustomEvent('loka-nav-swap'));
+                    window.dispatchEvent(new CustomEvent('loka-nav-market'));
                     setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'Shopify' })), 100);
                   }}
                   className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-black text-white text-sm">S</div>
-                      <div>
-                        <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors">Shopify Merchant Cluster X</h3>
-                        <p className="text-[10px] text-gray-400 font-medium">Target: $200,000 · Duration: 45 days · 12% APY</p>
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-black text-white text-sm shrink-0">S</div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors truncate">Shopify Merchant Cluster X</h3>
+                        <p className="text-[10px] text-gray-400 font-medium">Target: $200,000 · 45d · 12% APY</p>
+                        <div className="flex items-center gap-2 mt-1.5 sm:hidden">
+                          <span className="text-xs font-bold text-black">—</span>
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-black rounded-full border border-amber-200/50">Under Review</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-sm font-bold text-black">—</p>
                         <p className="text-[10px] text-gray-400">Pending</p>
@@ -548,26 +558,32 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-full border border-amber-200/50">● Under Review</span>
                       <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                     </div>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors sm:hidden shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
 
                 {/* Project 3 - Completed */}
                 <div
                   onClick={() => {
-                    window.dispatchEvent(new CustomEvent('loka-nav-swap'));
+                    window.dispatchEvent(new CustomEvent('loka-nav-market'));
                     setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'Vercel' })), 100);
                   }}
                   className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center font-black text-white text-sm">V</div>
-                      <div>
-                        <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors">Vercel SaaS Pool</h3>
-                        <p className="text-[10px] text-gray-400 font-medium">Target: $150,000 · Duration: 30 days · 10% APY</p>
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center font-black text-white text-sm shrink-0">V</div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-black group-hover:text-violet-600 transition-colors truncate">Vercel SaaS Pool</h3>
+                        <p className="text-[10px] text-gray-400 font-medium">Target: $150,000 · 30d · 10% APY</p>
+                        <div className="flex items-center gap-2 mt-1.5 sm:hidden">
+                          <span className="text-xs font-bold text-black">$150,000</span>
+                          <span className="text-[9px] text-green-500">Repaid</span>
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[9px] font-black rounded-full border border-gray-200/50">Completed</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-sm font-bold text-black">$150,000</p>
                         <p className="text-[10px] text-green-500">Fully repaid</p>
@@ -575,6 +591,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full border border-gray-200/50">● Completed</span>
                       <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                     </div>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-black transition-colors sm:hidden shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
               </div>
@@ -751,23 +768,23 @@ const AllocationCard: React.FC<{
   statusBadge?: React.ReactNode;
   creditBadge?: string;
 }> = ({ title, desc, apy, amount, earnings, icon, progress, action, onClick, statusBadge, creditBadge }) => (
-  <div onClick={onClick} className="glass p-6 rounded-[32px] bg-white flex items-center justify-between hover:border-black/20 transition-all cursor-pointer group shadow-sm border-gray-100">
-    <div className="flex items-center gap-5">
-      <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white transition-all">
+  <div onClick={onClick} className="glass p-4 sm:p-6 rounded-2xl sm:rounded-[32px] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 hover:border-black/20 transition-all cursor-pointer group shadow-sm border-gray-100">
+    <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white transition-all shrink-0">
         {icon}
       </div>
-      <div>
-        <div className="flex items-center gap-2">
-          <h5 className="text-sm font-bold text-black">{title}</h5>
-          {desc && <span className="text-[9px] font-bold text-gray-400 tracking-tighter">({desc})</span>}
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          <h5 className="text-sm font-bold text-black truncate max-w-[140px] sm:max-w-none" title={title}>{title}</h5>
+          {desc && <span className="text-[9px] font-bold text-gray-400 tracking-tighter hidden sm:inline">({desc})</span>}
           {statusBadge}
         </div>
         <p className="text-[11px] text-gray-500 font-medium mt-0.5">{apy}</p>
         {progress && <p className="text-[10px] text-orange-500 font-bold mt-1 tracking-tight">{progress}</p>}
       </div>
     </div>
-    <div className="flex items-center gap-6 text-right">
-      <div className="flex flex-col items-end">
+    <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 text-right pl-[52px] sm:pl-0">
+      <div className="flex flex-col sm:items-end">
         <p className="text-sm font-bold text-black">{amount}</p>
         <div className="flex items-center gap-2 mt-0.5 leading-none">
           <p className="text-[11px] font-bold text-green-600">{earnings}</p>
@@ -791,22 +808,24 @@ const AllocationCard: React.FC<{
 );
 
 const ActivityItem: React.FC<{ title: string; time: string; amount: string; type: 'INTEREST' | 'DEPOSIT'; source?: string; onSourceClick?: () => void }> = ({ title, time, amount, type, source, onSourceClick }) => (
-  <div className="flex items-center justify-between px-8 py-6 border-b border-gray-50 last:border-none hover:bg-gray-50/50 transition-colors">
-    <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${type === 'INTEREST' ? 'bg-green-50 text-green-500' : 'bg-gray-100 text-black'}`}>
+  <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-50 last:border-none hover:bg-gray-50/50 transition-colors gap-3">
+    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${type === 'INTEREST' ? 'bg-green-50 text-green-500' : 'bg-gray-100 text-black'}`}>
         {type === 'INTEREST' ? '💰' : '⬇️'}
       </div>
-      <div>
-        <div className="flex items-center gap-1.5">
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <p className="text-xs font-bold text-black">{title}</p>
           {source && (
             <>
-              <span className="text-gray-300 text-[10px]">•</span>
-              <span className="text-[11px] font-medium text-gray-400">
-                From{' '}
+              <span className="text-gray-300 text-[10px] hidden sm:inline">•</span>
+              <span className="text-[10px] sm:text-[11px] font-medium text-gray-400">
+                <span className="sm:hidden">· </span>
+                <span className="hidden sm:inline">From </span>
                 <span
                   onClick={onSourceClick}
-                  className="font-bold text-black hover:text-blue-500 hover:underline cursor-pointer transition-colors"
+                  className="font-bold text-black hover:text-blue-500 hover:underline cursor-pointer transition-colors truncate inline-block max-w-[100px] sm:max-w-none align-bottom"
+                  title={source}
                 >
                   {source}
                 </span>
@@ -819,7 +838,7 @@ const ActivityItem: React.FC<{ title: string; time: string; amount: string; type
         </div>
       </div>
     </div>
-    <span className={`text-sm font-bold ${type === 'INTEREST' ? 'text-green-600' : 'text-black'}`}>{amount}</span>
+    <span className={`text-sm font-bold shrink-0 ${type === 'INTEREST' ? 'text-green-600' : 'text-black'}`}>{amount}</span>
   </div>
 );
 

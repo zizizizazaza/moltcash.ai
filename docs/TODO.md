@@ -1,7 +1,7 @@
 # LOKA AIUSD Dashboard — 开发进度总览
 
 > 最后更新：2026-03-11  
-> 整体进度：**~70%**（Phase 0-11 后端 + API 完成，前端部分已对接）
+> 整体进度：**~75%**（Phase 0-11 后端 + API 完成，前端已对接，Privy OAuth 已集成）
 
 ---
 
@@ -26,6 +26,8 @@
 
 - [x] 邮箱登录（POST /auth/login/email，自动注册）
 - [x] OAuth 登录接口（POST /auth/login/oauth）
+- [x] Google OAuth 登录（Privy 集成）
+- [x] Twitter/X OAuth 登录（Privy 集成）
 - [x] 获取当前用户（GET /auth/me）
 - [x] 风险免责声明（POST /auth/accept-risk + RiskModal）
 - [x] Loka AI 接入（lingyaai.cn / deepseek-v3）
@@ -33,6 +35,8 @@
 - [x] 聊天历史（GET/DELETE /chat/history）
 - [x] 前端 Chat.tsx 对接真实后端
 - [x] AI 系统提示词（400+ 行平台知识库）
+- [x] Privy 嵌入式钱包（自动创建）
+- [x] Deposit 未登录时跳转登录弹窗
 
 ---
 
@@ -86,9 +90,9 @@
 
 > PRD §6-§8：发行方上链全流程（AI Agent 引导 → 企业认证 → 项目提交）
 
-### 5.1 Apply Group 创建
-- [ ] Apply Group 类型区分（区别于社交群组）— 需产品决策
-- [ ] 前端 Apply 入口 UI（从 Market 页面跳转）— 需设计
+### 5.1 Apply 入口
+- [x] Cash Flow Market 列表页 Apply 按钮（点击跳转 Groups）
+- [x] Apply 流程在 Groups 中实现（"Project Verification & Setup" 群组，自然语言交互创建项目）
 
 ### 5.2 AI Agent 编排
 - [ ] **Guide Agent**（引导代理）— 需 AI prompt 设计
@@ -110,7 +114,6 @@
 - [x] **GET /api/apply/projects/applications** — 申请列表
 - [x] **GET /api/apply/projects/applications/:id** — 申请详情
 - [ ] 收入验证（Stripe / PayPal / QuickBooks OAuth）— 需第三方凭证
-- [ ] 前端 Apply Flow UI 页面 — 需设计
 
 ---
 
@@ -154,7 +157,7 @@
 - [x] **GET /api/credit/history** — 信用分变更历史
 - [x] **GET /api/credit/events** — 变更原因详情
 - [x] 前端 API 方法（getCreditScore, getCreditHistory, getCreditEvents）
-- [ ] **前端信用分展示 UI** — Portfolio 或独立页面
+- [x] **前端信用分展示** — 已在 Portfolio 页面中实现
 
 ---
 
@@ -200,9 +203,9 @@
 - [x] **POST /api/governance/proposals/:id/vote** — 投票（权重 = 用户总持仓，自动判定通过/拒绝）
 - [x] 投票逻辑（投票权重 = 持仓份额）+ 治理参与信用加分
 - [x] 前端 API 方法（getProposals, createProposal, voteOnProposal）
+- [x] **前端治理 UI** — 已在 Groups 群组中实现（投票入口 + 交互逻辑）
 - [ ] 参数调整自动生效逻辑（等级阈值、费率等）— 需业务决策
 - [ ] 国库再平衡算法
-- [ ] 前端治理 UI 页面
 
 ---
 
@@ -250,14 +253,14 @@
 | Phase 2 | 前端对接真实 API | ✅ 完成 |
 | Phase 3 | 投资核心流程 | ✅ 已完成 |
 | Phase 4 | Swap / AIUSD | ✅ 后端 + 前端对接完成 |
-| Phase 5 | Apply Flow & 企业认证 | ✅ 后端完成，前端 UI 待建 |
-| Phase 6 | 信用评分系统 | ✅ 完成（服务+API+前端方法） |
+| Phase 5 | Apply Flow & 企业认证 | ✅ 后端完成，前端 Apply 入口已加（Groups 内自然语言交互） |
+| Phase 6 | 信用评分系统 | ✅ 完成（服务+API+Portfolio 展示） |
 | Phase 7 | 还款追踪 | ✅ 后端完成，cron 待配置 |
 | Phase 8 | 清算机制 | ✅ 后端完成，合约待对接 |
-| Phase 9 | 治理系统 | ✅ 后端完成，前端 UI 待建 |
+| Phase 9 | 治理系统 | ✅ 后端完成，前端已在 Groups 实现 |
 | Phase 10 | 用户设置 & KYC | ✅ 基础完成，KYC 待接入 |
-| Phase 11 | 前端体验优化 | ✅ ErrorBoundary + Toast 完成 |
+| Phase 11 | 前端体验优化 | ✅ ErrorBoundary + Toast + Privy 完成 |
 | Phase 12 | 部署 & DevOps | ⬚ 待开始 |
 
-> **当前状态**：Phase 0-11 后端 API 全部完成，前端核心页面已对接。剩余工作主要是前端 UI 建设和第三方服务集成。  
-> **下一步**：Phase 5 前端 Apply UI → Phase 6 信用分展示 → Phase 9 治理 UI → Phase 12 部署
+> **当前状态**：Phase 0-11 后端 API 全部完成，前端核心页面已对接。Privy OAuth（Google/X）+ 嵌入式钱包已集成。剩余工作主要是第三方服务集成和部署。  
+> **下一步**：第三方 KYC 接入 → 智能合约对接 → Cron 定时任务 → Phase 12 部署

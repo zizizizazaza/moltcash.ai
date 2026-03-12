@@ -37,6 +37,7 @@ model User {
   creditEvents        CreditScoreEvent[]
   governanceProposals GovernanceProposal[]
   governanceVotes     GovernanceVote[]
+  notifications       Notification[]
 
   @@index([email])
   @@index([walletAddress])
@@ -421,4 +422,36 @@ model GovernanceVote {
 
   @@unique([proposalId, userId])
   @@index([proposalId])
+}
+
+// ============ Notifications ============
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // investment, repayment, liquidation, governance, credit, system
+  title     String
+  body      String
+  refType   String?  // project, proposal, trade, etc.
+  refId     String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+// ============ Idempotency ============
+
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  userId    String
+  response  String   // JSON stringified response
+  createdAt DateTime @default(now())
+
+  @@index([key])
+  @@index([createdAt])
 }

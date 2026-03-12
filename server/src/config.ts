@@ -1,12 +1,31 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+const isProduction = nodeEnv === 'production';
+
+// Validate critical env vars in production
+if (isProduction) {
+  const required = ['JWT_SECRET', 'FRONTEND_URL', 'DATABASE_URL'];
+  const missing = required.filter(k => !process.env[k]);
+  if (missing.length) {
+    console.error(`❌ Missing required env vars: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+  if (process.env.JWT_SECRET === 'loka-dev-secret') {
+    console.error('❌ JWT_SECRET must not use the default dev secret in production');
+    process.exit(1);
+  }
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv,
+  isProduction,
   jwt: {
     secret: process.env.JWT_SECRET || 'loka-dev-secret',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    refreshExpiresIn: '30d',
   },
   lokaAi: {
     apiKey: process.env.LOKA_AI_API_KEY || '',
@@ -14,4 +33,9 @@ export const config = {
     model: process.env.LOKA_AI_MODEL || 'deepseek-v3',
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  rateLimit: {
+    windowMs: 15 * 60 * 1000, // 15 min
+    max: isProduction ? 100 : 1000,
+    authMax: isProduction ? 20 : 200, // stricter for auth endpoints
+  },
 } as const;

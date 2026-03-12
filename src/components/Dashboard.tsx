@@ -61,7 +61,7 @@ const Dashboard: React.FC = () => {
         <StatCard title="Total Value Locked" value={`$${(stats.tvl / 1000000).toFixed(1)}M`} trend="+12.5% MoM" />
         <StatCard title="Collateral Ratio" value={`${stats.collateralRatio}%`} trend="Safe Margin" isVerified />
         <StatCard title="Protocol Revenue" value={`$${(stats.treasuryRevenue / 1000000).toFixed(2)}M`} trend="Realized Cash" />
-        <div className="glass rounded-3xl p-8 bg-white border border-gray-100 relative overflow-hidden group">
+        <div className="glass rounded-3xl p-6 sm:p-8 bg-white border border-gray-100 relative overflow-hidden group">
           <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-gray-50 rounded-full group-hover:scale-150 transition-transform duration-700 opacity-50" />
           <p className="text-[10px] font-bold tracking-[0.1em] text-gray-400 mb-6  relative z-10">Active Agents</p>
           <h3 className="font-serif text-4xl text-black mb-2 italic relative z-10">12,482</h3>
@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
             <h3 className="text-xs font-black  tracking-[0.2em] text-[#004D40] mb-2 italic">Cumulative Revenue</h3>
             <p className="text-3xl font-serif text-black italic">Network Productivity</p>
           </div>
-          <div className="h-[400px]">
+          <div className="h-[250px] sm:h-[350px] lg:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={REVENUE_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                 <defs>
@@ -116,9 +116,9 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* 4. Dumbbell Reserve Allocation */}
-        <div className="glass rounded-[40px] p-10 bg-white border border-gray-100 shadow-sm">
+        <div className="glass rounded-[40px] p-6 sm:p-10 bg-white border border-gray-100 shadow-sm">
           <h3 className="text-xs font-black  tracking-[0.2em] text-[#004D40] mb-10 italic">Reserve Architecture</h3>
-          <div className="h-[280px] relative mb-12">
+          <div className="h-[200px] sm:h-[280px] relative mb-12">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -178,7 +178,7 @@ const Dashboard: React.FC = () => {
 };
 
 const StatCard: React.FC<{ title: string; value: string; trend: string; isVerified?: boolean }> = ({ title, value, trend, isVerified }) => (
-  <div className="glass rounded-3xl p-8 bg-white border border-gray-100 hover:border-black/10 transition-all duration-500 group">
+  <div className="glass rounded-3xl p-6 sm:p-8 bg-white border border-gray-100 hover:border-black/10 transition-all duration-500 group">
     <p className="text-[10px] font-bold tracking-[0.2em] text-gray-400 mb-6 ">{title}</p>
     <h3 className="font-serif text-4xl text-black mb-2 italic tracking-tighter group-hover:px-2 transition-all">{value}</h3>
     <div className="flex items-center gap-2">

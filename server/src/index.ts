@@ -3,6 +3,7 @@ import app from './app.js';
 import { config } from './config.js';
 import { setupSocket } from './socket/index.js';
 import prisma from './db.js';
+import { startScheduler, stopScheduler } from './services/scheduler.service.js';
 
 const server = createServer(app);
 
@@ -13,6 +14,9 @@ async function main() {
   try {
     await prisma.$connect();
     console.log('✅ Database connected');
+
+    // Start background jobs
+    startScheduler();
 
     server.listen(config.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.port}`);
@@ -25,12 +29,30 @@ async function main() {
   }
 }
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down...');
-  await prisma.$disconnect();
-  server.close();
-  process.exit(0);
-});
+// Graceful shutdown handler
+let isShuttingDown = false;
+async function shutdown(signal: string) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`\n${signal} received, graceful shutdown...`);
+
+  stopScheduler();
+
+  // Stop accepting new connections, give 10s for in-flight requests
+  const forceTimeout = setTimeout(() => {
+    console.error('⏰ Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+
+  server.close(async () => {
+    await prisma.$disconnect();
+    clearTimeout(forceTimeout);
+    console.log('👋 Server shut down cleanly');
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 main();

@@ -4,7 +4,11 @@ import prisma from '../db.js';
 type Tx = Omit<typeof prisma, '$transaction' | '$connect' | '$disconnect' | '$on' | '$extends'>;
 import { authOptional, authRequired, type AuthRequest } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { financialLimiter } from '../middleware/rateLimiter.js';
+import { idempotency } from '../middleware/idempotency.js';
 import { emitToUser, getIO } from '../socket/index.js';
+import { recordCreditEvent, INVESTOR_EVENTS } from '../services/credit.service.js';
+import { notify } from '../services/notification.service.js';
 
 const router = Router();
 
@@ -58,7 +62,7 @@ router.get('/:id', authOptional, async (req: AuthRequest, res, next) => {
 });
 
 // ============ Invest in a project ============
-router.post('/:id/invest', authRequired, async (req: AuthRequest, res, next) => {
+router.post('/:id/invest', authRequired, financialLimiter, idempotency, async (req: AuthRequest, res, next) => {
   try {
     const { amount } = investSchema.parse(req.body);
     const userId = req.userId as string;
@@ -163,12 +167,42 @@ router.post('/:id/invest', authRequired, async (req: AuthRequest, res, next) => 
       return { investment, transaction, newStatus, newRaised, newRemaining: Math.max(0, newRemaining) };
     });
 
+    // --- Credit event hooks (non-blocking) ---
+    try {
+      // Check if this is user's first investment
+      const investmentCount = await prisma.investment.count({ where: { userId } });
+      if (investmentCount === 1) {
+        await recordCreditEvent(userId, 'first_investment', INVESTOR_EVENTS.FIRST_INVESTMENT.delta, INVESTOR_EVENTS.FIRST_INVESTMENT.reason, projectId);
+      }
+      // Active investment credit
+      await recordCreditEvent(userId, 'investment_active', INVESTOR_EVENTS.INVESTMENT_ACTIVE.delta, INVESTOR_EVENTS.INVESTMENT_ACTIVE.reason, projectId);
+      // Diversification check
+      const distinctProjects = await prisma.investment.groupBy({ by: ['projectId'], where: { userId } });
+      if (distinctProjects.length === 3) {
+        await recordCreditEvent(userId, 'diversified_3', INVESTOR_EVENTS.DIVERSIFIED_3.delta, INVESTOR_EVENTS.DIVERSIFIED_3.reason);
+      } else if (distinctProjects.length === 5) {
+        await recordCreditEvent(userId, 'diversified_5', INVESTOR_EVENTS.DIVERSIFIED_5.delta, INVESTOR_EVENTS.DIVERSIFIED_5.reason);
+      }
+    } catch {
+      // Credit scoring is non-critical
+    }
+
     // WebSocket: notify the investor
     emitToUser(userId, 'investment:created', {
       investmentId: result.investment.id,
       projectId,
       amount,
     });
+
+    // In-app notification
+    notify({
+      userId,
+      type: 'investment',
+      title: 'Investment Confirmed',
+      body: `You invested $${amount.toFixed(2)} in a project.`,
+      refType: 'project',
+      refId: projectId,
+    }).catch(() => {});
 
     // Broadcast project update to all connected clients
     try {

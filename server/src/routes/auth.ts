@@ -52,9 +52,9 @@ router.post('/login/email', async (req, res, next) => {
   }
 });
 
-// OAuth login placeholder (Google, Apple, X)
+// OAuth login placeholder (Google, X)
 const oauthLoginSchema = z.object({
-  provider: z.enum(['google', 'apple', 'x']),
+  provider: z.enum(['google', 'x']),
   providerId: z.string(),
   email: z.string().email().optional(),
   name: z.string().optional(),
@@ -139,6 +139,23 @@ router.post('/accept-risk', authRequired, async (req: AuthRequest, res, next) =>
       data: { riskAccepted: true },
     });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Token refresh — issue a new token if the current one is still valid
+router.post('/refresh', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true, role: true },
+    });
+    if (!user) throw new AppError('User not found', 404);
+    if (user.role === 'banned') throw new AppError('Account suspended', 403);
+
+    const token = generateToken(user.id);
+    res.json({ token });
   } catch (err) {
     next(err);
   }

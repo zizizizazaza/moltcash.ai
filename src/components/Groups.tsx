@@ -977,9 +977,9 @@ const Groups: React.FC = () => {
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shadow-sm ${isAppGroup ? 'bg-gradient-to-br from-violet-500 to-blue-500 text-white' : 'bg-gradient-to-br from-green-400 to-emerald-500 text-white'}`}>
                             {isAppGroup ? '🚀' : currentGroup.projectShort.charAt(0)}
                         </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-black">{currentGroup.projectName}</h3>
-                            <div className="flex items-center gap-2 mt-0.5">
+                        <div className="min-w-0">
+                            <h3 className="text-sm font-bold text-black truncate">{currentGroup.projectName}</h3>
+                            <div className="hidden sm:flex items-center gap-2 mt-0.5">
                                 {isAppGroup ? (
                                     <>
                                         <span className="text-[10px] text-violet-500 font-bold">Step {Math.min(applicationStep + 1, totalSteps)} of {totalSteps}</span>
@@ -1064,21 +1064,45 @@ const Groups: React.FC = () => {
                         {renderApplicationCard()}
 
                         {/* Enhanced Input */}
-                        <div className="px-5 py-4 bg-gray-50/50 shrink-0">
+                        <div className="px-3 py-2 sm:px-5 sm:py-4 bg-gray-50/50 shrink-0">
                             {imagePreview && (
                                 <div className="mb-3 relative inline-block">
                                     <img src={imagePreview} alt="preview" className="max-h-[120px] rounded-xl border border-gray-100 shadow-sm" />
                                     <button
                                         onClick={() => setImagePreview(null)}
-                                        className="absolute -top-2 -right-2 w-6 h-6 bg-black text-white rounded-full flex items-center justify-center hover:bg-red-500 transition-colors shadow-lg"
+                                        className="absolute -top-2 -right-2 w-7 h-7 bg-black text-white rounded-full flex items-center justify-center hover:bg-red-500 transition-colors shadow-lg"
                                     >
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
                             )}
 
-                            <div className={`flex items-end gap-2 rounded-2xl border bg-white transition-all shadow-sm ${isFocused ? 'border-gray-300 shadow-md' : 'border-gray-200'}`}>
-                                <div className="flex items-center gap-0.5 pl-2 pb-2.5 pt-2.5 shrink-0">
+                            <div className={`rounded-2xl border bg-white transition-all shadow-sm ${isFocused ? 'border-gray-300 shadow-md' : 'border-gray-200'}`}>
+                                {/* Input row */}
+                                <div className="flex items-end gap-2">
+                                    <input
+                                        ref={textInputRef}
+                                        type="text"
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                        onFocus={() => setIsFocused(true)}
+                                        onBlur={() => setIsFocused(false)}
+                                        placeholder="Type a message..."
+                                        className="flex-1 py-2.5 sm:py-3 pl-3 sm:pl-4 bg-transparent text-sm focus:outline-none placeholder:text-gray-300 min-w-0"
+                                    />
+                                    <div className="pr-2 pb-2 pt-2 shrink-0">
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={!inputValue.trim() && !imagePreview}
+                                            className="w-9 h-9 bg-black text-white rounded-xl flex items-center justify-center hover:bg-gray-800 transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-90 shadow-sm"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                {/* Tools row */}
+                                <div className="flex items-center gap-0.5 px-2 pb-2 border-t border-gray-100">
                                     <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
@@ -1101,36 +1125,17 @@ const Groups: React.FC = () => {
                                         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                                     </button>
                                 </div>
-
-                                <input
-                                    ref={textInputRef}
-                                    type="text"
-                                    value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                    onFocus={() => setIsFocused(true)}
-                                    onBlur={() => setIsFocused(false)}
-                                    placeholder="Type a message..."
-                                    className="flex-1 py-3 bg-transparent text-sm focus:outline-none placeholder:text-gray-300 min-w-0"
-                                />
-
-                                <div className="pr-2 pb-2 pt-2 shrink-0">
-                                    <button
-                                        onClick={handleSend}
-                                        disabled={!inputValue.trim() && !imagePreview}
-                                        className="w-9 h-9 bg-black text-white rounded-xl flex items-center justify-center hover:bg-gray-800 transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-90 shadow-sm"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Members Panel */}
                     {showMembers && (
-                        <div className="hidden md:block w-64 border-l border-gray-100 bg-white overflow-y-auto shrink-0">
-                            <div className="p-4 border-b border-gray-50">
+                        <div className="fixed inset-0 z-50 bg-white flex flex-col md:static md:z-auto md:w-64 md:border-l md:border-gray-100 overflow-y-auto shrink-0">
+                            <div className="p-4 border-b border-gray-50 flex items-center gap-3">
+                                <button onClick={() => setShowMembers(false)} className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-all shrink-0">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                </button>
                                 <h4 className="text-xs font-black text-black tracking-tight">Members ({currentGroup.members.length + (addedAgents[selectedGroup]?.length || 0)})</h4>
                             </div>
                             <div className="p-2">

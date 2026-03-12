@@ -183,7 +183,7 @@ const Trade: React.FC = () => {
 
     return (
         <>
-            <div className="space-y-12 animate-fadeIn pb-24 p-8 md:p-12 lg:p-16 max-w-[1600px] mx-auto w-full bg-white min-h-full">
+            <div className="space-y-12 animate-fadeIn pb-24 p-4 sm:p-8 md:p-12 lg:p-16 max-w-[1600px] mx-auto w-full bg-white min-h-full">
                 {/* ── Header ── */}
                 <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
@@ -296,7 +296,7 @@ const OrderCard: React.FC<{ order: TradeOrder; onBuy: () => void }> = ({ order, 
             className={`bg-white rounded-3xl overflow-hidden border transition-all group shadow-sm flex flex-col h-full ${isSold ? 'border-gray-100 opacity-75' : 'border-gray-100 hover:border-black/10 hover:shadow-lg cursor-pointer'
                 }`}>
             {/* Cover Image */}
-            <div className="relative h-36 overflow-hidden">
+            <div className="relative h-28 sm:h-36 overflow-hidden">
                 <img
                     src={order.projectCoverImage}
                     alt={order.projectTitle}
@@ -353,15 +353,15 @@ const OrderCard: React.FC<{ order: TradeOrder; onBuy: () => void }> = ({ order, 
                 {/* Price & Stats Grid */}
                 <div className="grid grid-cols-3 gap-2 mb-5">
                     <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-                        <p className="text-[7px] font-bold text-gray-400 tracking-widest mb-1">LIST PRICE</p>
+                        <p className="text-[8px] font-bold text-gray-400 tracking-wide sm:tracking-widest mb-1">LIST PRICE</p>
                         <p className="text-[11px] font-bold text-black">${order.listPrice.toFixed(2)}</p>
                     </div>
                     <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100/50">
-                        <p className="text-[7px] font-bold text-gray-400 tracking-widest mb-1">TOTAL</p>
+                        <p className="text-[8px] font-bold text-gray-400 tracking-wide sm:tracking-widest mb-1">TOTAL</p>
                         <p className="text-[11px] font-bold text-black">${order.totalValue.toLocaleString()}</p>
                     </div>
                     <div className="p-2.5 bg-green-50/50 rounded-xl border border-green-100/50">
-                        <p className="text-[7px] font-bold text-gray-400 tracking-widest mb-1">EST. RETURN</p>
+                        <p className="text-[8px] font-bold text-gray-400 tracking-wide sm:tracking-widest mb-1">EST. RETURN</p>
                         <p className="text-[11px] font-bold text-[#00E676]">+{order.expectedYield.toFixed(1)}%</p>
                     </div>
                 </div>
@@ -496,7 +496,7 @@ const BuyModal: React.FC<{ order: TradeOrder; onClose: () => void; onBought?: ()
                                     type="checkbox"
                                     checked={confirmed}
                                     onChange={(e) => setConfirmed(e.target.checked)}
-                                    className="mt-0.5 w-4 h-4 rounded accent-black"
+                                    className="mt-0.5 w-5 h-5 rounded accent-black"
                                 />
                                 <span className="text-[11px] text-gray-500 font-medium leading-relaxed group-hover:text-gray-700 transition-colors">
                                     I understand this is a secondary market purchase. The shares will be transferred to my wallet upon transaction confirmation.
