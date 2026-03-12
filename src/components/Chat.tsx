@@ -853,16 +853,17 @@ const Chat: React.FC = () => {
                                                 <button
                                                     onClick={handleSend}
                                                     disabled={isRecording}
-                                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-60
-                                                    <button
-                                                        onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
-                                                        className="px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95 bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm"
-                                                    >
-                                                        <span className="text-base leading-none">@</span>
-                                                        Asset
-                                                    </button>
-                                                );
-                                            })()}
+                                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 mr-1 ${isInputFocused && !isRecording ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110' : 'bg-green-100 text-green-600 hover:bg-green-600'}`}
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-market'))}
+                                                    className="px-4 py-2 border rounded-full text-[11px] font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95 bg-gray-50 border-gray-100 text-gray-500 hover:border-black hover:text-black hover:shadow-sm"
+                                                >
+                                                    <span className="text-base leading-none">@</span>
+                                                    Asset
+                                                </button>
 
                                             {/* + Action Menu Button */}
                                             <div className="relative">
@@ -958,6 +959,7 @@ const Chat: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
+                                        )}
                                     </div>
 
                                     {/* Cash Flow Assets Slider */}
