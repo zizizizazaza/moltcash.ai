@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Production: change to "postgresql" and update DATABASE_URL
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── User ──────────────────────────────────────────
+model User {
+  id              String    @id @default(cuid())
+  privyId         String    @unique           // Privy DID (did:privy:xxx)
+  walletAddress   String?   @unique           // nullable: social-only users may not have one
+  email           String?
+  twitterHandle   String?
+  displayName     String?
+  avatarUrl       String?
+  nonce           String    @default(cuid())  // kept for legacy SIWE compat
+  totalEarned     Float     @default(0)
+  credits         Int       @default(0)       // Compute Credits
+  points          Int       @default(0)       // MoltCash Points
+  rating          Float     @default(0)
+  completedTasks  Int       @default(0)
+  completedQuests Int       @default(0)
+  referralCode    String    @unique @default(cuid())  // unique invite code
+  referredById    String?                              // who invited this user
+  referredBy      User?     @relation("Referrals", fields: [referredById], references: [id])
+  referrals       User[]    @relation("Referrals")
+  joinedAt        DateTime  @default(now())
+
+  quota           Quota?
+  farmSessions    FarmSession[]
+  applications    Application[]
+  publishedTasks  Opportunity[]  @relation("Publisher")
+  comments        Comment[]
+  transactions    Transaction[]
+  reviews         Review[]       @relation("ReviewAuthor")
+  reviewsReceived Review[]       @relation("ReviewTarget")
+  pointsLedger    PointsLedger[]
+  referralsMade   Referral[]     @relation("Referrer")
+  referralsReceived Referral[]   @relation("Referee")
+  apiKeys         ApiKey[]
+  executions      Execution[]
+}
+
+// ── Quota (免费额度) ─────────────────────────────
+model Quota {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id])
+  questsUsed          Int      @default(0)
+  testnetInteractions Int      @default(0)  // per-interaction count, not per-chain
+  yieldDeposited      Float    @default(0)
+  resetAt             DateTime @default(now())
+}
+
+// ── ApiKey (Skill 认证密钥) ───────────────────────
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  key         String    @unique           // mc_xxxxxxxxxxxx
+  name        String    @default("Default Key")
+  tier        String    @default("free")  // free | pro | unlimited
+  dailyLimit  Int       @default(10)      // max executions per day
+  dailyUsed   Int       @default(0)
+  lastResetAt DateTime  @default(now())
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+
+  executions  Execution[]
+}
+
+// ── Execution (链上执行记录) ──────────────────────
+model Execution {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  apiKeyId        String?
+  apiKey          ApiKey?   @relation(fields: [apiKeyId], references: [id])
+  opportunityId   String?
+  action          String    // stake | swap | deposit | testnet-swap | testnet-deploy
+  chain           String
+  status          String    @default("pending") // pending | executing | success | failed | verified
+  txHash          String?
+  blockNumber     Int?
+  gasUsed         String?
+  creditsEarned   Int       @default(0)
+  error           String?
+  executionParams String?   // JSON — params sent to agent
+  resultData      String?   // JSON — result from agent
+  verifiedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+}
+
+// ── Opportunity (统一机会模型) ────────────────────
+model Opportunity {
+  id               String    @id @default(cuid())
+  type             String    // quest | testnet | yield | task | bounty
+  title            String
+  description      String
+  source           String    // Galxe | Superteam | DefiLlama | MoltCash | ...
+  sourceUrl        String?
+  externalId       String?   // external platform's ID for dedup
+  chain            String
+  reward           String
+  rewardType       String    // fixed | variable | potential | apy
+  rewardAmount     Float?
+  estimatedGas     String?
+  difficulty       String?
+  timeEstimate     String?
+  status           String    @default("active")
+  deadline         DateTime?
+  participantCount Int       @default(0)
+  tags             String    @default("[]") // JSON array stored as string for SQLite
+  isHot            Boolean   @default(false)
+  isNew            Boolean   @default(false)
+  steps            String?   // JSON array of ExecutionStep
+
+  // Task market fields
+  publisherId      String?
+  publisher        User?     @relation("Publisher", fields: [publisherId], references: [id])
+  assignedTo       String?
+
+  applications     Application[]
+  farmSessions     FarmSession[]
+  comments         Comment[]
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([source, externalId])
+}
+
+// ── FarmSession (执行会话) ────────────────────────
+model FarmSession {
+  id            String    @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  status        String      @default("pending") // pending | running | paused | completed | failed
+  currentStep   Int         @default(0)
+  totalSteps    Int         @default(0)
+  gasSpent      Float       @default(0)
+  reward        String?
+  txHashes      String      @default("[]") // JSON array
+  logs          String?     // JSON array of log entries
+  startedAt     DateTime    @default(now())
+  completedAt   DateTime?
+}
+
+// ── Application (任务报名) ────────────────────────
+model Application {
+  id            String    @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  applicantId   String
+  applicant     User        @relation(fields: [applicantId], references: [id])
+  message       String
+  status        String      @default("pending") // pending | selected | rejected
+  appliedAt     DateTime    @default(now())
+
+  deliverables  Deliverable[]
+}
+
+// ── Deliverable (交付物) ──────────────────────────
+model Deliverable {
+  id            String   @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+  description   String
+  attachmentUrl String?
+  status        String   @default("pending") // pending | approved | revision_needed
+  reviewNote    String?
+  submittedAt   DateTime @default(now())
+}
+
+// ── Comment ───────────────────────────────────────
+model Comment {
+  id            String    @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id])
+  authorRole    String    @default("community") // publisher | executor | community
+  content       String
+  parentId      String?
+  parent        Comment?  @relation("Replies", fields: [parentId], references: [id])
+  replies       Comment[] @relation("Replies")
+  likes         Int       @default(0)
+  createdAt     DateTime  @default(now())
+}
+
+// ── Review (互评) ─────────────────────────────────
+model Review {
+  id            String   @id @default(cuid())
+  opportunityId String
+  authorId      String
+  author        User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  targetId      String
+  target        User     @relation("ReviewTarget", fields: [targetId], references: [id])
+  rating        Int      // 1-5
+  comment       String?
+  createdAt     DateTime @default(now())
+}
+
+// ── Transaction (资金流水) ────────────────────────
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  type        String   // gas_fee | execution_fee | task_bounty | platform_fee
+  amount      Float
+  currency    String   @default("USDC")
+  txHash      String?
+  description String
+  createdAt   DateTime @default(now())
+}
+
+// ── PointsLedger (积分流水) ───────────────────────
+model PointsLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // earn | spend
+  source    String   // quest_complete | referral_bonus | weekly_hold | promo_post | sim_trade | signup_bonus
+  credits   Int      @default(0)
+  points    Int      @default(0)
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+// ── Referral (推荐关系) ───────────────────────────
+model Referral {
+  id            String   @id @default(cuid())
+  referrerId    String
+  referrer      User     @relation("Referrer", fields: [referrerId], references: [id])
+  refereeId     String
+  referee       User     @relation("Referee", fields: [refereeId], references: [id])
+  status        String   @default("pending") // pending | qualified (referee deposited ≥$10)
+  lifetimeComm  Float    @default(0.10)      // 10% commission rate
+  totalEarned   Float    @default(0)         // total commission earned so far
+  createdAt     DateTime @default(now())
+
+  @@unique([referrerId, refereeId])
+}

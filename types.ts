@@ -9,17 +9,17 @@ export enum Page {
 
 // ── Farm (薅羊毛) ──────────────────────────────────
 
-export type FarmType = 'quest' | 'testnet' | 'yield';
+export type FarmType = 'quest' | 'testnet' | 'yield' | 'bounty';
 
 export interface FarmItem {
   id: string;
   type: FarmType;
   title: string;
   description: string;
-  source: string;           // 'Galxe' | 'Monad' | 'Aave'
-  chain: string;            // 'zkSync Era' | 'Base' | 'Multi'
-  reward: string;           // '500 XP' | '🎰 Potential Airdrop' | '8.2% APY'
-  rewardType: 'fixed' | 'potential' | 'apy';
+  source: string;           // 'Galxe' | 'Superteam' | 'DefiLlama' | ...
+  chain: string;            // 'zkSync Era' | 'Base' | 'Solana' | ...
+  reward: string;           // '500 XP' | '5000 USDC' | '12.5% APY'
+  rewardType: 'fixed' | 'potential' | 'apy' | 'variable';
   estimatedGas: string;     // '$0.12' | 'Free'
   difficulty?: 'Easy' | 'Medium' | 'Hard';
   timeEstimate?: string;

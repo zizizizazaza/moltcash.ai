@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FarmItem, TaskItem } from '../types';
+import { opportunities as opportunitiesApi } from '../lib/api';
 
 // ── Mock Farm Data ──────────────────────────────────────────
 
@@ -191,6 +192,37 @@ export const TASK_DATA: TaskItem[] = [
     },
 ];
 
+// ── Helpers: map API response to frontend types ──────────
+function mapApiToFarm(o: any): FarmItem {
+    // Ensure tags is an array (API may return JSON string)
+    let tags = o.tags || [];
+    if (typeof tags === 'string') {
+        try { tags = JSON.parse(tags); } catch { tags = []; }
+    }
+    if (!Array.isArray(tags)) tags = [];
+    // Clean tag strings (remove leading #)
+    tags = tags.map((t: string) => typeof t === 'string' ? t.replace(/^#/, '') : String(t));
+
+    return {
+        id: o.id, type: o.type, title: o.title, description: o.description || '',
+        source: o.source, chain: o.chain || 'Multi-chain', reward: o.reward || 'TBD', rewardType: o.rewardType || 'fixed',
+        estimatedGas: o.estimatedGas || 'N/A', difficulty: o.difficulty || 'Easy', timeEstimate: o.timeEstimate,
+        tags, isHot: o.isHot, isNew: o.isNew,
+        participantCount: o.participantCount, deadline: o.deadline,
+        steps: o.steps?.map((s: any) => ({ action: s.description || s.action, protocol: s.protocol, gas: s.estimatedGas ? `$${s.estimatedGas}` : (s.gas || 'Free') })),
+    };
+}
+
+function mapApiToTask(o: any): TaskItem {
+    return {
+        id: o.id, title: o.title, description: o.description,
+        platform: o.source || 'MOLTCASH', category: 'platform',
+        reward: o.reward, rewardAmount: o.rewardAmount,
+        difficulty: o.difficulty || 'Medium', timeEstimate: o.timeEstimate || 'TBD',
+        tags: o.tags || [], status: o.status || 'open', applicants: o.applicationCount || 0,
+    };
+}
+
 // ── Component ──────────────────────────────────────────────
 
 type ActiveTab = 'farm' | 'tasks';
@@ -205,8 +237,33 @@ interface OpportunitiesProps {
 const Opportunities: React.FC<OpportunitiesProps> = ({ onSelectFarm, onSelectTask, onPublishTask, extraTasks = [] }) => {
     const [activeTab, setActiveTab] = useState<ActiveTab>('farm');
     const [search, setSearch] = useState('');
-    const allTasks = [...TASK_DATA, ...extraTasks];
-    const hotFarms = FARM_DATA.filter(f => f.isHot || f.isNew);
+    const [farmItems, setFarmItems] = useState<FarmItem[]>([]);
+    const [taskItems, setTaskItems] = useState<TaskItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch real data from API
+    useEffect(() => {
+        let cancelled = false;
+        async function fetchData() {
+            setLoading(true);
+            try {
+                const res = await opportunitiesApi.list({ limit: 100 });
+                if (cancelled) return;
+                if (res.success && res.data) {
+                    const all = res.data as any[];
+                    const farms = all.filter((o: any) => o.type !== 'task').map(mapApiToFarm);
+                    const tasks = all.filter((o: any) => o.type === 'task').map(mapApiToTask);
+                    setFarmItems(farms.length > 0 ? farms : FARM_DATA);
+                    setTaskItems(tasks.length > 0 ? tasks : TASK_DATA);
+                }
+            } catch { /* keep fallback */ }
+            finally { if (!cancelled) setLoading(false); }
+        }
+        fetchData();
+        return () => { cancelled = true; };
+    }, []);
+
+    const allTasks = [...taskItems, ...extraTasks];
 
     return (
         <div className="container mx-auto px-6 py-10 animate-fadeIn max-w-[1400px]">
@@ -236,7 +293,7 @@ const Opportunities: React.FC<OpportunitiesProps> = ({ onSelectFarm, onSelectTas
                     className={`flex items-center gap-2.5 px-6 py-3 rounded-xl transition-all font-bold text-sm tracking-tight ${activeTab === 'farm' ? 'bg-white text-black shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)]' : 'text-gray-400 hover:text-black hover:bg-gray-100/50'}`}
                 >
                     <span>Auto-Farm</span>
-                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black tracking-widest ${activeTab === 'farm' ? 'bg-black text-[#a3ff12]' : 'bg-transparent text-gray-400'}`}>{FARM_DATA.length}</span>
+                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black tracking-widest ${activeTab === 'farm' ? 'bg-black text-[#a3ff12]' : 'bg-transparent text-gray-400'}`}>{farmItems.length}</span>
                 </button>
                 <button
                     onClick={() => setActiveTab('tasks')}
@@ -247,9 +304,16 @@ const Opportunities: React.FC<OpportunitiesProps> = ({ onSelectFarm, onSelectTas
                 </button>
             </div>
 
+            {/* Loading indicator */}
+            {loading && (
+                <div className="text-center py-4 mb-4">
+                    <div className="inline-block w-5 h-5 border-2 border-gray-200 border-t-black rounded-full animate-spin" />
+                </div>
+            )}
+
             {/* Content */}
             {activeTab === 'farm' ? (
-                <FarmGrid items={FARM_DATA} onSelect={onSelectFarm} search={search} />
+                <FarmGrid items={farmItems} onSelect={onSelectFarm} search={search} />
             ) : (
                 <TaskGrid items={allTasks} onSelect={onSelectTask} search={search} />
             )}
@@ -277,6 +341,8 @@ const FarmGrid: React.FC<{ items: FarmItem[]; onSelect?: (id: string) => void; s
         return result;
     }, [items, filter, search]);
 
+    const filterLabels: Record<string, string> = { all: 'All', quest: 'Quests', testnet: 'Testnet', yield: 'Yield' };
+
     return (
         <>
             <div className="flex flex-wrap gap-2 mb-6">
@@ -286,7 +352,7 @@ const FarmGrid: React.FC<{ items: FarmItem[]; onSelect?: (id: string) => void; s
                         onClick={() => setFilter(f)}
                         className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${filter === f ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-400 hover:text-black hover:bg-gray-100'}`}
                     >
-                        {f === 'all' ? 'All' : f === 'quest' ? 'Quests' : f === 'testnet' ? 'Testnet' : 'Yield'}
+                        {filterLabels[f]}
                         <span className="ml-1.5 text-[10px] opacity-60">
                             {f === 'all' ? items.length : items.filter(i => i.type === f).length}
                         </span>
@@ -310,12 +376,13 @@ const FarmGrid: React.FC<{ items: FarmItem[]; onSelect?: (id: string) => void; s
 };
 
 const FarmCard: React.FC<{ item: FarmItem; onClick: () => void }> = ({ item, onClick }) => {
-    const typeStyles = {
+    const typeStyles: Record<string, { bg: string; text: string; label: string }> = {
         quest: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Quest' },
         testnet: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Testnet' },
         yield: { bg: 'bg-green-50', text: 'text-green-600', label: 'Yield' },
+        bounty: { bg: 'bg-purple-50', text: 'text-purple-600', label: 'Bounty' },
     };
-    const style = typeStyles[item.type];
+    const style = typeStyles[item.type] || { bg: 'bg-gray-50', text: 'text-gray-600', label: item.type || 'Other' };
 
     return (
         <div

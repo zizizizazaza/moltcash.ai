@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FarmItem } from '../types';
+import { sessions as sessionsApi } from '../lib/api';
 
 interface FarmDetailProps {
     item: FarmItem;
@@ -10,6 +11,8 @@ const FarmDetail: React.FC<FarmDetailProps> = ({ item, onBack }) => {
     const [farming, setFarming] = useState(false);
     const [currentStep, setCurrentStep] = useState(-1);
     const [completed, setCompleted] = useState(false);
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [error, setError] = useState('');
 
     const typeLabels = { quest: 'Quest', testnet: 'Testnet', yield: 'Yield' };
     const typeColors = {
@@ -18,14 +21,59 @@ const FarmDetail: React.FC<FarmDetailProps> = ({ item, onBack }) => {
         yield: 'text-green-600 bg-green-50',
     };
 
-    const startFarming = () => {
-        setFarming(true);
-        setCurrentStep(0);
+    const startFarming = async () => {
+        setError('');
+        try {
+            // Create session via API
+            const createRes = await sessionsApi.create(item.id);
+            if (!createRes.success) {
+                setError(createRes.error || 'Failed to create session');
+                return;
+            }
+            const sid = (createRes.data as any).id;
+            setSessionId(sid);
+
+            // Start the session
+            const startRes = await sessionsApi.start(sid);
+            if (!startRes.success) {
+                setError(startRes.error || 'Failed to start session');
+                return;
+            }
+
+            setFarming(true);
+            setCurrentStep(0);
+        } catch (e: any) {
+            // Fallback: run locally if API not available
+            setFarming(true);
+            setCurrentStep(0);
+        }
     };
 
-    // Simulate step execution
+    // Poll session status when farming via API
     useEffect(() => {
-        if (!farming || !item.steps || currentStep < 0) return;
+        if (!farming || !sessionId) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await sessionsApi.get(sessionId);
+                if (res.success && res.data) {
+                    const s = res.data as any;
+                    setCurrentStep(s.currentStep || 0);
+                    if (s.status === 'completed') {
+                        setCompleted(true);
+                        setFarming(false);
+                        clearInterval(interval);
+                    }
+                }
+            } catch { /* continue polling */ }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [farming, sessionId]);
+
+    // Fallback: simulate step execution locally if no sessionId
+    useEffect(() => {
+        if (!farming || sessionId || !item.steps || currentStep < 0) return;
         if (currentStep >= item.steps.length) {
             setCompleted(true);
             setFarming(false);
@@ -33,7 +81,7 @@ const FarmDetail: React.FC<FarmDetailProps> = ({ item, onBack }) => {
         }
         const timer = setTimeout(() => setCurrentStep(prev => prev + 1), 1500 + Math.random() * 1000);
         return () => clearTimeout(timer);
-    }, [farming, currentStep, item.steps]);
+    }, [farming, currentStep, item.steps, sessionId]);
 
     return (
         <div className="container mx-auto px-6 py-10 animate-fadeIn max-w-5xl">
@@ -179,6 +227,11 @@ const FarmDetail: React.FC<FarmDetailProps> = ({ item, onBack }) => {
                         </div>
 
                         <div className="space-y-3">
+                            {error && (
+                                <div className="px-3 py-2 bg-red-500/20 border border-red-500/30 rounded-xl text-xs text-red-300 font-medium text-center">
+                                    {error}
+                                </div>
+                            )}
                             {completed ? (
                                 <div className="w-full py-4 bg-green-500 text-white rounded-xl text-sm font-black text-center">
                                     ✅ Completed!

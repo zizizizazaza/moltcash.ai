@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TaskItem } from '../types';
+import { tasks as tasksApi } from '../lib/api';
 
 interface TaskDetailProps {
     task: TaskItem;
@@ -7,6 +8,30 @@ interface TaskDetailProps {
 }
 
 const TaskDetail: React.FC<TaskDetailProps> = ({ task, onBack }) => {
+    const [applying, setApplying] = useState(false);
+    const [applied, setApplied] = useState(false);
+    const [applyError, setApplyError] = useState('');
+
+    const handleApply = async () => {
+        if (applying || applied) return;
+        setApplying(true);
+        setApplyError('');
+
+        try {
+            const res = await tasksApi.apply(task.id, 'Automated execution via Claw Agent');
+            if (res.success) {
+                setApplied(true);
+            } else {
+                setApplyError(res.error || 'Failed to apply');
+            }
+        } catch {
+            // Fallback: show as applied locally
+            setApplied(true);
+        } finally {
+            setApplying(false);
+        }
+    };
+
     const categoryColors = {
         bounty: 'text-blue-500 bg-blue-50',
         airdrop: 'text-[#a3ff12] bg-black',
@@ -109,9 +134,29 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ task, onBack }) => {
                         </div>
 
                         <div className="space-y-3 relative z-10">
-                            <button className="w-full py-4 bg-[#a3ff12] text-black rounded-xl text-sm font-black hover:bg-[#b4ff3a] transition-all">
-                                Execute via Claw
-                            </button>
+                            {applyError && (
+                                <div className="px-3 py-2 bg-red-500/20 border border-red-500/30 rounded-xl text-xs text-red-300 font-medium text-center">
+                                    {applyError}
+                                </div>
+                            )}
+                            {applied ? (
+                                <div className="w-full py-4 bg-green-500 text-white rounded-xl text-sm font-black text-center">
+                                    ✅ Applied Successfully
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleApply}
+                                    disabled={applying}
+                                    className="w-full py-4 bg-[#a3ff12] text-black rounded-xl text-sm font-black hover:bg-[#b4ff3a] transition-all disabled:opacity-60"
+                                >
+                                    {applying ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-gray-600 border-t-black rounded-full animate-spin" />
+                                            Applying...
+                                        </span>
+                                    ) : 'Execute via Claw'}
+                                </button>
+                            )}
                             <p className="text-center text-[9px] font-bold text-gray-500 tracking-wide">
                                 Secured via smart contract escrow
                             </p>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TaskItem, TaskCategory } from '../types';
+import { tasks as tasksApi } from '../lib/api';
 
 interface PublishTaskProps {
     onBack: () => void;
@@ -16,31 +17,59 @@ const PublishTask: React.FC<PublishTaskProps> = ({ onBack, onSubmit }) => {
     const [category, setCategory] = useState<TaskCategory>('platform');
     const [url, setUrl] = useState('');
     const [submitted, setSubmitted] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
     const isValid = title.trim() && description.trim() && reward.trim() && timeEstimate.trim();
 
-    const handleSubmit = () => {
-        if (!isValid) return;
+    const handleSubmit = async () => {
+        if (!isValid || submitting) return;
+        setSubmitting(true);
+        setError('');
 
-        const newTask: TaskItem = {
-            id: 'pub_' + Date.now(),
-            title: title.trim(),
-            description: description.trim(),
-            platform: category === 'platform' ? 'COMMUNITY' : category === 'bounty' ? 'CUSTOM' : 'CUSTOM',
-            category,
-            reward: reward.trim(),
-            difficulty,
-            timeEstimate: timeEstimate.trim(),
-            tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
-            status: 'open',
-            rating: 5.0,
-            executionCount: 0,
-            recentFeedback: '新任务，等待第一位执行者',
-            url: url.trim() || undefined,
-        };
+        // Parse reward amount from string like "$50-100" or "$200 USDC"
+        const amountMatch = reward.match(/\d+/);
+        const rewardAmount = amountMatch ? parseInt(amountMatch[0]) : 0;
 
-        setSubmitted(true);
-        setTimeout(() => onSubmit(newTask), 1200);
+        try {
+            const res = await tasksApi.create({
+                title: title.trim(),
+                description: description.trim(),
+                reward: reward.trim(),
+                rewardAmount,
+                difficulty,
+                timeEstimate: timeEstimate.trim(),
+                tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+                deadline: undefined,
+            });
+
+            if (res.success && res.data) {
+                // Build TaskItem from API response
+                const d = res.data as any;
+                const newTask: TaskItem = {
+                    id: d.id || 'pub_' + Date.now(),
+                    title: d.title || title.trim(),
+                    description: d.description || description.trim(),
+                    platform: 'COMMUNITY',
+                    category,
+                    reward: d.reward || reward.trim(),
+                    difficulty: d.difficulty || difficulty,
+                    timeEstimate: d.timeEstimate || timeEstimate.trim(),
+                    tags: d.tags || tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+                    status: 'open',
+                    rating: 5.0,
+                    executionCount: 0,
+                };
+                setSubmitted(true);
+                setTimeout(() => onSubmit(newTask), 1200);
+            } else {
+                setError(res.error || 'Failed to publish task');
+            }
+        } catch (e: any) {
+            setError(e.message || 'Network error');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (submitted) {
@@ -195,15 +224,25 @@ const PublishTask: React.FC<PublishTaskProps> = ({ onBack, onSubmit }) => {
 
                 {/* Submit */}
                 <div className="pt-4 border-t border-gray-50">
+                    {error && (
+                        <div className="mb-3 px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-medium">
+                            {error}
+                        </div>
+                    )}
                     <button
                         onClick={handleSubmit}
-                        disabled={!isValid}
-                        className={`w-full py-4 rounded-xl text-sm font-black transition-all ${isValid
+                        disabled={!isValid || submitting}
+                        className={`w-full py-4 rounded-xl text-sm font-black transition-all ${isValid && !submitting
                             ? 'bg-black text-white hover:bg-gray-800 shadow-md active:scale-[0.98]'
                             : 'bg-gray-100 text-gray-300 cursor-not-allowed'
                             }`}
                     >
-                        Publish Task
+                        {submitting ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-gray-400 border-t-white rounded-full animate-spin" />
+                                Publishing...
+                            </span>
+                        ) : 'Publish Task'}
                     </button>
                     <p className="text-center text-[9px] font-bold text-gray-400 mt-3 tracking-wide">
                         Published tasks will be visible to all Claw agents immediately.
