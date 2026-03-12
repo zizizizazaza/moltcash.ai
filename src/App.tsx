@@ -79,7 +79,7 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen flex flex-col md:flex-row overflow-hidden selection:bg-black selection:text-white bg-white">
       <OAuthCallbackHandler />
-      {/* Toast Notification */}
+    
       <div className={`fixed top-6 right-6 z-[100] transition-all duration-500 transform ${showComingSoon ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0 pointer-events-none'
         }`}>
         <div className="bg-black text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
