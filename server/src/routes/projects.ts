@@ -21,19 +21,44 @@ const investSchema = z.object({
 // List all projects
 router.get('/', authOptional, async (req: AuthRequest, res, next) => {
   try {
-    const { category, status } = req.query;
+    const { category, status, sortBy, order, page, limit: limitStr } = req.query;
 
     const where: Record<string, string> = {};
     if (typeof category === 'string') where.category = category;
     if (typeof status === 'string') where.status = status;
 
-    const projects = await prisma.project.findMany({
-      where,
-      include: { monthlyRevenue: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(limitStr as string, 10) || 50));
+    const skip = (pageNum - 1) * limit;
 
-    res.json(projects);
+    // Sorting
+    type SortField = 'apy' | 'raisedAmount' | 'durationDays' | 'createdAt' | 'targetAmount';
+    const validSortFields: SortField[] = ['apy', 'raisedAmount', 'durationDays', 'createdAt', 'targetAmount'];
+    const sortField: SortField = validSortFields.includes(sortBy as SortField) ? (sortBy as SortField) : 'createdAt';
+    const sortOrder = order === 'asc' ? 'asc' as const : 'desc' as const;
+
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        include: { monthlyRevenue: true },
+        orderBy: { [sortField]: sortOrder },
+        take: limit,
+        skip,
+      }),
+      prisma.project.count({ where }),
+    ]);
+
+    // Backward compatible: if no page param, return flat array (legacy)
+    // If page param is present, return { data, pagination } format
+    if (page) {
+      res.json({
+        data: projects,
+        pagination: { page: pageNum, limit, total, totalPages: Math.ceil(total / limit) },
+      });
+    } else {
+      res.json(projects);
+    }
   } catch (err) {
     next(err);
   }
@@ -56,6 +81,32 @@ router.get('/:id', authOptional, async (req: AuthRequest, res, next) => {
     }
 
     res.json(project);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get user's investment in a specific project
+router.get('/:id/my-investment', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const userId = req.userId as string;
+    const projectId = req.params.id as string;
+
+    const investments = await prisma.investment.findMany({
+      where: { userId, projectId, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalAmount = investments.reduce((sum, inv) => sum + inv.amount, 0);
+    const totalShares = investments.reduce((sum, inv) => sum + inv.shares, 0);
+
+    res.json({
+      invested: investments.length > 0,
+      totalAmount,
+      totalShares,
+      count: investments.length,
+      investments,
+    });
   } catch (err) {
     next(err);
   }
@@ -216,6 +267,12 @@ router.post('/:id/invest', authRequired, financialLimiter, idempotency, async (r
       // Socket may not be initialized in tests
     }
 
+    // Fetch the updated project so we can include endDate/discount in response
+    const updatedProject = await prisma.project.findUnique({ where: { id: projectId } });
+    const discount = updatedProject && updatedProject.faceValue > 0
+      ? ((updatedProject.faceValue - updatedProject.askPrice) / updatedProject.faceValue * 100)
+      : 0;
+
     res.status(201).json({
       investment: result.investment,
       transaction: result.transaction,
@@ -223,6 +280,9 @@ router.post('/:id/invest', authRequired, financialLimiter, idempotency, async (r
         status: result.newStatus,
         raisedAmount: result.newRaised,
         remainingCap: result.newRemaining,
+        backersCount: updatedProject?.backersCount,
+        endDate: updatedProject?.endDate,
+        discount: parseFloat(discount.toFixed(1)),
       },
     });
   } catch (err) {

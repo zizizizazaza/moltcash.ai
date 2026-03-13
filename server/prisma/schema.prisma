@@ -67,6 +67,7 @@ model Project {
   remainingCap    Float    @default(0)
   coverageRatio   Float    @default(0)
   verifiedSource  String?
+  endDate         DateTime?  // 募资截止日期 = createdAt + durationDays
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

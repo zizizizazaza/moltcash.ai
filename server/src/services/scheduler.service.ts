@@ -8,6 +8,7 @@ let overdueInterval: ReturnType<typeof setInterval> | null = null;
 let holdTimeInterval: ReturnType<typeof setInterval> | null = null;
 let proposalInterval: ReturnType<typeof setInterval> | null = null;
 let fundraiseInterval: ReturnType<typeof setInterval> | null = null;
+let endingSoonInterval: ReturnType<typeof setInterval> | null = null;
 
 // ==================== Expired Fundraise Detection ====================
 // Auto-fail fundraises that pass durationDays without reaching Soft Cap
@@ -167,6 +168,65 @@ async function refundFailedProject(project: any) {
     console.log(`[Scheduler] Project "${project.title}" failed (${project.raisedAmount}/${project.targetAmount * 0.5} soft cap). Refunded ${investments.length} investors.`);
   } catch (err) {
     console.error(`[Scheduler] Refund failed for project ${project.id}:`, err);
+  }
+}
+
+// ==================== Ending Soon Detection ====================
+// Auto-mark Fundraising projects as "Ending Soon" when endDate is within 3 days
+async function markEndingSoon() {
+  try {
+    const now = new Date();
+    const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+    const projects = await prisma.project.findMany({
+      where: { status: 'Fundraising' },
+    });
+
+    let marked = 0;
+    for (const project of projects) {
+      // Use explicit endDate if available, otherwise compute from createdAt + durationDays
+      const endDate = project.endDate
+        ?? new Date(project.createdAt.getTime() + project.durationDays * 24 * 60 * 60 * 1000);
+
+      // If endDate is within 3 days from now (and still in the future) → Ending Soon
+      if (endDate <= threeDaysLater && endDate > now) {
+        await prisma.project.update({
+          where: { id: project.id },
+          data: { status: 'Ending Soon' },
+        });
+        marked++;
+
+        const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+        console.log(`[Scheduler] "${project.title}" → Ending Soon (${daysLeft} day(s) left)`);
+
+        // Notify existing investors
+        const investments = await prisma.investment.findMany({
+          where: { projectId: project.id, status: 'active' },
+          select: { userId: true },
+        });
+        const investorIds = [...new Set(investments.map(i => i.userId))];
+        if (investorIds.length) {
+          notifyMany(investorIds, {
+            type: 'investment',
+            title: '⏳ Campaign Ending Soon',
+            body: `"${project.title}" ends in ${daysLeft} day(s). Last chance to invest!`,
+            refType: 'project',
+            refId: project.id,
+          }).catch(() => {});
+        }
+
+        // WebSocket broadcast
+        try {
+          getIO().emit('project:updated', { projectId: project.id, status: 'Ending Soon' });
+        } catch { /* Socket may not be initialized */ }
+      }
+    }
+
+    if (marked > 0) {
+      console.log(`[Scheduler] Marked ${marked} project(s) as Ending Soon`);
+    }
+  } catch (err) {
+    console.error('[Scheduler] Ending Soon check failed:', err);
   }
 }
 
@@ -334,6 +394,9 @@ export function startScheduler() {
   // Check expired fundraises every 30 minutes
   fundraiseInterval = setInterval(checkExpiredFundraises, 30 * 60 * 1000);
 
+  // Check for ending-soon projects every 15 minutes
+  endingSoonInterval = setInterval(markEndingSoon, 15 * 60 * 1000);
+
   // Check overdue payments every hour
   overdueInterval = setInterval(checkOverduePayments, 60 * 60 * 1000);
 
@@ -346,6 +409,7 @@ export function startScheduler() {
   // Run once immediately on startup (after 5s delay for DB warmup)
   setTimeout(() => {
     checkExpiredFundraises();
+    markEndingSoon();
     checkOverduePayments();
     checkHoldTimeMilestones();
     finalizeExpiredProposals();
@@ -354,6 +418,7 @@ export function startScheduler() {
 
 export function stopScheduler() {
   if (fundraiseInterval) clearInterval(fundraiseInterval);
+  if (endingSoonInterval) clearInterval(endingSoonInterval);
   if (overdueInterval) clearInterval(overdueInterval);
   if (holdTimeInterval) clearInterval(holdTimeInterval);
   if (proposalInterval) clearInterval(proposalInterval);

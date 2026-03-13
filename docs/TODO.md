@@ -38,7 +38,7 @@ graph LR
 | 模块 | 子功能 | ✅ | ⚠️ | ❌ | 就绪度 | 主要阻塞 |
 |------|:------:|:--:|:--:|:--:|:------:|---------|
 | **M1** AI Chat | 8 | 6 | 2 | 0 | 🟢 85% | iOS 语音 + AI 生产额度 |
-| **M2** Market | 8 | 6 | 1 | 1 | 🟡 75% | 真实项目数据 + 支付接入 |
+| **M2** Market | 15 | 6 | 4 | 5 | 🟡 55% | 详情页 3-Tab + Stripe 对接 + 前端 Pledge Box |
 | **M3** Trade | 6 | 1 | 1 | 4 | 🔴 15% | DEX 集成 + 实时价格 |
 | **M4** AIUSD | 5 | 0 | 1 | 4 | 🔴 10% | ERC-20 合约 |
 | **M5** Portfolio | 6 | 2 | 2 | 2 | 🟡 50% | 链上余额 |
@@ -86,23 +86,49 @@ graph LR
 
 ### M2: Market（现金流资产市场）
 
+> 需求文档 §2-5、§12 定义了完整的众筹卡片、项目详情页（3-Tab）、Pledge Box、募资机制和 Launchpad Widget。
+
 | 子功能 | UI | 后端 | 说明 |
 |--------|:--:|:----:|------|
-| 资产列表浏览 | ✅ | ✅ | 前端从 API 获取，有 seed 数据 |
-| 资产卡片（APY/进度/期限） | ✅ | ✅ | 真实 DB 数据 |
-| 资产详情页 | ✅ | ✅ | 含描述、发行方、还款记录 |
-| 搜索 / 筛选 / 排序 | ⚠️ | ✅ | 后端支持筛选，前端分类 tab 有效 |
+| 资产列表浏览 | ✅ | ✅ | 前端从 API 获取，有 seed 数据（含 7 个项目） |
+| 资产卡片（APY/进度/期限/backers） | ✅ | ✅ | 真实 DB 数据，含投资人数 |
+| Status Badge（🔥/⏳/✅/❌） | ⚠️ | ✅ | 后端有 Ending Soon 自动切换调度器，前端标签样式待完善 |
+| 搜索 / 筛选 / 排序 | ⚠️ | ✅ | 后端支持分页+多字段排序，前端分类 tab 有效 |
+| 详情页 — Tab1 发行方信息 | ⚠️ | ✅ | 有基础信息，缺团队/社交验证/信用历史 |
+| 详情页 — Tab2 协议与资产结构 | ❌ | ❌ | 资产结构图、权益摘要、PDF 法律文件预览均未实现 |
+| 详情页 — Tab3 财务与风控 | ❌ | ❌ | 现金流监视器、客户集中度、AI 风险评分均未实现（依赖 Stripe） |
+| Pledge Box 交易卡片（圆环进度+折扣计算+倒计时） | ❌ | ✅ | 后端投资 API 已返回折扣/endDate/backersCount，前端缺 Pledge Box 组件 |
 | 投资操作（Buy） | ✅ | ✅ | 后端校验+创建记录+更新进度 ✅（无需链上，走传统支付） |
 | 撤销投资（Revoke） | ✅ | ✅ | 后端支持募资期取消 ✅（传统退款流程） |
-| 二级市场交易 | 🚫 | 🚫 | 设计中有 P2P 概念，完全未实现 |
-| 实时数据推送 | ❌ | ❌ | 无实时更新 |
+| Launchpad Widget（进度条+倒计时+实时人数） | ❌ | ✅ | 后端有数据+endDate+backersCount，前端 Widget 未实现 |
+| 用户投资查询 | ❌ | ✅ | 新增 GET /projects/:id/my-investment 接口，前端未接入 |
+| 锁定期展示（还款进度 + 不可操作） | ❌ | ✅ | 后端有还款追踪，前端锁定期 UI 缺失 |
+| 提前还款展示 | ❌ | ✅ | 后端支持提前还款逻辑，前端无展示 |
+| 二级市场交易 | 🚫 | 🚫 | 设计中有 P2P 概念，完全未实现（v2） |
+| 实时数据推送 | ⚠️ | ✅ | 后端 WebSocket 已布线 project:updated 事件，前端未监听 |
 
 **上线待办：**
 - [ ] 真实资产数据录入（运营准备真实项目信息） — 👤
 - [ ] Stripe Connect 对接（投资支付 + 自动分账还款 + 资金托管） — 👤 + AI
 - [ ] 资产图片/Logo 改为真实素材 — 👤
-- [ ] 实时数据推送（WebSocket 推送进度） — AI
+- [ ] 详情页 3-Tab 重构（发行方/协议/财务风控） — AI
+- [ ] Pledge Box 组件（圆环进度 + 折扣计算 + 倒计时 + Invest Now 按钮） — AI
+- [ ] Status Badge 样式完善（Fundraising/Ending Soon/Funded/Failed） — AI
+- [ ] Launchpad Widget（Sidebar 进度条 + 实时 backers 计数） — AI
+- [ ] 锁定期 UI（还款进度展示 + 操作禁用） — AI
+- [ ] 提前还款展示（投资者端通知 + 全额收益说明） — AI
+- [ ] 现金流监视器（Stripe Connect 只读 API → 实时收入展示） — AI（依赖 Stripe）
+- [ ] AI 风险评分展示（AAA-D 评级 + 强项/风险标签） — AI
+- [ ] 法律文件下载/PDF 内嵌预览 — AI（v2）
+- [ ] 实时数据推送（WebSocket 推送进度/人数） — AI
 - [ ] 二级市场 P2P 份额交易（v2） — AI
+
+**前端适配待办（后端已就绪，需前端接入）：**
+- [ ] `api.ts` — `getProjects()` 支持 `?page=1&limit=20&sortBy=apy&order=desc` 分页参数，解析 `{ data, pagination }` 响应格式
+- [ ] `api.ts` — 新增 `getMyInvestment(projectId)` 调用 `GET /projects/:id/my-investment`
+- [ ] `Market.tsx` — 读取投资 API 返回的 `discount`、`endDate`、`backersCount` 字段
+- [ ] `Market.tsx` — 监听 WebSocket `project:updated` 事件实时刷新卡片状态
+- [ ] `Market.tsx` — 使用 `endDate` 计算动态倒计时（替代硬编码 "12 Days Remained"）
 
 > [!NOTE]
 > 现金流投资 **不需要链上合约**，通过 Stripe Connect 实现自动分账还款。

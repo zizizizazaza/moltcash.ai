@@ -39,15 +39,15 @@ graph TB
 | **AIUSD 铸造/赎回** | ⛓️ 链上 | ERC-20 代币的 mint/burn 是链上操作 | AIUSD 合约 + USDC approve |
 | **SBT 发行方认证** | ⛓️ 链上 | 不可转让的身份凭证，需链上不可篡改 | ERC-5192 (Soulbound) |
 | **现金流投资** | 🏦 链下 | 传统金融投资，用法币/稳定币支付即可 | Stripe Connect + 数据库 |
-| **还款 & 分账** | 🏦 链下 | 商家收入来自传统渠道（Stripe/银行） | Stripe Connect 自动分账 |
+| **还款 & 分账** | 🔄 混合 | Web2 走 Stripe；Web3 走链上分账合约 | Stripe Connect / Revenue Splitter 合约 |
 | **KYC / 企业认证** | 🏦 链下 | 身份验证是传统服务 | Sumsub / Onfido API |
 | **信用评分** | 🏦 链下 | 内部评分系统，无需公开上链 | 后端 service + DB |
 | **治理投票** | 🏦 链下 | 当前阶段链下足够，v2 可上链 | 后端 API + DB |
 | **Portfolio 余额** | 🔄 混合 | 代币余额需链上查询，投资记录在链下 | ethers.js + DB |
 
 > [!IMPORTANT]
-> **结论**：只有 3 个功能 **必须** 上链 — 代币 Swap、AIUSD、SBT。
-> 现金流投资的核心业务全部走传统金融模式，这大幅降低了上线复杂度。
+> **结论**：核心上链功能 — 代币 Swap、AIUSD、SBT + Web3 企业分账合约。
+> Web2 企业走 Stripe Connect，Web3 企业走链上分账合约，两条路径并行。
 
 ---
 
@@ -175,14 +175,220 @@ graph TD
 | **第 1 层** | 收入自动拦截 | Stripe 自动从商家每笔收入中扣除还款，商家无法阻止 |
 | **第 2 层** | 超额拦截 | 逾期后自动提高拦截比例（20% → 40%） |
 | **第 3 层** | 信用降级 | 逾期降信用分 → 影响未来融资能力 |
-| **第 4 层** | 保证金 | 商家预缴 5-10% 保证金，逾期时优先赔付 |
-| **第 5 层** | 法律追索 | 投资合同有法律效力，可诉讼追偿 |
+| **第 4 层** | 抵押品清算 | 项目方预缴 **10-30%** 抵押品（比例由信用等级决定），违约时扣押并清算赔付投资者 |
+| **第 5 层** | 法律追索 | 投资合同 + UCC-1 抵押品登记有法律效力，可诉讼追偿 |
 | **第 6 层** | 平台兜底基金（可选） | 平台从手续费中提取部分作为风险储备金 |
 
 > [!WARNING]
 > 如果商家完全停止使用 Stripe 收款（跑路），第 1-2 层失效。
-> 此时需要第 4-6 层：保证金赔付 + 法律追索 + 平台兜底。
-> **这是最大风险点**，需要法律合同 + 保证金机制双重保障。
+> 此时需要第 4-6 层：抵押品清算 + 法律追索 + 平台兜底。
+> **这是最大风险点**，需要法律合同 + 抵押品机制双重保障。
+
+---
+
+## 2.4 抵押品管理机制 (Collateral Management)
+
+> **核心原则**：项目方必须在发起募资时提供一定比例的抵押品，抵押率由信用等级决定。抵押品在项目存续期间锁定，全额还清后释放，违约时扣押清算。
+
+### 2.4.1 抵押品类型
+
+| 类型 | 枚举值 | 说明 | 估值方式 |
+|------|--------|------|----------|
+| 实物资产 | `physical_asset` | GPU 矿机、服务器等硬件设备 | 市场评估价 × 折旧系数 |
+| 应收账款 | `receivable` | 已签署的客户合同、未结清发票 | 合同金额 × 回收概率 |
+| 保证金存款 | `deposit` | USDC/USDT 等链上稳定币存款 | 1:1 面值 |
+| 知识产权质押 | `ip_lien` | 专利、商标、软件著作权 | 第三方估值 |
+
+### 2.4.2 抵押率与信用等级挂钩
+
+| 信用等级 | 信用分 | 抵押率 | 说明 |
+|---------|:------:|:------:|------|
+| **新秀 (Tier 1)** | 200 分 | **30%** | 新项目方风险高，需高抵押 |
+| **成长 (Tier 2)** | 500 分 | **10%** | 已有良好还款记录 |
+| **蓝筹 (Tier 3)** | 1000 分 | **10%** | 长期信誉优秀 |
+
+> [!TIP]
+> **示例**：新秀项目方募资 $100,000，需抵押价值 $30,000 的资产。
+> 成长/蓝筹项目方募资同样金额，只需抵押 $10,000。
+
+### 2.4.3 抵押品生命周期
+
+```mermaid
+stateDiagram-v2
+    [*] --> pledged: 项目方提交抵押品
+    pledged --> pledged: 估值更新（定期）
+    pledged --> released: 项目全额还清
+    pledged --> seized: 触发清算（逾期/欺诈）
+    seized --> liquidated: 完成清算处置
+    released --> [*]: 抵押品归还项目方 ✅
+    liquidated --> [*]: 清算所得分配给投资者
+```
+
+| 状态 | 含义 | 触发条件 |
+|------|------|----------|
+| `pledged` | 已质押锁定 | 项目发起时提交 |
+| `seized` | 已扣押 | 触发清算后系统自动扣押 |
+| `liquidated` | 已清算完成 | 清算处置完毕 |
+| `released` | 已释放 | 所有还款完成，项目状态 `completed` |
+
+### 2.4.4 数据模型（已实现）
+
+```prisma
+model Collateral {
+  id          String   @id @default(cuid())
+  projectId   String
+  type        String   // physical_asset, receivable, deposit, ip_lien
+  description String
+  value       Float
+  status      String   @default("pledged") // pledged, seized, liquidated, released
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project          Project            @relation(fields: [projectId], references: [id])
+  liquidationEvents LiquidationEvent[]
+}
+```
+
+---
+
+## 2.5 收入分账机制 — Web2 vs Web3 双轨制
+
+> **核心思路**：根据项目方的业务类型，选择最合适的收入拦截方式。Web2 企业走 Stripe，Web3 企业走链上合约，混合企业可以两者结合。
+
+### 2.5.1 三种分账模式对比
+
+| 模式 | 适用企业 | 分账方式 | 强制性 | 透明度 |
+|------|---------|---------|:------:|:------:|
+| **Stripe Connect** | Web2（SaaS、电商等） | Stripe API 自动拦截收入 | ⭐⭐⭐ 平台强制 | 链下 |
+| **链上分账合约** | Web3 原生（DeFi、NFT、链上 SaaS） | 智能合约代码强制拆分 | ⭐⭐⭐⭐⭐ 代码强制 | 链上透明 |
+| **混合模式** | Web2 + 链上托管 | Stripe 收入 → USDC → 链上合约 | ⭐⭐⭐⭐ 混合强制 | 最后一公里上链 |
+
+### 2.5.2 Web3 企业 — 链上分账合约 (Revenue Splitter)
+
+> Web3 企业的收入本身就在链上（协议费、NFT 版税、链上服务费），可以部署**不可篡改的分账合约**，这是最强的还款保障。
+
+```mermaid
+sequenceDiagram
+    participant Customer as 👤 Web3 用户
+    participant Splitter as 📜 分账合约
+    participant Merchant as 🏪 项目方钱包
+    participant Loka as 🏛️ Loka 还款池
+    participant Investor as 👤 投资者
+
+    Customer->>Splitter: 调用项目方服务，支付 100 USDC
+    Splitter->>Splitter: 🔒 代码强制拆分（不可绕过）
+    Splitter->>Merchant: 80 USDC → 项目方
+    Splitter->>Loka: 20 USDC → 还款池合约
+    Note right of Splitter: 比例写死在合约中，项目方无法修改
+
+    Loka->>Loka: 累积还款，检查是否到期
+    Loka->>Investor: 到期 → 自动分配给投资者
+```
+
+**核心优势 vs Stripe：**
+
+| 对比维度 | Stripe Connect | 链上分账合约 |
+|---------|----------------|-------------|
+| 执行方 | Stripe 公司 | 智能合约代码 |
+| 可绕过 | 商家可停用 Stripe（跑路） | ❌ 不可绕过，除非放弃整个业务 |
+| 透明度 | 需信任 Stripe 数据 | 链上公开验证 |
+| 实时性 | 每笔结算后 T+2 | 每笔交易即时拆分 |
+| 适用范围 | 法币收入 | 链上收入 |
+
+**分账合约伪代码：**
+
+```solidity
+// Revenue Splitter — Loka 部署，项目方必须将此合约设为收款地址
+contract RevenueSplitter {
+    address public merchant;      // 项目方钱包
+    address public lokaPool;      // Loka 还款池
+    uint256 public splitBps;      // 分账比例 (如 2000 = 20%)
+    bool public locked;           // 还款期间锁定，不可修改
+
+    // 项目方的所有收入都先进此合约
+    function receive() external payable {
+        uint256 lokaShare = msg.value * splitBps / 10000;
+        uint256 merchantShare = msg.value - lokaShare;
+
+        payable(lokaPool).transfer(lokaShare);      // 自动转入还款池
+        payable(merchant).transfer(merchantShare);   // 剩余给项目方
+    }
+
+    // ERC-20 代币收入同理
+    function splitToken(IERC20 token, uint256 amount) external {
+        token.transferFrom(msg.sender, address(this), amount);
+        uint256 lokaShare = amount * splitBps / 10000;
+        token.transfer(lokaPool, lokaShare);
+        token.transfer(merchant, amount - lokaShare);
+    }
+}
+```
+
+**适用的 Web3 项目类型：**
+
+| 项目类型 | 收入来源 | 分账方式 |
+|---------|---------|----------|
+| DeFi 协议 | 交易手续费、借贷利差 | 合约级拆分 |
+| NFT 平台 | 铸造费、版税 | Royalty Splitter |
+| 链上 SaaS | API 调用费（按次付费） | 收款地址 = 分账合约 |
+| AI 算力市场 | GPU 租赁费 | 订单结算合约拆分 |
+| GameFi | 游戏内购、NFT 交易 | 合约级拆分 |
+
+### 2.5.3 Web2 企业 — 混合模式（Stripe → USDC → 链上合约）
+
+> Web2 企业的法币收入无法直接被智能合约触达，但可以通过**自动换汇桥**将最后一公里上链。
+
+```mermaid
+graph LR
+    A["🏪 商家 Stripe 收入"] -->|"Stripe Connect\n自动拦截 20%"| B["💳 Loka Stripe 账户"]
+    B -->|"Circle API\n法币→USDC"| C["💰 USDC"]
+    C -->|"链上转账"| D["📜 还款池合约"]
+    D -->|"到期自动分配"| E["👤 投资者钱包"]
+
+    style B fill:#16213e,color:#fff
+    style D fill:#1a1a2e,color:#fff
+```
+
+**流程：**
+1. Stripe Connect 从商家收入中自动拦截约定比例（与纯 Web2 方案相同）
+2. 拦截的法币通过 **Circle API** 或 **Bridge** 自动兑换为 USDC
+3. USDC 转入链上还款池合约
+4. 投资者能在链上验证还款记录
+
+**换汇桥选型：**
+
+| 服务 | 功能 | 费用 | 到账 |
+|------|------|:----:|:----:|
+| **Circle** | USD → USDC（官方兑换） | 0% | T+1 |
+| **Bridge (by Stripe)** | 法币 ⇄ 稳定币 API | 0.1% | T+0~T+1 |
+| **MoonPay** | 法币 → 加密货币 | 1-2% | 即时 |
+
+> [!TIP]
+> **推荐 Circle**：零费率，且 Stripe 和 Circle 有深度合作。
+> Stripe 2025 年收购 Bridge 后，Stripe → USDC 的桥接会更原生。
+
+### 2.5.4 项目申请时的分账方式选择
+
+在项目方申请流程（§8）中，根据业务类型自动匹配分账方式：
+
+```mermaid
+graph TD
+    A["项目方申请"] --> B{"主要收入来源？"}
+    B -->|"Web2: Stripe/PayPal/银行"| C["Stripe Connect 分账"]
+    B -->|"Web3: 链上协议/NFT"| D["部署分账合约"]
+    B -->|"两者都有"| E["混合模式"]
+
+    C --> F["项目方授权 Stripe Connect"]
+    D --> G["Loka 部署 RevenueSplitter\n项目方设为收款地址"]
+    E --> H["Stripe + 链上合约并行"]
+
+    F --> I["✅ 开始募资"]
+    G --> I
+    H --> I
+
+    style D fill:#1a472a,color:#fff
+    style G fill:#1a472a,color:#fff
+```
 
 ---
 
@@ -215,7 +421,184 @@ stateDiagram-v2
 | **达标释放** | — | $1000 出 | $1000 进 | 释放给商家使用 |
 | **还款中** | — | 每月自动收 | 每月被扣 | Stripe 自动分账 |
 | **到期结算** | $1185 进 | $1185 出 | — | 本金$1000 + 收益$185 |
-| **违约清算** | 保证金赔付 | 扣商家保证金 | 黑名单 | 第 4-6 层启动 |
+| **违约清算** | 抵押品赔付 | 扣押并清算抵押品 | 黑名单 | 瀑布分配算法启动 |
+
+---
+
+## 3.1 清算机制详解 (Liquidation)
+
+> **目标**：当项目方违约时，通过标准化的瀑布分配算法，最大限度保护投资者权益。
+
+### 3.1.1 清算触发条件
+
+```mermaid
+graph TD
+    A["项目还款监控"] --> B{"逾期检测"}
+    B -->|"逾期 1-7 天"| C["⚠️ 警告 + 信用分 -30"]
+    B -->|"逾期 8-30 天"| D["🟠 信用分 -80 + 提高拦截比例"]
+    B -->|"逾期 >30 天"| E["🔴 可触发清算"]
+    
+    F["其他触发条件"] --> G{"类型"}
+    G -->|"断开数据连接"| E
+    G -->|"提交虚假数据"| H["🔴 立即清算 + 信用分 -300"]
+    G -->|"投资者治理投票"| I["投票决定清算"]
+    
+    E --> J["管理员触发清算"]
+    H --> J
+    I --> J
+    J --> K["执行瀑布分配"]
+
+    style E fill:#fee,stroke:#c00
+    style H fill:#fee,stroke:#c00
+    style K fill:#dfd,stroke:#0a0
+```
+
+| 触发原因 | 枚举值 | 信用扣分 | 说明 |
+|---------|--------|:--------:|------|
+| 逾期 >30 天 | `overdue_30` | -150 | 多次逾期未还 |
+| 逾期 >90 天 | `overdue_90` | -150 | 长期违约 |
+| 欺诈/虚假数据 | `fraud` | -300 | 永久封禁 |
+
+### 3.1.2 两种清算路径
+
+| 路径 | 适用场景 | 决策方 | 流程 |
+|------|---------|--------|------|
+| **立即清算** | 恶意跑路、虚假数据、彻底破产 | 管理员直接触发 | 扣押抵押品 → 瀑布分配 → 赔付投资者 |
+| **协商重组** | 暂时现金流困难，仍有经营 | 投资者治理投票 | 发起提案 → 投票选择方案 → 按投票结果执行 |
+
+**协商重组投票方案：**
+
+| 方案 | 说明 |
+|------|------|
+| A. 延期还款 | 降低每月还款额，延长周期 |
+| B. 全额收入锁定 | 项目方收入 100% 用于还款 |
+| C. 追加抵押品 | 项目方补充更多抵押物 |
+| D. 立即清算 | 终止项目，执行清算 |
+
+### 3.1.3 瀑布分配算法（已实现）
+
+> **核心逻辑**：按优先级从高到低分配可回收资金。高优先级债权人先获得赔付，剩余部分流向下一层。
+
+```mermaid
+graph TB
+    subgraph WATERFALL["💧 瀑布分配 (Waterfall Distribution)"]
+        T1["第 1 层: Senior Secured\n抵押品担保债权\n回收率 90%"] --> T2["第 2 层: Unsecured\n无担保债权\n回收率 50%"]
+        T2 --> T3["第 3 层: Equity Residual\n剩余权益\n回收率 20%"]
+    end
+
+    COL["抵押品总价值"] --> T1
+    T3 --> DIST["按投资比例\n分配给投资者"]
+
+    style T1 fill:#1a472a,color:#fff
+    style T2 fill:#5c3a1e,color:#fff
+    style T3 fill:#4a1a1a,color:#fff
+    style DIST fill:#0f3460,color:#fff
+```
+
+**三层回收率：**
+
+| 层级 | 标签 | 回收率 | 计算方式 |
+|:----:|------|:------:|----------|
+| 1 | Senior Secured (抵押品担保) | **90%** | `min(抵押品价值 × 0.90, 未偿债务)` |
+| 2 | Unsecured (无担保债权) | **50%** | `(剩余抵押品价值) × 0.50` |
+| 3 | Equity Residual (剩余权益) | **20%** | 几乎不产生回收 |
+
+**计算示例：**
+
+```
+项目融资 $100,000，逾期 30 天触发清算
+抵押品总价值：$30,000（新秀 30% 抵押率）
+未偿债务：$80,000
+
+第 1 层 (Senior): min($30,000 × 0.90, $80,000) = $27,000
+第 2 层 (Unsecured): ($30,000 - $27,000) × 0.50 = $1,500
+第 3 层 (Equity): $0
+
+总回收：$28,500 / $80,000 = 35.6% 回收率
+→ 按投资者持仓比例分配 $28,500
+```
+
+### 3.1.4 清算执行流程（已实现）
+
+```mermaid
+sequenceDiagram
+    participant Admin as 🔑 管理员
+    participant System as 🖥️ 后端系统
+    participant DB as 🗄️ 数据库
+    participant WS as 📡 WebSocket
+    participant Investor as 👤 投资者
+
+    Admin->>System: POST /liquidation/:projectId/trigger
+    System->>DB: 扣押所有抵押品 (pledged → seized)
+    System->>DB: 计算未偿债务总额
+    System->>System: 执行瀑布分配算法
+    System->>DB: 创建 LiquidationEvent 记录
+    System->>DB: 标记未付还款为 defaulted
+    System->>DB: 更新项目状态 → Failed
+    System->>DB: 更新投资状态 → defaulted
+    System->>DB: 项目方信用分扣减
+    
+    loop 每位投资者
+        System->>DB: 计算该投资者的回收份额
+        System->>DB: 创建 REDEEM 交易记录
+        System->>WS: 推送 liquidation:payout 事件
+    end
+
+    System->>WS: 广播 project:updated (Failed)
+    System->>Investor: 发送通知：清算赔付已到账
+    System-->>Admin: 返回清算摘要
+
+    Note over Admin, Investor: 清算完成后
+    Admin->>System: POST /liquidation/:projectId/complete
+    System->>DB: 抵押品 seized → liquidated
+    System->>DB: LiquidationEvent → completed
+```
+
+### 3.1.5 数据模型（已实现）
+
+```prisma
+model LiquidationEvent {
+  id              String   @id @default(cuid())
+  projectId       String
+  collateralId    String?       // 关联的抵押品
+  triggerReason   String        // overdue_30, overdue_90, fraud
+  recoveredAmount Float    @default(0)  // 该项抵押品的回收金额
+  status          String   @default("initiated") // initiated → in_progress → completed/cancelled
+  waterfallTier   String?       // senior, unsecured, equity
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project    Project     @relation(fields: [projectId], references: [id])
+  collateral Collateral? @relation(fields: [collateralId], references: [id])
+}
+```
+
+### 3.1.6 API 端点
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| `GET` | `/liquidation/:projectId/collateral` | 查询项目抵押品列表 | 公开 |
+| `POST` | `/liquidation/:projectId/collateral` | 添加抵押品 | 登录 |
+| `GET` | `/liquidation/:projectId/events` | 查询清算事件列表 | 公开 |
+| `GET` | `/liquidation/:projectId/summary` | 清算摘要（债务/抵押品/回收估算） | 公开 |
+| `POST` | `/liquidation/:projectId/trigger` | 触发清算 | 管理员 |
+| `POST` | `/liquidation/:projectId/complete` | 完成清算 | 登录 |
+
+### 3.1.7 定时任务联动
+
+后端 `scheduler.service.ts` 每小时自动检测逾期还款：
+
+```
+定时任务（每小时） → 扫描 overdue 还款
+    ├── 标记逾期状态 (upcoming → overdue)
+    ├── 信用分扣减（-30 / -80 / -150）
+    ├── 通知投资者
+    └── 逾期 >30 天的项目 → 管理员可触发清算
+```
+
+> [!IMPORTANT]
+> **自动检测 vs 手动触发**：逾期检测是自动的（定时任务），但清算执行需要管理员手动触发。
+> 这是有意设计 — 给项目方一个缓冲窗口，也允许通过治理投票进行协商重组。
 
 ---
 
@@ -463,7 +846,7 @@ gantt
 > [!NOTE]
 > **核心发现**：Loka Cash 的主营业务（现金流投资）**完全不需要链上合约**。
 > 通过 Stripe Connect 就能实现：投资支付、资金托管、自动还款、收入拦截。
-> 
+>
 > 链上部分（Swap / AIUSD / SBT）是增值功能，可以分阶段上线：
 > - **Phase 1（MVP）**：现金流投资（Stripe） + AI Chat
 > - **Phase 2**：AIUSD 稳定币（国债支持）

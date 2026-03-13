@@ -223,38 +223,30 @@
       animation: idleGlow 3s ease-in-out infinite;
     }
 
-    /* Light mode scrollbar */
+    /* Hide scrollbar globally (keep scroll) */
     ::-webkit-scrollbar {
+      display: none;
+    }
+
+    * {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Utility to re-show scrollbar if needed */
+    .scrollbar-show::-webkit-scrollbar {
+      display: block;
       width: 8px;
     }
-
-    ::-webkit-scrollbar-track {
+    .scrollbar-show::-webkit-scrollbar-track {
       background: #f1f1f1;
     }
-
-    ::-webkit-scrollbar-thumb {
+    .scrollbar-show::-webkit-scrollbar-thumb {
       background: #ccc;
       border-radius: 4px;
     }
-
-    ::-webkit-scrollbar-thumb:hover {
+    .scrollbar-show::-webkit-scrollbar-thumb:hover {
       background: #999;
-    }
-
-    /* Mobile safe area for bottom nav */
-    .safe-bottom {
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-    }
-
-    /* Hide scrollbar on mobile */
-    @media (max-width: 767px) {
-      ::-webkit-scrollbar {
-        display: none;
-      }
-      body {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
     }
   </style>
   <script type="importmap">

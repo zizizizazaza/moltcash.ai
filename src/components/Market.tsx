@@ -20,12 +20,13 @@ const logoSvg = (c1: string, c2: string, letter: string, w = 100, h = 100) => {
 // Visual config per project
 const PROJECT_VISUALS: Record<string, { c1: string; c2: string; icon: string; letter: string }> = {
   'AI Agent Marketplace': { c1: '#4f46e5', c2: '#7c3aed', icon: '🤖', letter: 'A' },
-  'Climapp.io Utility':   { c1: '#047857', c2: '#0d9488', icon: '🌿', letter: 'C' },
-  'Market Maker AI':      { c1: '#0f172a', c2: '#334155', icon: '📈', letter: 'M' },
-  'MEV Searcher Agent':   { c1: '#b45309', c2: '#dc2626', icon: '⚡', letter: 'M' },
-  'Copy Trading AI':      { c1: '#9333ea', c2: '#db2777', icon: '🔄', letter: 'C' },
-  'Cloudflare Capacity':  { c1: '#0369a1', c2: '#4f46e5', icon: '☁️', letter: 'C' },
-  'DigitalOcean Tier':    { c1: '#0e7490', c2: '#0f766e', icon: '🌊', letter: 'D' },
+  'Climapp.io Utility': { c1: '#047857', c2: '#0d9488', icon: '🌿', letter: 'C' },
+  'Market Maker AI': { c1: '#0f172a', c2: '#334155', icon: '📈', letter: 'M' },
+  'MEV Searcher Agent': { c1: '#b45309', c2: '#dc2626', icon: '⚡', letter: 'M' },
+  'Copy Trading AI': { c1: '#9333ea', c2: '#db2777', icon: '🔄', letter: 'C' },
+
+  'DigitalOcean Tier': { c1: '#0e7490', c2: '#0f766e', icon: '🌊', letter: 'D' },
+  'DeFi Yield Optimizer': { c1: '#6d28d9', c2: '#4338ca', icon: '💎', letter: 'D' },
 };
 const getVisual = (title: string) => PROJECT_VISUALS[title] || { c1: '#64748b', c2: '#334155', icon: '💰', letter: '?' };
 
@@ -252,12 +253,13 @@ const MOCK_ASSETS: MarketAsset[] = [
 // Unsplash image map per project (realistic photos)
 const PROJECT_IMAGES: Record<string, { cover: string; logo: string }> = {
   'AI Agent Marketplace': { cover: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=100&h=100&fit=crop' },
-  'Climapp.io Utility':   { cover: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&h=100&fit=crop' },
-  'Market Maker AI':      { cover: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=100&h=100&fit=crop' },
-  'MEV Searcher Agent':   { cover: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=100&h=100&fit=crop' },
-  'Copy Trading AI':      { cover: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=100&h=100&fit=crop' },
-  'Cloudflare Capacity':  { cover: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=100&h=100&fit=crop' },
-  'DigitalOcean Tier':    { cover: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=100&h=100&fit=crop' },
+  'Climapp.io Utility': { cover: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&h=100&fit=crop' },
+  'Market Maker AI': { cover: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=100&h=100&fit=crop' },
+  'MEV Searcher Agent': { cover: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=100&h=100&fit=crop' },
+  'Copy Trading AI': { cover: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=100&h=100&fit=crop' },
+
+  'DigitalOcean Tier': { cover: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=100&h=100&fit=crop' },
+  'DeFi Yield Optimizer': { cover: 'https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=100&h=100&fit=crop' },
 };
 
 const mapApiProject = (p: any): MarketAsset => {
@@ -300,7 +302,7 @@ const Market: React.FC = () => {
       if (Array.isArray(data) && data.length > 0) {
         setAssets(data.map(mapApiProject));
       }
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   useEffect(() => {
@@ -401,14 +403,18 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         {/* Top Badges */}
         <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start">
-          <div className="bg-white/95 backdrop-blur-lg px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-wide shadow-xl border border-white/40 text-black">
-            {asset.status === 'Fundraising' ? '🔥 Fundraising' :
+          <div className={`backdrop-blur-lg px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-wide shadow-xl border ${
+            asset.status === 'Failed'
+              ? 'bg-gray-100/95 border-gray-300/60 text-gray-500'
+              : asset.status === 'Funded' || asset.status === 'Sold Out'
+                ? 'bg-emerald-50/95 border-emerald-200/60 text-emerald-800'
+                : 'bg-white/95 border-white/40 text-black'
+          }`}>
+            {asset.status === 'Fundraising' || asset.status === 'Ending Soon' ? '🔥 Fundraising' :
               asset.status === 'Funded' ? '✅ Funded' :
-                asset.status === 'Failed' ? '🔒 Failed' :
+                asset.status === 'Failed' ? 'Failed' :
                   asset.status}
           </div>
-
-
         </div>
       </div>
 
@@ -492,7 +498,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
     setRepaymentLoading(true);
     api.getRepaymentSchedule(asset.id).then(data => {
       if (Array.isArray(data)) setRepaymentSchedule(data);
-    }).catch(() => {}).finally(() => setRepaymentLoading(false));
+    }).catch(() => { }).finally(() => setRepaymentLoading(false));
   }, [asset.id, isFunded]);
 
   const handleInvest = async () => {
@@ -546,7 +552,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
   };
 
   return (
-    <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full">
+    <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full bg-white">
       {/* Back Navigation */}
       <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group mb-6 sm:mb-8">
         <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -583,9 +589,20 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <p className="text-[10px] font-black tracking-[0.2em] text-gray-400 uppercase">Campaign Progress</p>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-black rounded-full shadow-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#00E676] animate-pulse"></div>
-                <span className="text-[9px] font-bold text-white tracking-widest leading-none">ACTIVE</span>
+              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full shadow-sm ${
+                asset.status === 'Failed' ? 'bg-gray-400' :
+                  asset.status === 'Funded' ? 'bg-blue-600' : 'bg-black'
+              }`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${
+                  asset.status === 'Failed' ? 'bg-gray-200' :
+                    asset.status === 'Funded' ? 'bg-blue-200' : 'bg-[#00E676] animate-pulse'
+                }`}></div>
+                <span className="text-[9px] font-bold text-white tracking-widest leading-none">
+                  {asset.status === 'Fundraising' || asset.status === 'Ending Soon' ? 'FUNDRAISING' :
+                    asset.status === 'Funded' ? 'FUNDED' :
+                      asset.status === 'Failed' ? 'FAILED' :
+                        asset.status.toUpperCase()}
+                </span>
               </div>
             </div>
             <p className="text-[12px] font-black text-black tracking-tight">{progress.toFixed(1)}% <span className="text-gray-400 font-bold ml-0.5">Funded</span></p>
@@ -1040,13 +1057,12 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                         return (
                           <div
                             key={i}
-                            className={`relative h-3 flex-1 rounded-full cursor-pointer transition-all peer ${
-                              s.status === 'paid' ? 'bg-green-400 hover:bg-green-500' :
-                              s.status === 'overdue' ? 'bg-red-400 animate-pulse hover:bg-red-500' :
-                              s.status === 'defaulted' ? 'bg-gray-400 hover:bg-gray-500' :
-                              s.status === 'due' ? 'bg-amber-400 hover:bg-amber-500' :
-                              'bg-gray-200 hover:bg-gray-300'
-                            }`}
+                            className={`relative h-3 flex-1 rounded-full cursor-pointer transition-all peer ${s.status === 'paid' ? 'bg-green-400 hover:bg-green-500' :
+                                s.status === 'overdue' ? 'bg-red-400 animate-pulse hover:bg-red-500' :
+                                  s.status === 'defaulted' ? 'bg-gray-400 hover:bg-gray-500' :
+                                    s.status === 'due' ? 'bg-amber-400 hover:bg-amber-500' :
+                                      'bg-gray-200 hover:bg-gray-300'
+                              }`}
                             style={{ zIndex: 1 }}
                             onMouseEnter={(e) => {
                               const tip = e.currentTarget.querySelector('[data-tip]') as HTMLElement;
@@ -1070,9 +1086,9 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                                 <p>Amount: ${s.status === 'paid' ? s.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : s.totalDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                 <p>Status: <span className={
                                   s.status === 'paid' ? 'text-green-400' :
-                                  s.status === 'overdue' ? 'text-red-400' :
-                                  s.status === 'due' ? 'text-amber-400' :
-                                  'text-gray-400'
+                                    s.status === 'overdue' ? 'text-red-400' :
+                                      s.status === 'due' ? 'text-amber-400' :
+                                        'text-gray-400'
                                 }>{statusLabel}</span></p>
                               </div>
                               <div className="w-2 h-2 bg-gray-900 rotate-45 mx-auto -mt-1" />
