@@ -23,18 +23,40 @@ interface TradeAction {
     minInvestment?: string;
 }
 
+function stripMarkdown(text: string): string {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '$1')   // **bold** → bold
+        .replace(/__(.*?)__/g, '$1')       // __underline__ → underline
+        .replace(/^#{1,6}\s+/gm, '')       // ## heading → heading
+        .replace(/\*(.*?)\*/g, '$1')       // *italic* → italic
+        .replace(/`([^`]+)`/g, '$1');      // `code` → code
+}
+
 function parseTradeAction(content: string): { text: string; action: TradeAction | null } {
     const regex = /\[TRADE_ACTION\]\s*([\s\S]*?)\s*\[\/TRADE_ACTION\]/;
     const match = content.match(regex);
-    if (!match) return { text: content, action: null };
+    if (!match) return { text: stripMarkdown(content), action: null };
     try {
         const action = JSON.parse(match[1]) as TradeAction;
-        const text = content.replace(regex, '').trim();
+        const text = stripMarkdown(content.replace(regex, '').trim());
         return { text, action };
     } catch {
-        return { text: content, action: null };
+        return { text: stripMarkdown(content), action: null };
     }
 }
+
+const cashFlowAssets = [
+    { title: 'AI Agent Marketplace', category: 'Platform', image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop', desc: 'Making it easier for AI agent markets to showcase themselves on a platform that facilitates exchanges.', progress: 21, apy: '18.5%', term: '30 Days', backers: 4 },
+    { title: 'Climapp.io Utility', category: 'Software', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop', desc: 'AI-enabled platform that helps you understand and manage your utility bills — all in one place.', progress: 2, apy: '14.2%', term: '90 Days', backers: 2 },
+    { title: 'Market Maker AI', category: 'Liquidity', image: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=400&h=300&fit=crop', desc: 'Provides deep liquidity for new pairs with optimized spread management.', progress: 95, apy: '22.0%', term: '120 Days', backers: 124 },
+    { title: 'MEV Searcher Agent', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=300&fit=crop', desc: 'Captures Maximal Extractable Value opportunities efficiently.', progress: 40, apy: '25.5%', term: '60 Days', backers: 18 },
+    { title: 'Copy Trading AI', category: 'Social Trading', image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop', desc: 'Mirrors trades of top-performing wallets automatically.', progress: 78, apy: '16.8%', term: '45 Days', backers: 56 },
+    { title: 'AWS Cloud Note', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Secure yield generated from backing AWS capacity reservations.', progress: 50, apy: '12.0%', term: '30 Days', backers: 23 },
+    { title: 'Stripe Escrow Pool', category: 'DeFi Data', image: 'https://images.unsplash.com/photo-1563986768609-322da13575f2?w=400&h=300&fit=crop', desc: 'Automated revenue streaming and escrow financing.', progress: 90, apy: '11.5%', term: '30 Days', backers: 89 },
+    { title: 'Cloudflare Capacity', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Global edge network capacity lending with 12% APY.', progress: 70, apy: '12.0%', term: '30 Days', backers: 42 },
+    { title: 'Amazon FBA Sellers', category: 'E-commerce', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop', desc: 'Inventory-backed financing for proven Amazon FBA vendors.', progress: 85, apy: '15.0%', term: '30 Days', backers: 115 },
+    { title: 'DigitalOcean Tier', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=300&fit=crop', desc: 'Financing for SME cloud deployments with high retention.', progress: 60, apy: '14.0%', term: '30 Days', backers: 37 }
+];
 
 const Chat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
@@ -191,10 +213,22 @@ const Chat: React.FC = () => {
             const token = sessionStorage.getItem('loka_token');
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const response = await fetch('https://nftkashai.online/lokacash/api/chat/stream', {
+            // Build asset context for selected asset
+            const selectedAsset = selectedAssetName ? cashFlowAssets.find(a => a.title === selectedAssetName) : null;
+            const assetContext = selectedAsset ? {
+                name: selectedAsset.title,
+                category: selectedAsset.category,
+                apy: selectedAsset.apy,
+                term: selectedAsset.term,
+                progress: selectedAsset.progress,
+                backers: selectedAsset.backers,
+                description: selectedAsset.desc,
+            } : undefined;
+
+            const response = await fetch('/api/chat/stream', {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ content: text, agentId: activeAgent }),
+                body: JSON.stringify({ content: text, agentId: activeAgent, assetContext }),
                 signal: abortController.signal,
             });
 
@@ -531,18 +565,7 @@ const Chat: React.FC = () => {
         return `data:image/svg+xml,${encodeURIComponent(svg)}`;
     };
 
-    const cashFlowAssets = [
-        { title: 'AI Agent Marketplace', category: 'Platform', image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop', desc: 'Making it easier for AI agent markets to showcase themselves on a platform that facilitates exchanges.', progress: 21, apy: '18.5%', term: '30 Days', backers: 4 },
-        { title: 'Climapp.io Utility', category: 'Software', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop', desc: 'AI-enabled platform that helps you understand and manage your utility bills — all in one place.', progress: 2, apy: '14.2%', term: '90 Days', backers: 2 },
-        { title: 'Market Maker AI', category: 'Liquidity', image: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=400&h=300&fit=crop', desc: 'Provides deep liquidity for new pairs with optimized spread management.', progress: 95, apy: '22.0%', term: '120 Days', backers: 124 },
-        { title: 'MEV Searcher Agent', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=300&fit=crop', desc: 'Captures Maximal Extractable Value opportunities efficiently.', progress: 40, apy: '25.5%', term: '60 Days', backers: 18 },
-        { title: 'Copy Trading AI', category: 'Social Trading', image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop', desc: 'Mirrors trades of top-performing wallets automatically.', progress: 78, apy: '16.8%', term: '45 Days', backers: 56 },
-        { title: 'AWS Cloud Note', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Secure yield generated from backing AWS capacity reservations.', progress: 50, apy: '12.0%', term: '30 Days', backers: 23 },
-        { title: 'Stripe Escrow Pool', category: 'DeFi Data', image: 'https://images.unsplash.com/photo-1563986768609-322da13575f2?w=400&h=300&fit=crop', desc: 'Automated revenue streaming and escrow financing.', progress: 90, apy: '11.5%', term: '30 Days', backers: 89 },
-        { title: 'Cloudflare Capacity', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Global edge network capacity lending with 12% APY.', progress: 70, apy: '12.0%', term: '30 Days', backers: 42 },
-        { title: 'Amazon FBA Sellers', category: 'E-commerce', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop', desc: 'Inventory-backed financing for proven Amazon FBA vendors.', progress: 85, apy: '15.0%', term: '30 Days', backers: 115 },
-        { title: 'DigitalOcean Tier', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=300&fit=crop', desc: 'Financing for SME cloud deployments with high retention.', progress: 60, apy: '14.0%', term: '30 Days', backers: 37 }
-    ];
+
 
     const chatSessions = [
         { id: '1', title: 'Analyze ComputeDAO GPU', time: 'Today', active: true },
@@ -1184,8 +1207,9 @@ const Chat: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-w-5xl mx-auto">
-                                    {/* Project Details Card at top of chat — click to open full detail */}
+                                    {/* Project Details Card at top of chat — only show when asset is @-selected */}
                                     {(() => {
+                                        if (!selectedAssetName) return null;
                                         const matchedAsset = marketAssets.find(a => a.title === selectedCurrent.title || selectedCurrent.title.includes(a.title) || a.title.includes(selectedCurrent.title));
                                         const displayApy = matchedAsset ? `${matchedAsset.apy}%` : (selectedCurrent.apy || '15.5%');
                                         const displayTarget = matchedAsset ? `$${(matchedAsset.targetAmount / 1000).toFixed(0)}k` : '$500k';
@@ -1213,10 +1237,6 @@ const Chat: React.FC = () => {
                                                     </div>
                                                     <p className="text-[11px] text-gray-400 font-medium leading-snug line-clamp-1">{matchedAsset?.subtitle || selectedCurrent.desc}</p>
                                                 </div>
-                                                {/* Arrow icon */}
-                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all">
-                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                                                </div>
                                             </div>
                                             <div className="flex items-center gap-3 sm:gap-5 shrink-0 sm:pl-4 sm:border-l border-gray-100 overflow-x-auto">
                                                 <div className="text-left sm:text-right">
@@ -1237,6 +1257,10 @@ const Chat: React.FC = () => {
                                                         <div className="h-full bg-black rounded-full" style={{ width: `${displayProgress}%` }} />
                                                     </div>
                                                     <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">{displayProgress}%</span>
+                                                </div>
+                                                {/* Arrow icon */}
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-gray-100 transition-all ml-2">
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                                                 </div>
                                             </div>
                                         </div>

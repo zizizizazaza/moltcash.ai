@@ -1,17 +1,18 @@
-# LOKA AIUSD — 架构文档
+# Loka Cash — 架构文档
 
 > 本文档面向新 session / 新开发者，快速了解项目全局架构。
+> 另见：[CHAIN_ARCHITECTURE.md](CHAIN_ARCHITECTURE.md)（链上/链下决策 + AIUSD 方案）
 
 ---
 
 ## 1. 项目定位
 
-**Loka AIUSD** 是一个 Treasury-backed 稳定币 + RWA 现金流市场平台。用户可以：
-- 铸造/赎回 AIUSD 稳定币（底层 90% T-Bills + 10% AI 应收账款）
-- 像 Kickstarter 众筹一样投资 AI 项目的现金流票据
-- 在二级市场 P2P 交易已持有份额
-- 通过 AI 助手获取投资建议
-- 在群组中与项目方 / 其他投资者交流
+**Loka Cash** 是一个国债支持稳定币 + RWA 现金流市场平台。用户可以：
+- 铸造/赎回 AIUSD 稳定币（底层 85% 链上国债 + 10% 赎回备用金 + 5% 运营）
+- 投资现金流项目（通过 Stripe Connect 自动分账还款）
+- 在 Base 链上交易代币（30+ 代币 Swap）
+- 通过 AI 助手获取投资建议、执行交易
+- 在群组中与项目方 / 其他投资者交流、参与治理投票
 
 ## 2. 技术总览
 
@@ -72,17 +73,27 @@ loka-aiusd-dashboard/
 │   │   ├── app.ts                Express 中间件 + 路由挂载
 │   │   ├── config.ts             环境变量配置
 │   │   ├── db.ts                 Prisma 客户端实例
-│   │   ├── routes/               API 路由 (8 个文件)
+│   │   ├── routes/               API 路由 (15 个文件)
 │   │   │   ├── auth.ts           登录/注册/风险声明
 │   │   │   ├── users.ts          用户资料
-│   │   │   ├── projects.ts       项目列表/详情
+│   │   │   ├── projects.ts       项目列表/详情/投资/撤销
 │   │   │   ├── treasury.ts       国库统计快照
-│   │   │   ├── portfolio.ts      持仓/历史/投资
+│   │   │   ├── portfolio.ts      持仓/历史/mint/redeem
 │   │   │   ├── trade.ts          交易挂单
 │   │   │   ├── chat.ts           AI 聊天 (含 SSE 流)
-│   │   │   └── groups.ts         群组消息
+│   │   │   ├── groups.ts         群组消息
+│   │   │   ├── apply.ts          项目申请
+│   │   │   ├── admin.ts          企业认证管理
+│   │   │   ├── credit.ts         信用评分
+│   │   │   ├── governance.ts     治理提案/投票
+│   │   │   ├── liquidation.ts    清算/抵押物
+│   │   │   ├── repayment.ts      还款追踪
+│   │   │   └── notifications.ts  通知
 │   │   ├── services/
-│   │   │   └── ai.service.ts     Loka AI (deepseek-v3, 系统提示词, 流)
+│   │   │   ├── ai.service.ts     Loka AI (deepseek-v3, 系统提示词, 流)
+│   │   │   ├── credit.service.ts  信用评分计算
+│   │   │   ├── scheduler.service.ts 定时任务(逾期检测/持仓奖励)
+│   │   │   └── notification.service.ts 通知服务
 │   │   ├── middleware/
 │   │   │   ├── auth.ts           JWT 中间件 (required/withUser/optional)
 │   │   │   └── errorHandler.ts   全局错误处理
@@ -97,9 +108,11 @@ loka-aiusd-dashboard/
 │   └── tsconfig.json             后端 TS 配置
 ├── docs/                         产品 & 技术文档
 │   ├── requirement.md            PRD v3.0 (唯一权威需求文档)
-│   ├── Loka_Credit_System.md     信用分设计参考
-│   ├── ARCHITECTURE.md           ← 本文档
+│   ├── Loka_Credit_System.md     信用分设计（项目方+投资者+治理）
+│   ├── ARCHITECTURE.md           ← 本文档（系统架构）
+│   ├── CHAIN_ARCHITECTURE.md     链上/链下决策 + AIUSD 技术方案
 │   ├── API.md                    API 接口参考
+│   ├── TODO.md                   模块上线追踪
 │   └── DEVELOPMENT.md            开发指南
 ├── index.html                    Vite HTML 入口
 ├── vite.config.ts                Vite 配置 (proxy → :3002)
@@ -189,7 +202,7 @@ Socket.IO 用于实时通信：
 ### 5.5 数据库
 
 SQLite（开发环境），Prisma ORM 管理：
-- **14 个表**：User, Project, MonthlyRevenue, Investment, TradeOrder, TreasurySnapshot, Transaction, PortfolioHolding, GroupChat, GroupMember, GroupMessage, ChatMessage
+- **20+ 个表**：User, Project, MonthlyRevenue, Investment, TradeOrder, TreasurySnapshot, Transaction, PortfolioHolding, GroupChat, GroupMember, GroupMessage, ChatMessage, EnterpriseVerification, ProposedApplication, RepaymentSchedule, LiquidationEvent, Collateral, GovernanceProposal, Vote 等
 - 种子数据包含 7 个 AI 项目、1 个 demo 用户、国库快照、持仓记录
 
 ## 6. 关键设计决策
@@ -206,21 +219,27 @@ SQLite（开发环境），Prisma ORM 管理：
 
 ## 7. 当前开发状态
 
-### ✅ 已完成
-- 后端基础设施（Express + Prisma + JWT + WebSocket）
-- 全部 8 组 API 路由（auth, users, projects, treasury, portfolio, trade, chat, groups）
-- AI 聊天集成（deepseek-v3 + SSE 流式响应）
-- 前端 API 客户端 + Chat.tsx 对接真实后端
-- 种子数据（7 项目、demo 用户、国库、持仓）
-- 项目结构整理（src/ + server/ + docs/）
-- PRD v3.0 完整文档
+> 详细模块追踪见 [TODO.md](TODO.md)
 
-### 🔜 下一步（按优先级）
-- **市场 + 投资后端**：POST /api/projects/:id/invest, 融资状态机, 前端 Market.tsx 对接真实数据
-- **项目方申请流程**：Apply Group (2 Agent), 企业验证, SBT
-- **信用分系统**：分数计算引擎、等级权益
-- **清算 & 治理**：逾期检测、投票机制
-- **出入金 & 登录**（其他人负责）
+### ✅ 已完成（Phase 0-11）
+- 后端基础设施（Express 5 + Prisma + JWT + WebSocket + 定时任务）
+- 全部 15 组 API 路由
+- AI 聊天（deepseek-v3 + SSE + 资产上下文 + 交易意图识别）
+- 前端全部页面对接真实 API（Market / Portfolio / Trade / Dashboard）
+- 投资核心流程（invest / revoke / 募资状态机 / WS 通知）
+- AIUSD 铸造/赎回（后端逻辑完成，链上合约待对接）
+- 信用评分系统（3 级体系 + 10+ 评分规则）
+- 还款追踪 + 逾期检测（定时任务）
+- 清算机制（瀑布分配算法）
+- 治理系统（提案 / 投票 / 参数自动生效）
+- Privy 认证（Email + Google + Twitter + 嵌入式钱包）
+- 30+ Base 链代币交易支持
+
+### 🔜 下一步
+- **部署**：生产环境（PostgreSQL + PM2 + Nginx） — 需 👤 提供服务器
+- **Stripe Connect**：投资支付 + 自动分账还款 — 需 👤 申请平台号
+- **AIUSD 合约**：4 个合约 + 国债对接（Ondo OUSG）
+- **KYC**：第三方身份认证接入 — 需 👤 选型
 
 ## 8. 端口 & 环境变量
 

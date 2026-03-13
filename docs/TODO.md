@@ -1,265 +1,380 @@
-# LOKA AIUSD Dashboard — 开发进度总览
+# 🚀 Loka Cash — 项目进度 & 上线追踪
 
-> 最后更新：2026-03-12  
-> 整体进度：**~75%**（Phase 0-11 后端 + API 完成，前端已对接，Privy OAuth 已集成）
+> **最后更新**：2026-03-13 · **整体代码进度**：~80% · **上线就绪**：~35%
 
----
-
-## Phase 0: 基础设施 ✅
-
-- [x] 项目初始化（React 19 + Vite + TypeScript）
-- [x] 前端页面骨架（13 个组件 + 页面路由）
-- [x] Tailwind CSS + 设计系统（COLORS / 图标组件）
-- [x] 后端搭建（Express 5 + TypeScript + Prisma ORM）
-- [x] 数据库设计（14 个 Model + SQLite）
-- [x] 种子数据（7 个项目 + demo 用户 + 国库快照）
-- [x] JWT 认证中间件（authRequired / authOptional / authWithUser）
-- [x] WebSocket 基础（Socket.IO 用户/群组房间）
-- [x] Vite 代理配置（/api → :3002, /ws → :3002）
-- [x] 项目结构整理（src/ + server/ + docs/）
-- [x] 文档体系（PRD v3.0 + ARCHITECTURE + API + DEVELOPMENT）
-- [x] README 重写
+> [!IMPORTANT]
+> Phase 0-11 核心代码完成，本地可完整运行（前端 :3000 + 后端 :3002）。
+> 距离真实上线主要差：**智能合约**、**生产部署**、**第三方服务接入**。
 
 ---
 
-## Phase 1: 认证 & AI 聊天 ✅
+## 📊 上线路径总览
 
-- [x] 邮箱登录（POST /auth/login/email，自动注册）
-- [x] OAuth 登录接口（POST /auth/login/oauth）
-- [x] Google OAuth 登录（Privy 集成）
-- [x] Twitter/X OAuth 登录（Privy 集成）
-- [x] 获取当前用户（GET /auth/me）
-- [x] 风险免责声明（POST /auth/accept-risk + RiskModal）
-- [x] Loka AI 接入（lingyaai.cn / deepseek-v3）
-- [x] SSE 流式聊天（POST /chat/stream）
-- [x] 聊天历史（GET/DELETE /chat/history）
-- [x] 前端 Chat.tsx 对接真实后端
-- [x] AI 系统提示词（400+ 行平台知识库）
-- [x] Privy 嵌入式钱包（自动创建）
-- [x] Deposit 未登录时跳转登录弹窗
+```mermaid
+graph LR
+    M10["M10: 部署<br/>🔴 5%"] --> M7["M7: Auth<br/>🟡 75%"]
+    M7 --> M2["M2: Market<br/>🟡 75%"]
+    M7 --> M1["M1: AI Chat<br/>🟡 80%"]
+    M2 --> M5["M5: Portfolio<br/>🟡 50%"]
+    M1 --> M3["M3: Trade<br/>🔴 15%"]
+    M5 --> M4["M4: AIUSD<br/>🔴 10%"]
+    M3 --> M4
+    M2 --> M6["M6: Create Project<br/>🔴 10%"]
 
----
-
-## Phase 2: 前端对接真实 API ✅
-
-> API 已对接，mock 数据作为兜底（无真实数据时自动降级显示）
-
-- [x] **Market.tsx** — 对接 GET /api/projects（替换 MOCK_ASSETS）
-- [x] **Market.tsx** — 项目详情对接 GET /api/projects/:id
-- [x] **Portfolio.tsx** — 对接 GET /api/portfolio/holdings（替换硬编码余额）
-- [x] **Portfolio.tsx** — 对接 GET /api/portfolio/history（替换假图表数据）
-- [x] **Portfolio.tsx** — 对接 GET /api/portfolio/investments
-- [x] **Trade.tsx** — 对接 GET /api/trade（替换 MOCK_ORDERS）
-- [x] **Trade.tsx** — 下单对接 POST /api/trade（BuyModal 已对接 api.buyTradeOrder）
-- [x] **Dashboard.tsx** — 对接 GET /api/treasury/stats（替换硬编码兜底值）
-- [ ] **Groups.tsx** — 验证群组消息对接正常
+    style M10 fill:#fee,stroke:#c00
+    style M7 fill:#ffd,stroke:#aa0
+    style M2 fill:#ffd,stroke:#aa0
+    style M1 fill:#dfd,stroke:#0a0
+    style M5 fill:#ffd,stroke:#aa0
+    style M3 fill:#fee,stroke:#c00
+    style M4 fill:#fee,stroke:#c00
+    style M6 fill:#fee,stroke:#c00
+```
 
 ---
 
-## Phase 3: 投资核心流程 ✅
+## 📋 模块上线总览
 
-> 用户端最核心的业务闭环：浏览 → 投资 → 仓位
+| 模块 | 子功能 | ✅ | ⚠️ | ❌ | 就绪度 | 主要阻塞 |
+|------|:------:|:--:|:--:|:--:|:------:|---------|
+| **M1** AI Chat | 8 | 6 | 2 | 0 | 🟢 85% | iOS 语音 + AI 生产额度 |
+| **M2** Market | 8 | 6 | 1 | 1 | 🟡 75% | 真实项目数据 + 支付接入 |
+| **M3** Trade | 6 | 1 | 1 | 4 | 🔴 15% | DEX 集成 + 实时价格 |
+| **M4** AIUSD | 5 | 0 | 1 | 4 | 🔴 10% | ERC-20 合约 |
+| **M5** Portfolio | 6 | 2 | 2 | 2 | 🟡 50% | 链上余额 |
+| **M6** Create Project | 7 | 0 | 1 | 6 | 🔴 10% | 前端 UI + 第三方 |
+| **M7** Auth | 8 | 5 | 2 | 1 | 🟡 75% | Privy 生产 + KYC |
+| **M8** Groups | 5 | 2 | 1 | 2 | 🟡 55% | 消息持久化 |
+| **M9** 信用/还款/清算 | 6 | 0 | 0 | 6 | 🔴 20% | 前端 UI + 合约 |
+| **M10** 部署 | 7 | 1 | 0 | 6 | 🔴 5% | 服务器 + 域名 |
 
-- [x] **POST /api/projects/:id/invest** — 创建投资记录
-  - [x] 金额校验（最低投资额、硬顶检查）
-  - [x] 更新 project.raisedAmount
-  - [x] 自动创建 PortfolioHolding
-  - [x] 创建 Transaction 记录
-  - [x] WebSocket 通知投资人数变化
-- [x] **募资状态机**
-  - [x] 项目状态流转：Fundraising → Funded（达到硬顶自动关闭）
-  - [x] 达到硬顶自动关闭
-  - [x] 到期未达软顶自动失败 + 退款逻辑（Scheduler 定时任务）
-- [x] **DELETE /api/projects/:id/revoke-investment** — 募资期内取消投资
-- [x] **投资确认弹窗**（Market AssetDetail 内置 Pledge Box）
-- [x] **投资成功后 Portfolio 实时刷新**
+> [!TIP]
+> **MVP 最小上线集**：M7(Auth) + M10(部署) + M1(仅聊天) + M2(仅浏览)
+> **你需要提供**：服务器、域名、Privy 生产 ID、真实项目数据
 
----
-
-## Phase 4: Swap / AIUSD 铸造与赎回 ✅
-
-- [x] **POST /api/portfolio/mint** — AIUSD Mint（USDC→AIUSD，含 PortfolioHolding 更新 + Transaction 记录）
-- [x] **POST /api/portfolio/redeem** — AIUSD Redeem（AIUSD→USDC，余额检查 + Transaction 记录）
-- [x] **Swap.tsx** — 对接铸造/赎回接口（根据 mode 自动调用 mint/redeem）
-- [x] **Swap.tsx** — 展示真实收益数据（替换假图表）
-- [x] 汇率 / 费率计算逻辑（基于信用等级的分级费率 + swap-quote 接口）
+**图例**：✅ 真实可用 · ⚠️ 部分真实 · ❌ 假数据/未实现 · 🚫 功能缺失
 
 ---
 
-## Phase 5: 项目申请 & Apply Flow ✅（后端完成，前端 UI 待建）
+## 🔍 模块功能明细
 
-> PRD §6-§8：发行方上链全流程（AI Agent 引导 → 企业认证 → 项目提交）
+### M1: AI Chat（AI 聊天）
 
-### 5.1 Apply 入口
-- [x] Cash Flow Market 列表页 Apply 按钮（点击跳转 Groups）
-- [x] Apply 流程在 Groups 中实现（"Project Verification & Setup" 群组，自然语言交互创建项目）
+> Chat 本身不涉及链上操作。交易/投资的链上执行属于 M3(Trade)、M4(AIUSD)、M2(Market) 的职责，Chat 只负责意图识别和生成交易卡片。
 
-### 5.2 AI Agent 编排
-- [ ] **Guide Agent**（引导代理）— 需 AI prompt 设计
-- [ ] **Reviewer Agent**（审核代理）— 需 AI prompt 设计
-- [ ] Agent 上下文管理（对话历史 + 状态机）
+| 子功能 | UI | 后端 | 说明 |
+|--------|:--:|:----:|------|
+| 自然语言聊天 | ✅ | ✅ | 真实 AI（deepseek-v3），SSE 流式 |
+| 聊天历史 | ✅ | ✅ | DB 持久化，支持清除 |
+| @选中资产上下文 | ✅ | ✅ | 动态 prompt，围绕选中资产回复 |
+| 语音模式 | ✅ | ✅ | Chrome/Edge 原生 ASR + TTS + Voice Mode 连续对话 |
+| 聊天交易 Base 代币 | ✅ | ⚠️ | AI 识别意图并生成交易卡片 ✅，执行依赖 → M3 |
+| 聊天交易 AIUSD | ✅ | ⚠️ | 生成 mint/redeem 卡片 ✅，执行依赖 → M4 |
+| 聊天投资现金流项目 | ✅ | ⚠️ | 生成投资卡片 ✅，执行依赖 → M2 |
+| 现金流项目分析 | ✅ | ✅ | AI 基于项目数据分析风险/收益 |
 
-### 5.3 企业认证（Enterprise Verification）
-- [x] 新增 **EnterpriseVerification** 数据模型（companyName, country, registrationNo, licenseDoc, step 1-4, status）
-- [x] **POST /api/apply/enterprise/submit** — 提交法人实体信息
-- [x] **GET /api/apply/enterprise** — 用户企业列表
-- [x] **POST /api/apply/enterprise/:id/advance** — 推进认证步骤（每步 +25 信用分）
-- [ ] UBO 检查（股权披露 + 人脸识别）— 需第三方 KYC 服务
-- [x] 认证进度 4 步骤 × 25 信用分 = +100 分（已实现 recordCreditEvent）
-- [ ] **SBT 铸造**（Verified Issuer Token）— 需智能合约
+**上线待办（Chat 自身）：**
+- [x] 语音识别 + 语音合成（Web Speech API） — ✅ 已完成
+- [x] iOS/Safari 语音识别（Whisper API 回退） — ✅ 已确认可用 + 修复 URL bug
+- [ ] AI API 生产额度 / Key 切换 — 👤
+- [ ] 敏感内容过滤 — 👤
 
-### 5.4 项目申请表单
-- [x] 新增 **ProposedApplication** 数据模型（10+ 字段）
-- [x] **POST /api/apply/projects/apply** — 提交项目申请
-- [x] **GET /api/apply/projects/applications** — 申请列表
-- [x] **GET /api/apply/projects/applications/:id** — 申请详情
-- [ ] 收入验证（Stripe / PayPal / QuickBooks OAuth）— 需第三方凭证
+> [!NOTE]
+> 交易执行的链上部分分别在：M3(代币Swap)、M4(AIUSD铸造)、M2(项目投资) 的待办中
 
 ---
 
-## Phase 6: 信用评分系统 ✅
+### M2: Market（现金流资产市场）
 
-> PRD §9：整个平台金融逻辑的基石
+| 子功能 | UI | 后端 | 说明 |
+|--------|:--:|:----:|------|
+| 资产列表浏览 | ✅ | ✅ | 前端从 API 获取，有 seed 数据 |
+| 资产卡片（APY/进度/期限） | ✅ | ✅ | 真实 DB 数据 |
+| 资产详情页 | ✅ | ✅ | 含描述、发行方、还款记录 |
+| 搜索 / 筛选 / 排序 | ⚠️ | ✅ | 后端支持筛选，前端分类 tab 有效 |
+| 投资操作（Buy） | ✅ | ✅ | 后端校验+创建记录+更新进度 ✅（无需链上，走传统支付） |
+| 撤销投资（Revoke） | ✅ | ✅ | 后端支持募资期取消 ✅（传统退款流程） |
+| 二级市场交易 | 🚫 | 🚫 | 设计中有 P2P 概念，完全未实现 |
+| 实时数据推送 | ❌ | ❌ | 无实时更新 |
 
-### 6.1 基础设施
-- [x] 新增 **CreditScoreHistory** 数据模型
-- [x] 新增 **CreditScoreEvent** 数据模型（变更原因日志）
-- [x] **credit.service.ts** 服务（getTier, getTierDetails, recordCreditEvent）
+**上线待办：**
+- [ ] 真实资产数据录入（运营准备真实项目信息） — 👤
+- [ ] Stripe Connect 对接（投资支付 + 自动分账还款 + 资金托管） — 👤 + AI
+- [ ] 资产图片/Logo 改为真实素材 — 👤
+- [ ] 实时数据推送（WebSocket 推送进度） — AI
+- [ ] 二级市场 P2P 份额交易（v2） — AI
 
-### 6.2 项目方信用评分规则
-- [x] 初始分 100
-- [x] 企业认证 +100（4步 × 25）— ISSUER_EVENTS 常量
-- [x] 募资完成 +20 / +30 / +40（按轮次递增）
-- [x] 按时还款 +15~+50/月（含连续还款加成）
-- [x] 提前还清 +40 + 全额 APY
-- [x] 推荐项目偿还 +30
-
-### 6.3 项目方信用惩罚
-- [x] 逾期 1-30 天 -30/月
-- [x] 逾期 31-90 天 -80/月
-- [x] 逾期 >90 天 -150/月（触发清算）
-- [x] 募资失败 -10
-- [x] 欺诈/信息造假 直接归零
-
-### 6.4 投资者信用评分
-- [x] 初始分 100
-- [x] 10 条得分规则实现（INVESTOR_EVENTS 常量）
-- [x] KYC 完成 / 投资活跃 / 推荐 / 治理参与等
-
-### 6.5 等级系统
-- [x] Tier 1: 200 分（允许募资，30% 抵押率，0.5% 费率）
-- [x] Tier 2: 500 分（10% 抵押率，0.3% 费率）
-- [x] Tier 3: 1000 分（10% 抵押率，0.1% 费率）
-- [x] 等级与抵押率 / 手续费联动（getTierDetails 函数）
-
-### 6.6 信用分 API
-- [x] **GET /api/credit/score** — 当前用户信用分 & 等级 & 下一等级信息
-- [x] **GET /api/credit/history** — 信用分变更历史
-- [x] **GET /api/credit/events** — 变更原因详情
-- [x] 前端 API 方法（getCreditScore, getCreditHistory, getCreditEvents）
-- [x] **前端信用分展示** — 已在 Portfolio 页面中实现
+> [!NOTE]
+> 现金流投资 **不需要链上合约**，通过 Stripe Connect 实现自动分账还款。
+> 详见 [CHAIN_ARCHITECTURE.md 第2章](file:///Users/zzz/antigravity项目/loka-aiusd-dashboard/docs/CHAIN_ARCHITECTURE.md)
 
 ---
 
-## Phase 7: 还款追踪 ✅
+### M3: Trade 页面（代币交易）
 
-- [x] 新增 **RepaymentSchedule** 数据模型（@@unique([projectId, periodNumber])）
-- [x] **GET /api/repayment/:projectId/schedule** — 查询还款计划
-- [x] **POST /api/repayment/:projectId/schedule** — 发行方创建 N 期均摊计划
-- [x] **POST /api/repayment/:projectId/pay/:periodNumber** — 记录还款（含投资者利息分配 + WebSocket 通知）
-- [x] **POST /api/repayment/check-overdue** — 逾期检测 + 自动标记
-- [x] 还款到账 → 创建 INTEREST Transaction + 触发信用加分（REPAYMENT_ON_TIME）
-- [x] 前端 API 方法（getRepaymentSchedule）
-- [x] 定时任务 cron 调度（setInterval 自动执行 check-overdue + 持仓奖励 + 提案到期）
-- [ ] 前端还款管理 UI
+| 子功能 | UI | 后端 | 链上 | 说明 |
+|--------|:--:|:----:|:----:|------|
+| 代币列表展示 | ✅ | ✅ | — | 后端 supported-tokens API |
+| 代币实时价格 | ❌ | ❌ | — | 价格硬编码，无实时行情 |
+| Swap 表单 (Buy/Sell) | ✅ | ❌ | ❌ | UI 完整，提交无真实执行 |
+| AI 交易分析 | ✅ | ✅ | — | AI 提供分析回复 |
+| 订单历史 | ✅ | ⚠️ | ❌ | 后端有 trade API，数据来自 seed |
+| 价格图表 | ⚠️ | ❌ | — | 有图表 UI，数据是模拟的 |
 
----
-
-## Phase 8: 清算机制 ✅
-
-> PRD §10：违约处理全流程
-
-- [x] 新增 **LiquidationEvent** 数据模型（triggerReason, recoveredAmount, waterfallTier）
-- [x] 新增 **Collateral** 数据模型（type, value, status）
-- [x] **GET /api/liquidation/:projectId/collateral** — 查询抵押物
-- [x] **POST /api/liquidation/:projectId/collateral** — 添加抵押物
-- [x] **GET /api/liquidation/:projectId/events** — 查询清算事件
-- [x] **POST /api/liquidation/:projectId/trigger** — 触发清算（检测逾期 ≥3 期，扣押抵押物，失败项目）
-- [x] 前端 API 方法（getCollateral, getLiquidationEvents）
-- [x] 瀑布分配算法（Senior → Unsecured → Equity，按投资比例分配回收）
-- [ ] 智能合约对接（链上抵押物管理）
-- [ ] 前端清算管理 UI
+**上线待办：**
+- [ ] 实时价格 API（CoinGecko / 0x price API） — AI
+- [ ] DEX 聚合器集成（0x / 1inch — 报价 + 路由） — AI
+- [ ] 钱包签名 + 链上 swap 执行 — AI + 合约
+- [ ] 真实订单记录（tx hash 存储 + 状态追踪） — AI
+- [ ] K 线图表数据源 — AI
+- [ ] Gas 估算 + 滑点设置 — AI
+- [ ] Base 链 RPC 节点申请 — 👤
 
 ---
 
-## Phase 9: 治理系统 ✅
+### M4: AIUSD（国债支持稳定币）
 
-> PRD §11：DAO 投票 & 参数调整
+> 详细方案见 [CHAIN_ARCHITECTURE.md 第5章](file:///Users/zzz/antigravity项目/loka-aiusd-dashboard/docs/CHAIN_ARCHITECTURE.md)
+> 模式：用户存 USDC → 85% 买链上国债 → 1:1 铸造 AIUSD → 协议吃国债利差
 
-- [x] 新增 **GovernanceProposal** 数据模型（category, forVotes, againstVotes, quorum, endsAt）
-- [x] 新增 **GovernanceVote** 数据模型（vote, weight; @@unique([proposalId, userId])）
-- [x] **GET /api/governance/proposals** — 提案列表
-- [x] **POST /api/governance/proposals** — 创建提案（quorum = 10% 总持仓）
-- [x] **POST /api/governance/proposals/:id/vote** — 投票（权重 = 用户总持仓，自动判定通过/拒绝）
-- [x] 投票逻辑（投票权重 = 持仓份额）+ 治理参与信用加分
-- [x] 前端 API 方法（getProposals, createProposal, voteOnProposal）
-- [x] **前端治理 UI** — 已在 Groups 群组中实现（投票入口 + 交互逻辑）
-- [x] 参数调整自动生效逻辑（解析提案 JSON 参数 + treasury rebalance 写入）
-- [ ] 国库再平衡算法
+| 子功能 | UI | 后端 | 链上 | 说明 |
+|--------|:--:|:----:|:----:|------|
+| Mint（USDC → AIUSD） | ✅ | ✅ | ❌ | 后端有逻辑只改 DB，需对接 AIUSD 合约 |
+| Redeem（AIUSD → USDC） | ✅ | ✅ | ❌ | 同上，需赎回分层（T+0/T+7） |
+| 汇率显示 | ✅ | ❌ | — | 硬编码 1:1 |
+| 赎回队列 | ❌ | ❌ | ❌ | 大额赎回排队机制未实现 |
+| 储备金仪表盘 | ❌ | ❌ | ❌ | 抵押率/备用金/国债持仓展示 |
+| Deposit 页面 | ✅ | ⚠️ | ❌ | UI 完整，交互只改本地数据 |
 
----
+**合约架构**（4 个合约）：
+- `AIUSD.sol` — ERC-20 代币（仅 Vault 可 mint/burn）
+- `AIUSDVault.sol` — 铸造/赎回逻辑 + 备用金管理
+- `Treasury.sol` — 国债代币购买/卖出（OUSG/STBT）+ 抵押率监控
+- `RedemptionQueue.sol` — 大额赎回排队 T+7 兑付
 
-## Phase 10: 用户设置 & KYC ✅（部分完成）
-
-- [x] **Settings.tsx** — 对接用户信息修改接口（getUserProfile + updateProfile）
-- [x] **Settings.tsx** — Profile 区域（可编辑显示名、邮箱、钱包展示）
-- [ ] KYC 身份认证（投资者端）— 需第三方 KYC 服务
-- [ ] 钱包绑定 / 助记词管理 — 需 Web3 钱包集成
-- [ ] 通知偏好设置
-- [ ] 语言切换（中/英）
-
----
-
-## Phase 11: 前端体验优化 ✅（部分完成）
-
-- [x] 全局 Toast 通知系统（Coming Soon toast + Swap/Trade 成功/错误提示）
-- [x] 错误边界（ErrorBoundary 组件 + index.tsx 包裹）
-- [x] 移动端响应式适配（底部 Tab Bar + 卡片自适应 + safe-area）
-- [ ] 页面加载骨架屏（Skeleton）
-- [ ] 路由系统升级（替换 Enum 为 React Router）
-- [ ] 状态管理优化（Context / Zustand）
+**上线待办：**
+- [ ] AIUSD ERC-20 合约编写 + 部署 — AI + 合约
+- [ ] Vault 合约（铸造/赎回/备用金/赎回队列） — AI + 合约
+- [ ] Treasury 合约（国债购买 OUSG/STBT） — AI + 合约
+- [ ] 对接 Ondo Finance OUSG API — AI
+- [ ] Chainlink 价格预言机集成 — AI
+- [ ] 赎回分层前端（T+0/T+7 展示） — AI
+- [ ] 储备金仪表盘前端 — AI
+- [ ] 合约安全审计 — 👤
+- [ ] AIUSD 免责法律声明（非理财产品） — 👤
+- [ ] Mainnet 部署 — 👤 + AI
 
 ---
 
-## Phase 12: 部署 & DevOps
+### M5: Portfolio（持仓组合）
 
-- [ ] 生产环境数据库迁移（SQLite → PostgreSQL）
-- [ ] 环境变量管理（.env.production）
-- [ ] Docker 容器化
-- [ ] CI/CD 流水线
-- [ ] 日志系统（Winston / Pino）
-- [ ] 监控告警（健康检查 + 错误追踪）
-- [ ] HTTPS / 域名配置
+| 子功能 | UI | 后端 | 链上 | 说明 |
+|--------|:--:|:----:|:----:|------|
+| 资产总览（总余额） | ✅ | ⚠️ | ❌ | 后端有 API，无链上余额 |
+| 持仓列表 | ✅ | ✅ | — | 来自投资记录 DB |
+| 收益图表 | ✅ | ⚠️ | — | 有历史数据 API，yield 不精确 |
+| 投资记录 | ✅ | ✅ | — | 从 DB 真实读取 |
+| 代币余额（ETH/USDC） | ❌ | ❌ | ❌ | 无链上余额查询 |
+| 交易历史 | ⚠️ | ⚠️ | ❌ | DB 有记录，无链上 tx hash |
+
+**上线待办：**
+- [ ] 链上余额查询（ethers.js 读取 ERC-20） — AI
+- [ ] 真实收益计算（投资时间 × APY） — AI
+- [ ] 链上交易历史（tx hash 展示 + etherscan 链接） — AI
+- [ ] 导出（CSV / PDF） — AI
 
 ---
 
-## 统计
+### M6: Create Project（项目申请/发行）
 
-| 阶段 | 描述 | 状态 |
-|------|------|------|
-| Phase 0 | 基础设施 | ✅ 完成 |
-| Phase 1 | 认证 & AI 聊天 | ✅ 完成 |
-| Phase 2 | 前端对接真实 API | ✅ 完成 |
-| Phase 3 | 投资核心流程 | ✅ 已完成 |
-| Phase 4 | Swap / AIUSD | ✅ 后端 + 前端对接完成 |
-| Phase 5 | Apply Flow & 企业认证 | ✅ 后端完成，前端 Apply 入口已加（Groups 内自然语言交互） |
-| Phase 6 | 信用评分系统 | ✅ 完成（服务+API+Portfolio 展示） |
-| Phase 7 | 还款追踪 | ✅ 后端完成，cron 待配置 |
-| Phase 8 | 清算机制 | ✅ 后端完成，合约待对接 |
-| Phase 9 | 治理系统 | ✅ 后端完成，前端已在 Groups 实现 |
-| Phase 10 | 用户设置 & KYC | ✅ 基础完成，KYC 待接入 |
-| Phase 11 | 前端体验优化 | ✅ ErrorBoundary + Toast + Privy 完成 |
-| Phase 12 | 部署 & DevOps | ⬚ 待开始 |
+| 子功能 | UI | 后端 | 链上 | 说明 |
+|--------|:--:|:----:|:----:|------|
+| Apply 入口 | ⚠️ | ✅ | — | 从 Market → Groups 引导填写 |
+| 企业认证（4步） | ❌ | ✅ | — | 后端 API 完整，无前端 UI |
+| 项目申请表单 | ❌ | ✅ | — | 后端 API 有，无独立前端 |
+| 收入验证 | 🚫 | 🚫 | — | Stripe/QuickBooks OAuth 未接入 |
+| UBO 检查 | 🚫 | 🚫 | — | 未接入第三方 |
+| SBT 铸造 | 🚫 | 🚫 | 🚫 | 需要 SBT 合约 |
+| AI 审核 Agent | 🚫 | 🚫 | — | Guide Agent + Reviewer Agent 未设计 |
 
-> **当前状态**：Phase 0-11 后端 API 全部完成，前端核心页面已对接。Privy OAuth（Google/X）+ 嵌入式钱包已集成。剩余工作主要是第三方服务集成和部署。  
-> **下一步**：第三方 KYC 接入 → 智能合约对接 → Cron 定时任务 → Phase 12 部署
+**上线待办：**
+- [ ] 项目申请前端 UI（多步表单） — AI
+- [ ] 企业认证前端 UI（上传证件 + 填写信息） — AI
+- [ ] Stripe Connect 接入（收入验证） — 👤 + AI
+- [ ] KYC/UBO 第三方服务接入 — 👤
+- [ ] SBT 合约部署 — 👤 + 合约
+- [ ] AI 审核 Agent（自动初审 prompt 设计） — AI
+- [ ] 后台审核面板（运营手动审批） — AI
+
+---
+
+### M7: Auth & 用户系统
+
+| 子功能 | UI | 后端 | 链上 | 说明 |
+|--------|:--:|:----:|:----:|------|
+| 邮箱登录 | ✅ | ✅ | — | JWT，自动注册 |
+| Google OAuth | ✅ | ✅ | — | Privy 对接 |
+| Twitter OAuth | ✅ | ✅ | — | Privy 对接 |
+| Privy 嵌入式钱包 | ✅ | — | ⚠️ | 自动创建，未用于签名 |
+| 风险免责弹窗 | ✅ | ✅ | — | 真实，记录到 DB |
+| KYC 身份认证 | 🚫 | 🚫 | — | 未接入第三方 |
+| Profile 编辑 | ✅ | ✅ | — | 真实 |
+| 钱包管理 | ⚠️ | — | — | 展示地址，不能导出/管理 |
+
+**上线待办：**
+- [ ] Privy 生产 App ID — 👤
+- [ ] 钱包签名能力（sendTransaction popup） — AI
+- [ ] KYC 接入（Sumsub / Onfido） — 👤 + AI
+- [ ] Refresh Token 机制 — AI
+
+---
+
+### M8: Groups / 社群（治理）
+
+| 子功能 | UI | 后端 | 链上 | 说明 |
+|--------|:--:|:----:|:----:|------|
+| 群组列表 | ✅ | ⚠️ | — | UI 有，数据大部分硬编码 |
+| 实时消息 | ⚠️ | ✅ | — | WebSocket 基础有，消息是假的 |
+| 治理提案创建 | ✅ | ✅ | — | 后端完整 |
+| 治理投票 | ✅ | ✅ | — | 后端完整，有自动判定 |
+| 消息持久化 | ❌ | ❌ | — | 消息不持久，刷新丢失 |
+
+**上线待办：**
+- [ ] 真实消息发送/接收对接 WebSocket — AI
+- [ ] 消息持久化 + 历史加载 — AI
+- [ ] 治理投票前端完善（投票结果展示） — AI
+- [ ] 群组权限管理 — AI
+
+---
+
+### M9: 信用 / 还款 / 清算
+
+> 现金流走传统模式，清算通过 Stripe 保证金扣除 + 法律追索，不需要链上合约
+
+| 子功能 | UI | 后端 | 说明 |
+|--------|:--:|:----:|------|
+| 信用评分计算 | ❌ | ✅ | 后端完整（3 级体系），无前端入口 |
+| 信用历史查看 | ❌ | ✅ | API 有，前端未对接 |
+| 还款计划管理 | ❌ | ✅ | 后端完整，前端 UI 缺失 |
+| 逾期检测 | — | ✅ | 定时任务已实现 |
+| 清算触发 | ❌ | ✅ | 后端有清算算法，走 Stripe 保证金扣除 |
+| 瀑布分配 | — | ✅ | 后端有逻辑，通过 Stripe 转账执行 |
+
+**上线待办：**
+- [ ] 信用评分前端展示（Portfolio 或 Profile 页） — AI
+- [ ] 还款管理前端 UI — AI
+- [ ] Stripe 保证金扣除 + 退款流程 — AI
+- [ ] 逾期通知（邮件 / 站内信） — AI
+
+---
+
+### M10: 部署 & 基础设施
+
+| 子功能 | 状态 | 说明 |
+|--------|:----:|------|
+| 本地开发环境 | ✅ | 前端 :3000 + 后端 :3002 |
+| 生产前端部署 | ❌ | 未部署 |
+| 生产后端部署 | ❌ | 未部署 |
+| 生产数据库 | ❌ | 当前 SQLite，生产需 PostgreSQL |
+| HTTPS + 域名 | ❌ | 需要购买/配置 |
+| CI/CD | ❌ | 无自动化 |
+| 监控告警 | ❌ | 无 |
+
+**上线待办：**
+- [ ] 生产数据库（PostgreSQL） — 👤 + AI
+- [ ] 前端部署（Vercel / Cloudflare Pages） — AI
+- [ ] 后端部署（PM2 + Nginx） — AI（👤 提供服务器）
+- [ ] HTTPS + 域名配置 — 👤
+- [ ] CI/CD（GitHub Actions） — AI
+- [ ] 监控 + 日志 + 错误收集 — AI
+
+---
+
+## 📦 开发阶段完成情况
+
+### Phase 0-5 核心建设
+
+| 阶段 | 内容 | 完成度 | 负责 |
+|------|------|:------:|:----:|
+| **Phase 0** 基础设施 | React 19 + Vite + Express + Prisma + SQLite + JWT + WebSocket | ✅ 100% | AI |
+| **Phase 1** 认证 & AI 聊天 | 邮箱/OAuth/Privy 登录 + AI 聊天(SSE) + 30+ 代币支持 | ✅ 100% | AI |
+| **Phase 2** 前端对接 API | Market / Portfolio / Trade / Dashboard 前端真实 API 对接 | ✅ 95% | AI |
+| **Phase 3** 投资核心流程 | invest / revoke + 募资状态机 + WS 通知 | ✅ 100% | AI |
+| **Phase 4** Swap / AIUSD | mint / redeem + 分级费率 + swap-quote 预览 | ✅ 100% | AI |
+| **Phase 5** 项目申请 | 企业认证 API + 项目申请 API（后端完成） | ⚠️ 75% | AI + 👤 |
+
+### Phase 6-11 功能完善
+
+| 阶段 | 内容 | 完成度 | 负责 |
+|------|------|:------:|:----:|
+| **Phase 6** 信用评分 | 3 级体系 + 10+ 评分规则 + API + 前端展示 | ✅ 100% | AI |
+| **Phase 7** 还款追踪 | 还款模型 + 定时任务 + 逾期检测（缺前端 UI） | ⚠️ 80% | AI |
+| **Phase 8** 清算机制 | 清算 + 瀑布分配算法（缺合约对接） | ⚠️ 70% | AI + 合约 |
+| **Phase 9** 治理系统 | 提案 / 投票 / 参数自动生效 | ✅ 100% | AI |
+| **Phase 10** 设置 & KYC | Profile + 钱包展示（缺 KYC） | ⚠️ 60% | AI + 👤 |
+| **Phase 11** 前端优化 | Toast + ErrorBoundary + 响应式 | ⚠️ 70% | AI |
+
+### Phase 12-14 上线准备
+
+| 阶段 | 内容 | 完成度 | 负责 |
+|------|------|:------:|:----:|
+| **Phase 12** 前端部署 | Vite build + 静态托管 + 域名 + HTTPS | ⬚ 0% | AI + 👤 |
+| **Phase 13** 后端部署 | PM2 + Nginx + PostgreSQL + 环境变量 | ⬚ 0% | AI + 👤 |
+| **Phase 14** 你的工作 | 域名 / 服务器 / KYC / 合约 / 合规 | ⬚ 0% | 👤 |
+
+---
+
+## 👤 你的工作清单
+
+> [!WARNING]
+> 以下事项需要你（项目负责人）亲自操作，AI 无法代劳
+
+| 类别 | 事项 | 优先级 |
+|------|------|:------:|
+| 🔑 **域名 & 服务器** | 购买/配置域名（lokacash.com / 用现有 nftkashai.online） | 🔴 P0 |
+| | 提供服务器 SSH 凭证 → AI 远程部署 | 🔴 P0 |
+| | DNS A 记录指向服务器 IP | 🔴 P0 |
+| 🔐 **第三方服务** | Privy 生产环境 App ID | 🔴 P0 |
+| | AI API 额度确认（lingyaai.cn 或切换 DeepSeek） | 🟡 P1 |
+| | KYC 服务选型（Sumsub / Onfido）+ API Key | 🟡 P1 |
+| | Stripe Connect 平台号（收入验证用） | 🟡 P1 |
+| ⛓️ **区块链 & 合约** | Base 链部署钱包（ETH Gas） | 🟡 P1 |
+| | AIUSD 合约体系（4 个合约） | 🟡 P1 |
+| | 对接 Ondo Finance（OUSG 国债购买） | 🟡 P1 |
+| | SBT 合约（发行方身份凭证） | 🟢 P2 |
+| | 合约审计 | 🟢 P2 |
+| | AIUSD 免责法律声明（非理财产品） | 🟡 P1 |
+| 📋 **内容 & 合规** | 法律文件（用户协议 / 隐私政策 / 风险披露） | 🟡 P1 |
+| | 真实项目数据录入 | 🟡 P1 |
+| | 合规审查（MSB / SFC / MAS 牌照） | 🟢 P2 |
+| ✅ **上线前检查** | 真实账号全流程测试（注册→入金→投资→还款） | 🔴 P0 |
+| | Privy OAuth + AI API 生产环境测试 | 🔴 P0 |
+| | 性能压测（50 并发） | 🟢 P2 |
+
+---
+
+## ⏭️ 下一步行动
+
+> [!NOTE]
+> **最快可上线 MVP**：AI Chat（仅聊天）+ Market（仅浏览）+ Auth + 部署
+> 预计额外工作量：AI 2-3 天 + 你提供服务器/域名/Privy ID
+
+```mermaid
+gantt
+    title MVP 上线路径
+    dateFormat  YYYY-MM-DD
+    section 你的工作
+    提供服务器 & 域名       :crit, a1, 2026-03-14, 2d
+    Privy 生产 App ID      :crit, a2, 2026-03-14, 1d
+    真实项目数据            :a3, after a1, 3d
+    section AI 的工作
+    后端部署 (PM2+Nginx)    :b1, after a1, 1d
+    前端部署 (Vercel)       :b2, after b1, 1d
+    环境变量 & 测试         :b3, after b2, 1d
+    section 上线
+    MVP 发布               :milestone, after b3, 0d
+```
+
+> **当前状态**：Phase 0-11 核心代码完成，本地可完整运行。30+ Base 链代币 + 10 个现金流项目。  
+> **卡点**：部署需要你提供服务器 SSH 凭证和域名。第三方服务（KYC / Stripe / 合约）需要你申请。  
+> **下一步**：你提供服务器信息 → AI 帮你 Phase 12-13 部署 → 你完成 Phase 14 检查。
