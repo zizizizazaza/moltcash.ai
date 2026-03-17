@@ -223,6 +223,14 @@
       animation: idleGlow 3s ease-in-out infinite;
     }
 
+    /* Safe area for Capacitor / mobile notch & home indicator */
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .safe-top {
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+
     /* Hide scrollbar globally (keep scroll) */
     ::-webkit-scrollbar {
       display: none;
