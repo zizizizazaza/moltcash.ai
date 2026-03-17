@@ -2,7 +2,8 @@
  * Frontend API client for communicating with the backend server.
  */
 
-const API_BASE = '/api';
+// const API_BASE = '/api';
+const API_BASE = 'https://nftkashai.online/lokacash/api';
 
 class ApiClient {
   private token: string | null = null;
