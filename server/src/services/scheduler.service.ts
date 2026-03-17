@@ -9,6 +9,7 @@ let holdTimeInterval: ReturnType<typeof setInterval> | null = null;
 let proposalInterval: ReturnType<typeof setInterval> | null = null;
 let fundraiseInterval: ReturnType<typeof setInterval> | null = null;
 let endingSoonInterval: ReturnType<typeof setInterval> | null = null;
+let redemptionInterval: ReturnType<typeof setInterval> | null = null;
 
 // ==================== Expired Fundraise Detection ====================
 // Auto-fail fundraises that pass durationDays without reaching Soft Cap
@@ -387,6 +388,53 @@ async function finalizeExpiredProposals() {
   }
 }
 
+// ==================== Redemption Queue Processing ====================
+// Process queued large AIUSD redemptions that have passed T+7
+async function processRedemptionQueue() {
+  try {
+    const now = new Date();
+
+    const ready = await prisma.redemptionQueue.findMany({
+      where: { status: 'queued', processAfter: { lte: now } },
+    });
+
+    if (ready.length === 0) return;
+
+    for (const entry of ready) {
+      await prisma.$transaction(async (tx) => {
+        // Mark as completed
+        await tx.redemptionQueue.update({
+          where: { id: entry.id },
+          data: { status: 'completed', completedAt: now },
+        });
+
+        // Update associated QUEUED transaction to COMPLETED
+        await tx.transaction.updateMany({
+          where: { userId: entry.userId, type: 'REDEEM', status: 'QUEUED', asset: 'AIUSD' },
+          data: { status: 'COMPLETED' },
+        });
+      });
+
+      // Notify user
+      try {
+        const { notify } = await import('./notification.service.js');
+        await notify({
+          userId: entry.userId,
+          type: 'system',
+          title: 'Redemption Complete',
+          body: `Your AIUSD redemption of $${entry.netAmount.toFixed(2)} has been processed.`,
+          refType: 'redemption',
+          refId: entry.id,
+        });
+      } catch { /* non-critical */ }
+    }
+
+    console.log(`[Scheduler] Processed ${ready.length} queued redemptions`);
+  } catch (err) {
+    console.error('[Scheduler] Redemption queue processing failed:', err);
+  }
+}
+
 // ==================== Start / Stop ====================
 export function startScheduler() {
   console.log('[Scheduler] Starting background jobs...');
@@ -406,6 +454,9 @@ export function startScheduler() {
   // Finalize expired proposals every 30 minutes
   proposalInterval = setInterval(finalizeExpiredProposals, 30 * 60 * 1000);
 
+  // Process redemption queue every 30 minutes
+  redemptionInterval = setInterval(processRedemptionQueue, 30 * 60 * 1000);
+
   // Run once immediately on startup (after 5s delay for DB warmup)
   setTimeout(() => {
     checkExpiredFundraises();
@@ -413,6 +464,7 @@ export function startScheduler() {
     checkOverduePayments();
     checkHoldTimeMilestones();
     finalizeExpiredProposals();
+    processRedemptionQueue();
   }, 5000);
 }
 
@@ -422,5 +474,6 @@ export function stopScheduler() {
   if (overdueInterval) clearInterval(overdueInterval);
   if (holdTimeInterval) clearInterval(holdTimeInterval);
   if (proposalInterval) clearInterval(proposalInterval);
+  if (redemptionInterval) clearInterval(redemptionInterval);
   console.log('[Scheduler] Background jobs stopped');
 }

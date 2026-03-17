@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { setupSocket } from './socket/index.js';
 import prisma from './db.js';
 import { startScheduler, stopScheduler } from './services/scheduler.service.js';
+import { startPriceService, stopPriceService } from './services/price.service.js';
 
 const server = createServer(app);
 
@@ -17,6 +18,7 @@ async function main() {
 
     // Start background jobs
     startScheduler();
+    startPriceService();
 
     server.listen(config.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.port}`);
@@ -37,6 +39,7 @@ async function shutdown(signal: string) {
   console.log(`\n${signal} received, graceful shutdown...`);
 
   stopScheduler();
+  stopPriceService();
 
   // Stop accepting new connections, give 10s for in-flight requests
   const forceTimeout = setTimeout(() => {

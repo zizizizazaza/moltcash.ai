@@ -310,8 +310,22 @@ const Market: React.FC = () => {
   }, []);
 
   const filteredAssets = useMemo(() => {
-    if (filter === 'All') return assets;
-    return assets.filter(a => a.status === filter);
+    const statusPriority: Record<string, number> = {
+      'Fundraising': 0, 'Ending Soon': 0,
+      'Funded': 1, 'Sold Out': 1,
+      'Failed': 2,
+    };
+    const sorted = [...assets].sort((a, b) => {
+      const pa = statusPriority[a.status] ?? 9;
+      const pb = statusPriority[b.status] ?? 9;
+      if (pa !== pb) return pa - pb;
+      // 同状态下，按募资进度从高到低
+      const progA = a.targetAmount > 0 ? a.raisedAmount / a.targetAmount : 0;
+      const progB = b.targetAmount > 0 ? b.raisedAmount / b.targetAmount : 0;
+      return progB - progA;
+    });
+    if (filter === 'All') return sorted;
+    return sorted.filter(a => a.status === filter);
   }, [filter, assets]);
 
   useEffect(() => {
@@ -583,67 +597,116 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
         </div>
       </div>
 
-      {/* Progress Bar Section (Compact & Premium) */}
-      <div className="mb-6 sm:mb-10 flex flex-col md:flex-row items-stretch md:items-center gap-4 sm:gap-8 bg-white border border-gray-100 rounded-2xl sm:rounded-[28px] p-4 sm:p-6 shadow-sm">
-        <div className="flex-1 w-full space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <p className="text-[10px] font-black tracking-[0.2em] text-gray-400 uppercase">Campaign Progress</p>
-              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full shadow-sm ${
-                asset.status === 'Failed' ? 'bg-gray-400' :
-                  asset.status === 'Funded' ? 'bg-blue-600' : 'bg-black'
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${
-                  asset.status === 'Failed' ? 'bg-gray-200' :
-                    asset.status === 'Funded' ? 'bg-blue-200' : 'bg-[#00E676] animate-pulse'
-                }`}></div>
-                <span className="text-[9px] font-bold text-white tracking-widest leading-none">
-                  {asset.status === 'Fundraising' || asset.status === 'Ending Soon' ? 'FUNDRAISING' :
-                    asset.status === 'Funded' ? 'FUNDED' :
-                      asset.status === 'Failed' ? 'FAILED' :
-                        asset.status.toUpperCase()}
-                </span>
-              </div>
+      {/* Progress Bar / Funded Banner Section */}
+      {isFunded ? (
+        /* ── Fully Funded Banner ── */
+        <div className="mb-6 sm:mb-10 rounded-2xl sm:rounded-[28px] overflow-hidden border border-emerald-100 shadow-sm">
+          {/* Top strip */}
+          <div className="bg-emerald-500 px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎉</span>
+              <span className="text-white font-black tracking-wide text-sm">Fully Funded</span>
             </div>
-            <p className="text-[12px] font-black text-black tracking-tight">{progress.toFixed(1)}% <span className="text-gray-400 font-bold ml-0.5">Funded</span></p>
+            <span className="text-emerald-100 text-[11px] font-bold tracking-widest uppercase">Awaiting Returns</span>
           </div>
-          <div className="flex items-center gap-5">
-            <div className="flex-1 h-3 bg-white rounded-full overflow-hidden border border-gray-200 relative">
-              <div
-                className="h-full bg-[#00E676] transition-all duration-1000 relative z-10"
-                style={{ width: `${progress}%` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-              </div>
+          {/* Stats row */}
+          <div className="bg-white px-6 py-5 grid grid-cols-3 gap-6">
+            <div className="space-y-1">
+              <p className="text-[9px] font-black tracking-[0.18em] text-gray-400 uppercase">Total Raised</p>
+              <p className="text-xl sm:text-2xl font-black text-black tracking-tight">${asset.raisedAmount.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400 font-medium">of ${(asset.targetAmount / 1000).toFixed(0)}k target</p>
             </div>
-            <p className="text-[10px] font-black text-gray-400 whitespace-nowrap italic tracking-tighter">12 Days Remained</p>
+            <div className="space-y-1">
+              <p className="text-[9px] font-black tracking-[0.18em] text-gray-400 uppercase">Funded</p>
+              <p className="text-xl sm:text-2xl font-black text-emerald-500 tracking-tight">{progress.toFixed(1)}%</p>
+              <p className="text-[10px] text-gray-400 font-medium">of goal reached</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[9px] font-black tracking-[0.18em] text-gray-400 uppercase">Backers</p>
+              <p className="text-xl sm:text-2xl font-black text-black tracking-tight">{asset.backersCount}</p>
+              <p className="text-[10px] text-gray-400 font-medium">investors backed</p>
+            </div>
           </div>
         </div>
-
-        <div className="hidden md:block w-px h-12 bg-gradient-to-b from-transparent via-gray-100 to-transparent" />
-
-        <div className="flex items-center gap-4 sm:gap-8 shrink-0 flex-wrap">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Currently Pledged</p>
-            <div className="flex items-baseline gap-1.5">
-              <p className="text-xl sm:text-3xl font-black text-black tracking-tight">${asset.raisedAmount.toLocaleString()}</p>
-              <p className="text-sm sm:text-lg font-black text-gray-400 tracking-tight">/ ${(asset.targetAmount / 1000).toFixed(0)}k</p>
+      ) : asset.status === 'Failed' ? (
+        /* ── Failed Banner ── */
+        <div className="mb-6 sm:mb-10 rounded-2xl sm:rounded-[28px] overflow-hidden border border-gray-200 shadow-sm">
+          <div className="bg-gray-700 px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <circle cx="12" cy="12" r="9" />
+                <path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6" />
+              </svg>
+              <span className="text-white font-black tracking-wide text-sm">Fundraising Failed</span>
+            </div>
+            <span className="text-gray-400 text-[11px] font-bold tracking-widest uppercase">Refunded</span>
+          </div>
+          <div className="bg-gray-50 px-6 py-5 grid grid-cols-3 gap-6">
+            <div className="space-y-1">
+              <p className="text-[9px] font-black tracking-[0.18em] text-gray-400 uppercase">Total Raised</p>
+              <p className="text-xl sm:text-2xl font-black text-gray-700 tracking-tight">${asset.raisedAmount.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400 font-medium">of ${(asset.targetAmount / 1000).toFixed(0)}k target</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[9px] font-black tracking-[0.18em] text-gray-400 uppercase">Shortfall</p>
+              <p className="text-xl sm:text-2xl font-black text-gray-500 tracking-tight">${(asset.targetAmount - asset.raisedAmount).toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400 font-medium">below goal · {progress.toFixed(1)}% reached</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[9px] font-black tracking-[0.18em] text-gray-400 uppercase">Backers</p>
+              <p className="text-xl sm:text-2xl font-black text-gray-700 tracking-tight">{asset.backersCount}</p>
+              <p className="text-[10px] text-gray-400 font-medium">pledges refunded</p>
             </div>
           </div>
-          <div className="flex flex-col items-end">
-            <div className="flex -space-x-2 mb-1.5">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-gray-50 flex items-center justify-center overflow-hidden shadow-sm">
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
+        </div>
+      ) : (
+        /* ── Progress Bar (Fundraising) ── */
+        <div className="mb-6 sm:mb-10 flex flex-col md:flex-row items-stretch md:items-center gap-4 sm:gap-8 bg-white border border-gray-100 rounded-2xl sm:rounded-[28px] p-4 sm:p-6 shadow-sm">
+          <div className="flex-1 w-full space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <p className="text-[10px] font-black tracking-[0.2em] text-gray-400 uppercase">Campaign Progress</p>
+              </div>
+              <p className="text-[12px] font-black text-black tracking-tight">{progress.toFixed(1)}% <span className="text-gray-400 font-bold ml-0.5">Funded</span></p>
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="flex-1 h-3 bg-white rounded-full overflow-hidden border border-gray-200 relative">
+                <div
+                  className="h-full bg-[#00E676] transition-all duration-1000 relative z-10"
+                  style={{ width: `${progress}%` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
                 </div>
-              ))}
+              </div>
+              <p className="text-[10px] font-black text-gray-400 whitespace-nowrap italic tracking-tighter">12 Days Remained</p>
             </div>
-            <p className="text-[9px] font-black text-gray-400 tracking-tight">
-              <span className="text-black font-black">{asset.backersCount}</span> Backers
-            </p>
+          </div>
+
+          <div className="hidden md:block w-px h-12 bg-gradient-to-b from-transparent via-gray-100 to-transparent" />
+
+          <div className="flex items-center gap-4 sm:gap-8 shrink-0 flex-wrap">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Currently Pledged</p>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-xl sm:text-3xl font-black text-black tracking-tight">${asset.raisedAmount.toLocaleString()}</p>
+                <p className="text-sm sm:text-lg font-black text-gray-400 tracking-tight">/ ${(asset.targetAmount / 1000).toFixed(0)}k</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end">
+              <div className="flex -space-x-2 mb-1.5">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-gray-50 flex items-center justify-center overflow-hidden shadow-sm">
+                    <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[9px] font-black text-gray-400 tracking-tight">
+                <span className="text-black font-black">{asset.backersCount}</span> Backers
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Primary Metrics Grid (4 Cards) */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
@@ -673,7 +736,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
             <p className="text-xs sm:text-sm font-black text-black truncate" title={asset.issuer}>{asset.issuer}</p>
             <div className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[7px] text-white shrink-0">{'\u2713'}</div>
           </div>
-          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{asset.backersCount} investors backing</p>
+
         </div>
 
         <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-200 transition-all flex flex-col justify-between">
@@ -1240,58 +1303,6 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
               </div>
             </section>
 
-            {/* 2. AI Risk Report */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-4">
-                <h3 className="text-base font-bold text-black">Loka AI Risk scoring</h3>
-                <div className="h-px flex-1 bg-gray-100" />
-              </div>
-              <div className="p-4 sm:p-8 bg-purple-50 rounded-2xl sm:rounded-[40px] border-2 border-purple-100/50 relative overflow-hidden group">
-                <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-purple-200/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
-                <div className="relative z-10 space-y-6">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="space-y-1 min-w-0">
-                      <div className="p-2 bg-purple-600 rounded-lg w-fit text-white text-[10px] sm:text-xs">Loka AI v2.4</div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-purple-400 mt-2">Analysis Engine: Predictive Default Model</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-3xl sm:text-5xl font-serif italic text-purple-600">AAA</div>
-                      <p className="text-xs font-bold text-purple-400">98/100 Confidence</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-1">Key Strengths</p>
-                      <ul className="space-y-2">
-                        {[
-                          'Market Fit: AI computing demand is in a phase of exponential growth.',
-                          'Cash Flow Quality: Stripe lock-box account with mandatory repayment mechanism.',
-                          'Strong Collateral: Physical GPU lien + Accounts receivable security interest.'
-                        ].map((point, i) => (
-                          <li key={i} className="flex items-center gap-3 text-[11px] text-purple-800 font-medium italic">
-                            <span className="text-[#00E676] text-lg">✓</span> {point}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-bold text-purple-900 border-b border-purple-100 pb-1">Risk Observations</p>
-                      <ul className="space-y-2">
-                        {[
-                          'Geopolitics: Data center electricity rates in Tokyo impacted by energy price volatility.',
-                          'Obsolescence: Risk of H100 computing power facing depreciation after 24 months.'
-                        ].map((point, i) => (
-                          <li key={i} className="flex items-center gap-3 text-[11px] text-purple-800 font-medium italic">
-                            <span className="text-orange-400 text-lg">⚠️</span> {point}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
           </div>
         )}
       </div>

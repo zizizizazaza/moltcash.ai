@@ -126,10 +126,10 @@ const App: React.FC = () => {
         {/* Bottom Nav Links */}
         <div className="mt-auto flex flex-col gap-6 w-full px-3 relative">
           <SideNavButton
-            active={false}
-            onClick={() => isWalletConnected ? window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' })) : connectWallet()}
-            icon={<Icons.CreditCard />}
-            label="Deposit"
+            active={currentPage === Page.API}
+            onClick={() => setCurrentPage(Page.API)}
+            icon={<Icons.Code />}
+            label="API"
           />
           <div className="relative">
             <SideNavButton
@@ -157,6 +157,7 @@ const App: React.FC = () => {
           {currentPage === Page.CHAT && <Chat />}
           {currentPage === Page.GROUPS && <Groups />}
           {currentPage === Page.TRADE && <Trade />}
+          {currentPage === Page.API && <ApiPage />}
         </div>
       </main>
 
@@ -165,7 +166,7 @@ const App: React.FC = () => {
         <MobileTabButton active={currentPage === Page.CHAT} onClick={() => setCurrentPage(Page.CHAT)} icon={<Icons.Assets />} label="Assets" />
         <MobileTabButton active={currentPage === Page.GROUPS} onClick={() => setCurrentPage(Page.GROUPS)} icon={<Icons.Groups />} label="Groups" />
         <MobileTabButton active={currentPage === Page.TRADE} onClick={() => setCurrentPage(Page.TRADE)} icon={<Icons.Market />} label="Market" />
-        <MobileTabButton active={false} onClick={() => isWalletConnected ? window.dispatchEvent(new CustomEvent('loka-open-modal', { detail: 'deposit' })) : connectWallet()} icon={<Icons.CreditCard />} label="Deposit" />
+        <MobileTabButton active={currentPage === Page.API} onClick={() => setCurrentPage(Page.API)} icon={<Icons.Code />} label="API" />
         <MobileTabButton
           active={currentPage === Page.PORTFOLIO}
           onClick={() => { if (!isWalletConnected) connectWallet(); else setCurrentPage(Page.PORTFOLIO); }}
@@ -196,6 +197,50 @@ const MobileTabButton: React.FC<{ active: boolean; label: string; icon: React.Re
     <div className={`${customClass}`}>{icon}</div>
     <span className="text-[10px] font-bold tracking-wide">{label}</span>
   </button>
+);
+
+const ApiPage: React.FC = () => (
+  <div className="h-full flex flex-col items-center justify-center p-8 overflow-y-auto">
+    <div className="max-w-2xl w-full space-y-8">
+      {/* Header */}
+      <div className="text-center space-y-3">
+        <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+        </div>
+        <h1 className="text-2xl font-black text-black tracking-tight">Loka API</h1>
+        <p className="text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
+          Enterprise-grade APIs for integrating cash flow asset investment, AIUSD stablecoin, and AI-powered risk analysis into your platform.
+        </p>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
+          <span className="text-xs">⏳</span>
+          <span className="text-[11px] font-bold text-amber-600 tracking-wider uppercase">Coming Soon</span>
+        </div>
+      </div>
+
+      {/* API Modules */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {[
+          { icon: '📊', title: 'Cash Flow Assets', desc: 'List, query, and invest in RWA cash flow notes programmatically.' },
+          { icon: '🪙', title: 'AIUSD Protocol', desc: 'Mint, redeem, and check balances for the treasury-backed stablecoin.' },
+          { icon: '🤖', title: 'AI Risk Engine', desc: 'Access AI-powered credit scoring and project risk analysis.' },
+          { icon: '🔐', title: 'Auth & Webhooks', desc: 'API key management, OAuth, and real-time event webhooks.' },
+        ].map(({ icon, title, desc }) => (
+          <div key={title} className="p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-200 transition-all hover:shadow-sm">
+            <div className="text-2xl mb-3">{icon}</div>
+            <h3 className="text-sm font-bold text-black mb-1">{title}</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">{desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <div className="text-center">
+        <p className="text-xs text-gray-300 font-medium">
+          Interested in early access? Contact us at <span className="text-black font-bold">api@loka.cash</span>
+        </p>
+      </div>
+    </div>
+  </div>
 );
 
 export default App;

@@ -8,7 +8,7 @@ import { useVoice } from '../hooks/useVoice';
 
 // Parse [TRADE_ACTION]...[/TRADE_ACTION] blocks from AI responses
 interface TradeAction {
-    type: 'swap' | 'invest' | 'mint';
+    type: 'invest' | 'mint';
     action: 'buy' | 'sell' | 'mint' | 'redeem';
     token?: string;
     tokenSymbol?: string;
@@ -76,6 +76,9 @@ const Chat: React.FC = () => {
     const [marketAssets, setMarketAssets] = useState<MarketAsset[]>([]);
     const [detailAsset, setDetailAsset] = useState<MarketAsset | null>(null);
     const [tradeExecuting, setTradeExecuting] = useState<Record<number, 'pending' | 'success' | 'error'>>({});
+    const [conversations, setConversations] = useState<{ id: string; title: string; time: string; messageCount: number; firstMessageAt: string; lastMessageAt: string }[]>([]);
+    const [activeConvId, setActiveConvId] = useState<string | null>(null);
+    const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID());
     const abortControllerRef = useRef<AbortController | null>(null);
     const pendingVoiceSendRef = useRef(false);
 
@@ -107,11 +110,11 @@ const Chat: React.FC = () => {
 
     useEffect(() => {
         const phrases = [
-            'Buy 0.1 ETH on Base...',
             'Invest $5,000 in ComputeDAO...',
             'Compare yields across all active pools...',
             'Show me the top performing assets...',
-            'Swap 500 USDC to WBTC...',
+            'Mint 1000 AIUSD...',
+            'Analyze AI Agent Marketplace risk...',
         ];
         let phraseIdx = 0;
         let charIdx = 0;
@@ -149,12 +152,60 @@ const Chat: React.FC = () => {
         return () => clearTimeout(timeout);
     }, [isInputFocused, inputText]);
 
-    // Fetch market assets for project detail view
+    // Format conversation time label
+    const formatConvTime = (iso: string) => {
+        const d = new Date(iso);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Yesterday';
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    // Fetch conversations list
+    const loadConversations = useCallback(() => {
+        api.getConversations().then(setConversations).catch(() => {});
+    }, []);
+
+    // Fetch market assets for project detail view + load conversations
     useEffect(() => {
         api.getProjects().then(data => {
             if (Array.isArray(data) && data.length > 0) setMarketAssets(data.map(mapApiProject));
         }).catch(() => {});
+        loadConversations();
     }, []);
+
+    // Load a conversation's messages from API
+    const loadConversation = async (conv: typeof conversations[0]) => {
+        setActiveConvId(conv.id);
+        setSessionId(conv.id); // reuse sessionId so new messages go into same conv
+        try {
+            const msgs = await api.getChatHistory(undefined, undefined, conv.id);
+            setMessages(msgs.map((m: any) => ({
+                role: m.role,
+                content: m.content,
+                timestamp: new Date(m.createdAt).toLocaleTimeString(),
+            })));
+        } catch {
+            setMessages([]);
+        }
+        setLeftSidebarCollapsed(true);
+    };
+
+    // Delete a conversation
+    const deleteConversation = async (convId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // prevent triggering loadConversation
+        try {
+            await api.deleteConversation(convId);
+            // If we deleted the active conversation, clear chat
+            if (activeConvId === convId) {
+                setMessages([]);
+                setActiveConvId(null);
+                setSessionId(crypto.randomUUID());
+            }
+            loadConversations();
+        } catch { /* ignore */ }
+    };
 
     useEffect(() => {
         const pendingProject = sessionStorage.getItem('pending_chat_project');
@@ -228,7 +279,7 @@ const Chat: React.FC = () => {
             const response = await fetch('/api/chat/stream', {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ content: text, agentId: activeAgent, assetContext }),
+                body: JSON.stringify({ content: text, agentId: activeAgent, sessionId, assetContext }),
                 signal: abortController.signal,
             });
 
@@ -280,6 +331,8 @@ const Chat: React.FC = () => {
                 }
                 return updated;
             });
+            // Refresh conversation list after AI responds
+            loadConversations();
             // Auto-speak in voice mode
             if (voice.voiceMode && fullContent) {
                 voice.speak(fullContent);
@@ -515,25 +568,6 @@ const Chat: React.FC = () => {
                 } else {
                     throw new Error(`Project "${action.projectName}" not found.`);
                 }
-            } else if (action.type === 'swap') {
-                // Web3 token swap — call backend API
-                const tokenAmount = parseFloat(action.amount);
-                const result = await api.swapToken({
-                    token: action.token || action.tokenSymbol || '',
-                    tokenSymbol: action.tokenSymbol || action.token || '',
-                    action: action.action as 'buy' | 'sell',
-                    amount: tokenAmount,
-                    amountType: (action.amountType as 'token' | 'usd') || 'token',
-                    estimatedUSD: action.estimatedUSD ? parseFloat(action.estimatedUSD) : undefined,
-                    chain: action.chain || 'base',
-                });
-                setTradeExecuting(prev => ({ ...prev, [index]: 'success' }));
-                const actionLabel = result.action === 'buy' ? 'Purchased' : 'Sold';
-                setMessages(prev => [...prev, {
-                    role: 'assistant',
-                    content: `✅ ${actionLabel} **${result.tokenAmount} ${result.token}** at $${result.pricePerToken.toLocaleString()}/token.\n\nTotal: **$${result.totalUSD.toLocaleString()} USDC** (incl. ${result.slippage} slippage + $${result.gasFee} gas)\nTx: \`${result.transaction.txHash?.slice(0, 18)}...\`\nChain: ${result.chain}\n\nYour portfolio has been updated. Check the Portfolio tab for your holdings.`,
-                    timestamp: new Date().toLocaleTimeString()
-                }]);
             } else if (action.type === 'mint') {
                 // Mint/redeem AIUSD
                 const amount = parseFloat(action.amount);
@@ -567,15 +601,12 @@ const Chat: React.FC = () => {
 
 
 
-    const chatSessions = [
-        { id: '1', title: 'Analyze ComputeDAO GPU', time: 'Today', active: true },
-        { id: '2', title: 'Buy AI Agent Marketplace', time: 'Today', active: false },
-        { id: '3', title: 'Market Maker AI yield query', time: 'Yesterday', active: false },
-        { id: '4', title: 'Compare pool performance', time: 'Yesterday', active: false },
-        { id: '5', title: 'MEV Searcher risk analysis', time: 'Mar 7', active: false },
-        { id: '6', title: 'Portfolio rebalance strategy', time: 'Mar 6', active: false },
-        { id: '7', title: 'Shopify Merchant Cluster X', time: 'Mar 5', active: false },
-    ];
+    const chatSessions = conversations.map(c => ({
+        id: c.id,
+        title: c.title,
+        time: formatConvTime(c.time),
+        active: c.id === activeConvId,
+    }));
 
     return (
         <div className="flex flex-col h-full bg-[#fafafa] text-black overflow-hidden font-sans">
@@ -597,34 +628,45 @@ const Chat: React.FC = () => {
                         </button>
                     </div>
                     <button
-                        onClick={() => { setMessages([]); setLeftSidebarCollapsed(true); }}
+                        onClick={() => { setMessages([]); setActiveConvId(null); setSessionId(crypto.randomUUID()); setLeftSidebarCollapsed(true); }}
                         className="mx-3 mb-3 px-3 py-2.5 bg-black text-white rounded-xl text-[11px] font-bold tracking-wide hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                         New Chat
                     </button>
                     <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
+                        {chatSessions.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                <svg className="w-8 h-8 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                <p className="text-[11px] text-gray-400 font-medium">No conversations yet</p>
+                                <p className="text-[10px] text-gray-300 mt-1">Start chatting to see history here</p>
+                            </div>
+                        )}
                         {chatSessions.map((session) => (
-                            <button
+                            <div
                                 key={session.id}
-                                onClick={() => {
-                                    setMessages([
-                                        { role: 'user', content: session.title, timestamp: new Date().toLocaleTimeString() },
-                                    ]);
-                                    handleProjectClick(session.title.replace(/^(Analyze |Buy |Compare |View )/, ''));
-                                    setLeftSidebarCollapsed(true);
-                                }}
-                                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition-all group flex items-start gap-2.5 ${session.active
+                                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition-all group/item flex items-start gap-2.5 cursor-pointer ${session.active
                                     ? 'bg-white shadow-sm border border-gray-100 font-bold text-black'
                                     : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-black font-medium'
                                     }`}
+                                onClick={() => {
+                                    const conv = conversations.find(c => c.id === session.id);
+                                    if (conv) loadConversation(conv);
+                                }}
                             >
-                                <svg className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${session.active ? 'text-green-500' : 'text-gray-300 group-hover:text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                <svg className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${session.active ? 'text-green-500' : 'text-gray-300 group-hover/item:text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                                 <div className="flex-1 min-w-0">
                                     <p className="truncate leading-tight">{session.title}</p>
                                     <p className="text-[10px] text-gray-400 mt-0.5">{session.time}</p>
                                 </div>
-                            </button>
+                                <button
+                                    onClick={(e) => deleteConversation(session.id, e)}
+                                    className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover/item:opacity-100 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 mt-0.5"
+                                    title="Delete conversation"
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -1453,21 +1495,18 @@ const Chat: React.FC = () => {
                                                                             <div className="mt-4 p-4 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                                                                 <div className="flex items-center gap-3">
                                                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm ${
-                                                                                        tradeAction.type === 'swap' ? 'bg-blue-100 text-blue-600' :
                                                                                         tradeAction.type === 'invest' ? 'bg-green-100 text-green-600' :
                                                                                         'bg-violet-100 text-violet-600'
                                                                                     }`}>
-                                                                                        {tradeAction.type === 'swap' ? '⇄' : tradeAction.type === 'invest' ? '📈' : '🪙'}
+                                                                                        {tradeAction.type === 'invest' ? '📈' : '🪙'}
                                                                                     </div>
                                                                                     <div className="flex-1">
                                                                                         <p className="text-xs font-black text-black tracking-wide">
-                                                                                            {tradeAction.type === 'swap' ? `${tradeAction.action === 'buy' ? 'Buy' : 'Sell'} ${tradeAction.tokenSymbol || tradeAction.token}` :
-                                                                                             tradeAction.type === 'invest' ? `${tradeAction.action === 'buy' ? 'Invest in' : 'Revoke from'} ${tradeAction.projectName}` :
+                                                                                            {tradeAction.type === 'invest' ? `${tradeAction.action === 'buy' ? 'Invest in' : 'Revoke from'} ${tradeAction.projectName}` :
                                                                                              `${tradeAction.action === 'mint' ? 'Mint' : 'Redeem'} AIUSD`}
                                                                                         </p>
                                                                                         <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">
-                                                                                            {tradeAction.type === 'swap' ? `On ${tradeAction.chain || 'Base'} Network` :
-                                                                                             tradeAction.type === 'invest' ? 'Cash Flow Marketplace' : 'AIUSD Protocol'}
+                                                                                            {tradeAction.type === 'invest' ? 'Cash Flow Marketplace' : 'AIUSD Protocol'}
                                                                                         </p>
                                                                                     </div>
                                                                                     {tradeExecuting[i] === 'pending' && (
@@ -1490,7 +1529,7 @@ const Chat: React.FC = () => {
                                                                                     <div className="p-2.5 bg-white rounded-xl border border-gray-100">
                                                                                         <p className="text-[8px] font-black text-gray-400 tracking-widest uppercase">Amount</p>
                                                                                         <p className="text-sm font-black text-black mt-0.5">
-                                                                                            {tradeAction.amount} {tradeAction.type === 'swap' ? (tradeAction.amountType === 'usd' ? 'USD' : (tradeAction.tokenSymbol || tradeAction.token)) : (tradeAction.unit || 'USDC')}
+                                                                                            {tradeAction.amount} {tradeAction.unit || 'USDC'}
                                                                                         </p>
                                                                                     </div>
                                                                                     {tradeAction.estimatedUSD && (
@@ -1511,12 +1550,7 @@ const Chat: React.FC = () => {
                                                                                             <p className="text-sm font-black text-black mt-0.5">{tradeAction.term}</p>
                                                                                         </div>
                                                                                     )}
-                                                                                    {tradeAction.chain && tradeAction.type === 'swap' && (
-                                                                                        <div className="p-2.5 bg-white rounded-xl border border-gray-100">
-                                                                                            <p className="text-[8px] font-black text-gray-400 tracking-widest uppercase">Network</p>
-                                                                                            <p className="text-sm font-black text-black mt-0.5 capitalize">{tradeAction.chain}</p>
-                                                                                        </div>
-                                                                                    )}
+
                                                                                 </div>
 
                                                                                 {/* Confirm / Reject Buttons */}
@@ -1527,7 +1561,7 @@ const Chat: React.FC = () => {
                                                                                             className="flex-1 py-2.5 bg-black text-white text-xs font-black rounded-xl hover:bg-gray-800 transition-all shadow-lg shadow-black/10 tracking-wide flex items-center justify-center gap-2"
                                                                                         >
                                                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                                                                            Confirm {tradeAction.type === 'swap' ? 'Swap' : tradeAction.type === 'invest' ? 'Investment' : 'Transaction'}
+                                                                                            Confirm {tradeAction.type === 'invest' ? 'Investment' : 'Transaction'}
                                                                                         </button>
                                                                                         <button
                                                                                             onClick={() => handleActionResponse(i, false)}

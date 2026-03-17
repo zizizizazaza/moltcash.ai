@@ -6,6 +6,7 @@ import { authRequired, authOptional, type AuthRequest } from '../middleware/auth
 import { AppError } from '../middleware/errorHandler.js';
 import { financialLimiter } from '../middleware/rateLimiter.js';
 import { getTierDetails } from '../services/credit.service.js';
+import { getTokenPrice, getAllPrices, getPriceMeta } from '../services/price.service.js';
 
 // Base rate: 1 USDC = 1 AIUSD, fee based on credit tier
 const BASE_RATE = 1.0;
@@ -13,13 +14,37 @@ const BASE_APY = 5.24;
 
 const router = Router();
 
-// Get portfolio holdings
+// Get portfolio holdings — with real yield calculation
 router.get('/holdings', authRequired, async (req: AuthRequest, res, next) => {
   try {
     const holdings = await prisma.portfolioHolding.findMany({
       where: { userId: req.userId },
     });
-    res.json(holdings);
+
+    const now = new Date();
+    const enriched = holdings.map(h => {
+      // Calculate yield based on hold time × APY
+      const holdDays = (now.getTime() - h.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+      const dailyRate = (h.currentApy / 100) / 365;
+      const earnedYield = h.amount * dailyRate * holdDays;
+
+      // Get current market price for non-AIUSD tokens
+      const currentPrice = h.asset === 'AIUSD' ? 1.0 : (getTokenPrice(h.asset) ?? h.avgCost);
+      const currentValue = h.amount * currentPrice;
+      const costBasis = h.amount * h.avgCost;
+      const unrealizedPnL = currentValue - costBasis;
+
+      return {
+        ...h,
+        currentPrice,
+        currentValue: parseFloat(currentValue.toFixed(2)),
+        earnedYield: parseFloat(earnedYield.toFixed(4)),
+        unrealizedPnL: parseFloat(unrealizedPnL.toFixed(2)),
+        holdDays: Math.floor(holdDays),
+      };
+    });
+
+    res.json(enriched);
   } catch (err) {
     next(err);
   }
@@ -39,7 +64,7 @@ router.get('/history', authRequired, async (req: AuthRequest, res, next) => {
   }
 });
 
-// Get investments
+// Get investments — with real yield calculation
 router.get('/investments', authRequired, async (req: AuthRequest, res, next) => {
   try {
     const investments = await prisma.investment.findMany({
@@ -52,12 +77,31 @@ router.get('/investments', authRequired, async (req: AuthRequest, res, next) => 
             apy: true,
             status: true,
             coverImage: true,
+            durationDays: true,
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
-    res.json(investments);
+
+    const now = new Date();
+    const enriched = investments.map(inv => {
+      const holdDays = (now.getTime() - inv.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+      const apy = inv.project.apy;
+      const dailyRate = (apy / 100) / 365;
+      const earnedYield = inv.amount * dailyRate * holdDays;
+      const projectedTotal = inv.amount * dailyRate * inv.project.durationDays;
+
+      return {
+        ...inv,
+        earnedYield: parseFloat(earnedYield.toFixed(2)),
+        projectedTotalYield: parseFloat(projectedTotal.toFixed(2)),
+        holdDays: Math.floor(holdDays),
+        yieldProgress: Math.min(100, parseFloat(((holdDays / inv.project.durationDays) * 100).toFixed(1))),
+      };
+    });
+
+    res.json(enriched);
   } catch (err) {
     next(err);
   }
@@ -175,34 +219,16 @@ const swapSchema = z.object({
   chain: z.string().default('base'),
 });
 
-// Simulated price feed — in production: use CoinGecko / 0x quote API / Pyth oracle
-const TOKEN_PRICES: Record<string, number> = {
-  // Major tokens
-  ETH: 2450, WETH: 2450, WBTC: 62500, BTC: 62500,
-  // Stablecoins
-  USDC: 1.0, DAI: 1.0, USDT: 1.0,
-  // DeFi blue chips
-  LINK: 14.5, UNI: 7.2, AAVE: 95.0, COMP: 52.0, MKR: 1450,
-  SNX: 2.8, CRV: 0.55, SUSHI: 1.1, BAL: 3.8, YFI: 7200,
-  // Base ecosystem tokens
-  AERO: 1.35, WELL: 0.045, VIRTUAL: 0.82, DEGEN: 0.008,
-  BRETT: 0.095, TOSHI: 0.0003, PRIME: 8.5, RSR: 0.008, AXL: 0.72,
-  // L2 / Cross-chain
-  ARB: 1.1, OP: 2.3, MATIC: 0.72, SOL: 145,
-  // Liquid staking
-  cbETH: 2520, rETH: 2580, wstETH: 2600,
-  // Other popular  
-  PEPE: 0.0000085, SHIB: 0.000015, DOGE: 0.12, LDO: 1.9,
-};
-
-// Get supported tokens and prices
+// Get supported tokens and live prices (from CoinGecko with fallback)
 router.get('/supported-tokens', (_req, res) => {
-  const tokens = Object.entries(TOKEN_PRICES).map(([symbol, price]) => ({
+  const allPrices = getAllPrices();
+  const meta = getPriceMeta();
+  const tokens = Object.entries(allPrices).map(([symbol, price]) => ({
     symbol,
     price,
     chain: 'base',
   }));
-  res.json({ chain: 'base', count: tokens.length, tokens });
+  res.json({ chain: 'base', count: tokens.length, ...meta, tokens });
 });
 
 router.post('/swap', authRequired, financialLimiter, async (req: AuthRequest, res, next) => {
@@ -210,7 +236,7 @@ router.post('/swap', authRequired, financialLimiter, async (req: AuthRequest, re
     const data = swapSchema.parse(req.body);
     const userId = req.userId as string;
     const symbol = data.tokenSymbol.toUpperCase();
-    const price = TOKEN_PRICES[symbol];
+    const price = getTokenPrice(symbol);
     if (!price) throw new AppError(`Token ${symbol} is not supported`, 400);
 
     // Calculate amounts
@@ -300,7 +326,10 @@ router.post('/swap', authRequired, financialLimiter, async (req: AuthRequest, re
   }
 });
 
-// ============ Redeem AIUSD (AIUSD → USDC) ============
+// ============ Redeem AIUSD (AIUSD → USDC) with Queue for Large Amounts ============
+const INSTANT_REDEEM_LIMIT = 10000; // T+0 for ≤ $10,000
+const QUEUE_DAYS = 7; // T+7 for large redemptions
+
 router.post('/redeem', authRequired, financialLimiter, async (req: AuthRequest, res, next) => {
   try {
     const { amount } = mintSchema.parse(req.body);
@@ -312,15 +341,63 @@ router.post('/redeem', authRequired, financialLimiter, async (req: AuthRequest, 
     const fee = amount * tier.feeRate;
     const netAmount = amount - fee;
 
-    const result = await prisma.$transaction(async (tx: Tx) => {
-      const holding = await tx.portfolioHolding.findUnique({
-        where: { userId_asset: { userId, asset: 'AIUSD' } },
+    // Check balance first
+    const holding = await prisma.portfolioHolding.findUnique({
+      where: { userId_asset: { userId, asset: 'AIUSD' } },
+    });
+    if (!holding || holding.amount < amount) {
+      throw new AppError('Insufficient AIUSD balance', 400);
+    }
+
+    // Large redemption → queue T+7
+    if (amount > INSTANT_REDEEM_LIMIT) {
+      const processAfter = new Date();
+      processAfter.setDate(processAfter.getDate() + QUEUE_DAYS);
+
+      const result = await prisma.$transaction(async (tx: Tx) => {
+        // Deduct from holding (lock amount)
+        if (holding.amount === amount) {
+          await tx.portfolioHolding.delete({ where: { id: holding.id } });
+        } else {
+          await tx.portfolioHolding.update({
+            where: { id: holding.id },
+            data: { amount: holding.amount - amount },
+          });
+        }
+
+        // Create queue entry
+        const queueEntry = await tx.redemptionQueue.create({
+          data: {
+            userId,
+            amount,
+            fee: parseFloat(fee.toFixed(4)),
+            netAmount: parseFloat(netAmount.toFixed(4)),
+            processAfter,
+          },
+        });
+
+        // Record pending transaction
+        await tx.transaction.create({
+          data: { userId, type: 'REDEEM', amount: netAmount, asset: 'AIUSD', status: 'QUEUED' },
+        });
+
+        return queueEntry;
       });
 
-      if (!holding || holding.amount < amount) {
-        throw new AppError('Insufficient AIUSD balance', 400);
-      }
+      res.status(201).json({
+        redemptionType: 'queued',
+        message: `Large redemption queued. Processing after ${processAfter.toISOString().split('T')[0]} (T+${QUEUE_DAYS})`,
+        queue: result,
+        inputAmount: amount,
+        fee: parseFloat(fee.toFixed(4)),
+        netAmount: parseFloat(netAmount.toFixed(4)),
+        tier: tier.name,
+      });
+      return;
+    }
 
+    // Small redemption → instant T+0
+    const result = await prisma.$transaction(async (tx: Tx) => {
       if (holding.amount === amount) {
         await tx.portfolioHolding.delete({ where: { id: holding.id } });
       } else {
@@ -339,6 +416,7 @@ router.post('/redeem', authRequired, financialLimiter, async (req: AuthRequest, 
 
     res.status(201).json({
       ...result,
+      redemptionType: 'instant',
       inputAmount: amount,
       fee: parseFloat(fee.toFixed(4)),
       feeRate: tier.feeRate,
@@ -350,6 +428,60 @@ router.post('/redeem', authRequired, financialLimiter, async (req: AuthRequest, 
       res.status(400).json({ error: err.errors[0].message });
       return;
     }
+    next(err);
+  }
+});
+
+// Get redemption queue for current user
+router.get('/redemption-queue', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const queue = await prisma.redemptionQueue.findMany({
+      where: { userId: req.userId as string },
+      orderBy: { queuedAt: 'desc' },
+    });
+    res.json(queue);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Cancel a queued redemption (only if still queued)
+router.post('/redemption-queue/:id/cancel', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const userId = req.userId as string;
+    const entry = await prisma.redemptionQueue.findUnique({
+      where: { id: req.params.id as string },
+    });
+
+    if (!entry) throw new AppError('Queue entry not found', 404);
+    if (entry.userId !== userId) throw new AppError('Unauthorized', 403);
+    if (entry.status !== 'queued') throw new AppError('Can only cancel queued redemptions', 400);
+
+    await prisma.$transaction(async (tx: Tx) => {
+      // Return AIUSD to holding
+      const existing = await tx.portfolioHolding.findUnique({
+        where: { userId_asset: { userId, asset: 'AIUSD' } },
+      });
+      if (existing) {
+        await tx.portfolioHolding.update({
+          where: { id: existing.id },
+          data: { amount: existing.amount + entry.amount },
+        });
+      } else {
+        await tx.portfolioHolding.create({
+          data: { userId, asset: 'AIUSD', amount: entry.amount, avgCost: 1.0, currentApy: BASE_APY },
+        });
+      }
+
+      // Mark queue entry as cancelled
+      await tx.redemptionQueue.update({
+        where: { id: entry.id },
+        data: { status: 'cancelled' },
+      });
+    });
+
+    res.json({ message: 'Redemption cancelled, AIUSD returned to your balance' });
+  } catch (err) {
     next(err);
   }
 });

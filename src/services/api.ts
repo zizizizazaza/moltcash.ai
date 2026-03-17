@@ -181,8 +181,17 @@ class ApiClient {
 
   // ============ Chat / AI ============
 
-  async getChatHistory() {
-    return this.request<any[]>('/chat/history');
+  async getChatHistory(from?: string, to?: string, sessionId?: string) {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (sessionId) params.set('sessionId', sessionId);
+    const qs = params.toString();
+    return this.request<any[]>(`/chat/history${qs ? `?${qs}` : ''}`);
+  }
+
+  async getConversations() {
+    return this.request<{ id: string; title: string; time: string; messageCount: number; firstMessageAt: string; lastMessageAt: string }[]>('/chat/conversations');
   }
 
   async sendChatMessage(content: string, agentId?: string) {
@@ -196,14 +205,22 @@ class ApiClient {
     return this.request('/chat/history', { method: 'DELETE' });
   }
 
+  async deleteConversation(sessionId: string) {
+    return this.request(`/chat/conversations/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+  }
+
   // ============ Groups ============
 
   async getGroups() {
     return this.request<any[]>('/groups');
   }
 
-  async getGroupMessages(groupId: string) {
-    return this.request<any[]>(`/groups/${encodeURIComponent(groupId)}/messages`);
+  async getGroupMessages(groupId: string, cursor?: string, limit = 50) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    return this.request<{ messages: any[]; nextCursor: string | null; hasMore: boolean }>(
+      `/groups/${encodeURIComponent(groupId)}/messages?${params}`
+    );
   }
 
   async sendGroupMessage(groupId: string, content: string) {
@@ -211,6 +228,28 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ content }),
     });
+  }
+
+  async deleteGroupMessage(groupId: string, messageId: string) {
+    return this.request<any>(`/groups/${encodeURIComponent(groupId)}/messages/${encodeURIComponent(messageId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async joinGroup(groupId: string) {
+    return this.request<any>(`/groups/${encodeURIComponent(groupId)}/join`, {
+      method: 'POST',
+    });
+  }
+
+  async leaveGroup(groupId: string) {
+    return this.request<any>(`/groups/${encodeURIComponent(groupId)}/leave`, {
+      method: 'POST',
+    });
+  }
+
+  async getGroupMembers(groupId: string) {
+    return this.request<any[]>(`/groups/${encodeURIComponent(groupId)}/members`);
   }
 
   // ============ User ============

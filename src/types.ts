@@ -101,5 +101,6 @@ export enum Page {
   CHAT = 'CHAT',
   GROUPS = 'GROUPS',
   SETTINGS = 'SETTINGS',
-  TRADE = 'TRADE'
+  TRADE = 'TRADE',
+  API = 'API'
 }

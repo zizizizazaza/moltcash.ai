@@ -10,15 +10,63 @@ const router = Router();
 const aiService = new LokaAIService();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
 
-// Get chat history
+// Get chat history (optionally filter by time range or sessionId)
 router.get('/history', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const where: any = { userId: req.userId };
+    if (req.query.sessionId) where.sessionId = req.query.sessionId as string;
+    if (req.query.from) where.createdAt = { ...(where.createdAt || {}), gte: new Date(req.query.from as string) };
+    if (req.query.to) where.createdAt = { ...(where.createdAt || {}), lte: new Date(req.query.to as string) };
+
+    const messages = await prisma.chatMessage.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+    res.json(messages);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get conversation list (group by sessionId)
+router.get('/conversations', authRequired, async (req: AuthRequest, res, next) => {
   try {
     const messages = await prisma.chatMessage.findMany({
       where: { userId: req.userId },
       orderBy: { createdAt: 'asc' },
-      take: 100,
+      select: { id: true, sessionId: true, role: true, content: true, createdAt: true },
     });
-    res.json(messages);
+
+    // Group by sessionId (null sessionId = legacy, group by time gap)
+    const sessionMap = new Map<string, { id: string; title: string; time: string; messageCount: number; firstMessageAt: string; lastMessageAt: string }>();
+
+    for (const msg of messages) {
+      const sid = msg.sessionId || '__legacy__';
+      const existing = sessionMap.get(sid);
+      if (!existing) {
+        const title = msg.role === 'user'
+          ? msg.content.slice(0, 60) + (msg.content.length > 60 ? '...' : '')
+          : 'New Chat';
+        sessionMap.set(sid, {
+          id: sid === '__legacy__' ? msg.id : sid,
+          title,
+          time: msg.createdAt.toISOString(),
+          messageCount: 1,
+          firstMessageAt: msg.createdAt.toISOString(),
+          lastMessageAt: msg.createdAt.toISOString(),
+        });
+      } else {
+        existing.messageCount++;
+        existing.lastMessageAt = msg.createdAt.toISOString();
+      }
+    }
+
+    // Return newest first
+    const conversations = Array.from(sessionMap.values()).sort(
+      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+    );
+    res.json(conversations);
   } catch (err) {
     next(err);
   }
@@ -28,6 +76,7 @@ router.get('/history', authRequired, async (req: AuthRequest, res, next) => {
 const sendMessageSchema = z.object({
   content: z.string().min(1).max(5000),
   agentId: z.string().optional(),
+  sessionId: z.string().optional(),
   assetContext: z.object({
     name: z.string(),
     category: z.string().optional(),
@@ -41,44 +90,49 @@ const sendMessageSchema = z.object({
 
 router.post('/send', authOptional, async (req: AuthRequest, res, next) => {
   try {
-    const { content, agentId } = sendMessageSchema.parse(req.body);
-    const userId = req.userId || 'anonymous';
+    const { content, agentId, sessionId } = sendMessageSchema.parse(req.body);
+    const userId = req.userId;
+    const isAnonymous = !userId;
 
-    // Save user message
-    const userMessage = await prisma.chatMessage.create({
-      data: {
-        userId,
-        role: 'user',
-        content,
-        agentId,
-      },
-    });
+    // Save user message (skip for anonymous — no valid FK)
+    let userMessage: any = { role: 'user', content, timestamp: new Date() };
+    if (!isAnonymous) {
+      userMessage = await prisma.chatMessage.create({
+        data: { userId, sessionId, role: 'user', content, agentId },
+      });
+    }
 
-    // Get conversation context (last 20 messages)
-    const context = await prisma.chatMessage.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'asc' },
-      take: 20,
-    });
+    // Get conversation context (same session, last 20)
+    let context: any[] = [];
+    if (!isAnonymous) {
+      context = await prisma.chatMessage.findMany({
+        where: { userId, ...(sessionId ? { sessionId } : {}) },
+        orderBy: { createdAt: 'asc' },
+        take: 20,
+      });
+    } else {
+      context = [{ role: 'user', content }];
+    }
 
     // Call AI service
     const aiResponse = await aiService.chat(context, agentId);
 
-    // Save AI response
-    const assistantMessage = await prisma.chatMessage.create({
-      data: {
-        userId,
-        role: 'assistant',
-        content: aiResponse.content,
-        agentId: aiResponse.agentId,
-        metadata: aiResponse.metadata ? JSON.stringify(aiResponse.metadata) : null,
-      },
-    });
+    // Save AI response (skip for anonymous)
+    let assistantMessage: any = { role: 'assistant', content: aiResponse.content, timestamp: new Date() };
+    if (!isAnonymous) {
+      assistantMessage = await prisma.chatMessage.create({
+        data: {
+          userId,
+          sessionId,
+          role: 'assistant',
+          content: aiResponse.content,
+          agentId: aiResponse.agentId,
+          metadata: aiResponse.metadata ? JSON.stringify(aiResponse.metadata) : null,
+        },
+      });
+    }
 
-    res.json({
-      userMessage,
-      assistantMessage,
-    });
+    res.json({ userMessage, assistantMessage });
   } catch (err) {
     next(err);
   }
@@ -87,20 +141,28 @@ router.post('/send', authOptional, async (req: AuthRequest, res, next) => {
 // Send message with streaming (SSE)
 router.post('/stream', authOptional, async (req: AuthRequest, res, next) => {
   try {
-    const { content, agentId } = sendMessageSchema.parse(req.body);
-    const userId = req.userId || 'anonymous';
+    const { content, agentId, sessionId } = sendMessageSchema.parse(req.body);
+    const userId = req.userId;
+    const isAnonymous = !userId;
 
-    // Save user message
-    await prisma.chatMessage.create({
-      data: { userId, role: 'user', content, agentId },
-    });
+    // Save user message (skip for anonymous)
+    if (!isAnonymous) {
+      await prisma.chatMessage.create({
+        data: { userId, sessionId, role: 'user', content, agentId },
+      });
+    }
 
-    // Get conversation context
-    const context = await prisma.chatMessage.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'asc' },
-      take: 20,
-    });
+    // Get conversation context (same session)
+    let context: any[] = [];
+    if (!isAnonymous) {
+      context = await prisma.chatMessage.findMany({
+        where: { userId, ...(sessionId ? { sessionId } : {}) },
+        orderBy: { createdAt: 'asc' },
+        take: 20,
+      });
+    } else {
+      context = [{ role: 'user', content }];
+    }
 
     // Set up SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -147,11 +209,12 @@ router.post('/stream', authOptional, async (req: AuthRequest, res, next) => {
       reader.releaseLock();
     }
 
-    // Save complete AI response to DB
-    if (fullContent) {
+    // Save complete AI response to DB (skip for anonymous)
+    if (fullContent && !isAnonymous) {
       await prisma.chatMessage.create({
         data: {
           userId,
+          sessionId,
           role: 'assistant',
           content: fullContent,
           agentId: agentId || 'loka-agent',
@@ -172,11 +235,23 @@ router.post('/stream', authOptional, async (req: AuthRequest, res, next) => {
   }
 });
 
-// Clear chat history
+// Clear all chat history
 router.delete('/history', authRequired, async (req: AuthRequest, res, next) => {
   try {
     await prisma.chatMessage.deleteMany({
       where: { userId: req.userId },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete a single conversation by sessionId
+router.delete('/conversations/:sessionId', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    await prisma.chatMessage.deleteMany({
+      where: { userId: req.userId, sessionId: req.params.sessionId },
     });
     res.json({ ok: true });
   } catch (err) {

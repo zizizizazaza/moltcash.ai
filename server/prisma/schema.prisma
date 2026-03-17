@@ -38,6 +38,8 @@ model User {
   governanceProposals GovernanceProposal[]
   governanceVotes     GovernanceVote[]
   notifications       Notification[]
+  redemptionQueue     RedemptionQueue[]
+  groupMembers        GroupMember[]
 
   @@index([email])
   @@index([walletAddress])
@@ -209,9 +211,11 @@ model GroupMember {
   joinedAt  DateTime @default(now())
 
   group GroupChat @relation(fields: [groupId], references: [id])
+  user  User     @relation(fields: [userId], references: [id])
 
   @@unique([groupId, userId])
   @@index([groupId])
+  @@index([userId])
 }
 
 model GroupMessage {
@@ -233,6 +237,7 @@ model GroupMessage {
 model ChatMessage {
   id        String   @id @default(cuid())
   userId    String
+  sessionId String?  // groups messages into conversations
   role      String   // user, assistant, system
   content   String
   agentId   String?  // which agent responded
@@ -242,6 +247,7 @@ model ChatMessage {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@index([userId, sessionId])
   @@index([agentId])
 }
 
@@ -423,6 +429,27 @@ model GovernanceVote {
 
   @@unique([proposalId, userId])
   @@index([proposalId])
+}
+
+// ============ Redemption Queue (Large AIUSD Redemptions) ============
+
+model RedemptionQueue {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Float    // gross AIUSD amount
+  fee             Float    // redemption fee
+  netAmount       Float    // net USDC to receive
+  status          String   @default("queued") // queued, processing, completed, cancelled
+  queuedAt        DateTime @default(now())
+  processAfter    DateTime // T+7 processing date
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([processAfter])
 }
 
 // ============ Notifications ============

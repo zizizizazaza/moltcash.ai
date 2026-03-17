@@ -1,6 +1,7 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Icons } from '../constants';
+import { api } from '../services/api';
 
 // --- Types ---
 
@@ -50,6 +51,7 @@ interface GroupChat {
     lastActivity: string;
     fundedAmount: string;
     apy: string;
+    isBackend?: boolean; // true if loaded from API
 }
 
 // --- Mock Data ---
@@ -151,6 +153,15 @@ const mockGroups: GroupChat[] = [
     }
 ];
 
+// --- Helper ---
+function formatTimeAgo(date: Date): string {
+    const diff = Date.now() - date.getTime();
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    return `${Math.floor(diff / 86400000)}d ago`;
+}
+
 // --- Component ---
 
 // --- Available Agents Catalog ---
@@ -220,18 +231,87 @@ const Groups: React.FC = () => {
     const [agentSearch, setAgentSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [addedAgents, setAddedAgents] = useState<Record<string, string[]>>(() => {
-        // Initialize: no extra agents added by default (Loka Agent is built-in)
         const init: Record<string, string[]> = {};
         mockGroups.forEach(g => { init[g.id] = []; });
         return init;
     });
     const [applicationStep, setApplicationStep] = useState(0);
+    const [currentUserId, setCurrentUserId] = useState<string>('u3'); // fallback
+    const [loadingMessages, setLoadingMessages] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textInputRef = useRef<HTMLInputElement>(null);
 
     const currentGroup = groups.find(g => g.id === selectedGroup)!;
     const currentMessages = localMessages[selectedGroup] || [];
+    const isRealGroup = currentGroup?.isBackend === true;
+
+    // Fetch current user profile
+    useEffect(() => {
+        api.getUserProfile().then(p => {
+            if (p?.id) setCurrentUserId(p.id);
+        }).catch(() => {});
+    }, []);
+
+    // Fetch real groups from backend and merge with demo
+    useEffect(() => {
+        api.getGroups().then((backendGroups: any[]) => {
+            if (!Array.isArray(backendGroups) || backendGroups.length === 0) return;
+            const converted: GroupChat[] = backendGroups.map((bg: any) => ({
+                id: bg.id,
+                projectName: bg.project?.title || bg.name || 'Group',
+                projectShort: (bg.project?.title || bg.name || 'G').split(' ')[0].slice(0, 12),
+                status: 'active' as const,
+                members: (bg.members || []).map((m: any) => ({
+                    id: m.userId,
+                    name: m.userId.slice(0, 8),
+                    role: m.role || 'investor',
+                    avatar: m.role === 'issuer' ? '🧑‍💼' : m.role === 'agent' ? '🤖' : '💎',
+                    online: false,
+                })),
+                messages: [],
+                unread: 0,
+                lastActivity: bg.lastMessage?.createdAt
+                    ? formatTimeAgo(new Date(bg.lastMessage.createdAt))
+                    : 'No messages',
+                fundedAmount: '-',
+                apy: bg.project?.apy ? `${bg.project.apy}%` : '-',
+                isBackend: true,
+            }));
+            setGroups(prev => {
+                const demoGroups = prev.filter(g => g.id.startsWith('app_') || !converted.find(c => c.id === g.id));
+                return [...demoGroups, ...converted];
+            });
+        }).catch(() => { /* keep demo groups */ });
+    }, []);
+
+    // Load messages from backend when selecting a real group
+    const loadBackendMessages = useCallback(async (groupId: string) => {
+        setLoadingMessages(true);
+        try {
+            const resp = await api.getGroupMessages(groupId);
+            const msgs: GroupMessage[] = (resp.messages || []).map((m: any) => ({
+                id: m.id,
+                senderId: m.userId || m.user?.id,
+                senderName: m.user?.name || m.userId?.slice(0, 10) || 'Unknown',
+                role: m.role || 'investor',
+                content: m.content,
+                timestamp: new Date(m.createdAt),
+            }));
+            setLocalMessages(prev => ({ ...prev, [groupId]: msgs }));
+        } catch {
+            // Keep whatever is there
+        } finally {
+            setLoadingMessages(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const group = groups.find(g => g.id === selectedGroup);
+        if (group?.isBackend) {
+            loadBackendMessages(selectedGroup);
+        }
+    }, [selectedGroup, groups, loadBackendMessages]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -248,14 +328,41 @@ const Groups: React.FC = () => {
     };
 
     // --- Send Message ---
-    const handleSend = () => {
+    const handleSend = async () => {
         if (!inputValue.trim() && !imagePreview) return;
+        const content = inputValue.trim();
+        setInputValue('');
+        setImagePreview(null);
+
+        // For real backend groups: send via API
+        if (isRealGroup) {
+            try {
+                const saved = await api.sendGroupMessage(selectedGroup, content);
+                const newMsg: GroupMessage = {
+                    id: saved.id,
+                    senderId: saved.userId || currentUserId,
+                    senderName: saved.user?.name || 'You',
+                    role: saved.role || 'investor',
+                    content: saved.content,
+                    timestamp: new Date(saved.createdAt),
+                };
+                setLocalMessages(prev => ({
+                    ...prev,
+                    [selectedGroup]: [...(prev[selectedGroup] || []), newMsg],
+                }));
+            } catch (err) {
+                console.error('Failed to send message:', err);
+            }
+            return;
+        }
+
+        // For demo groups: local logic with agent replies
         const newMsg: GroupMessage = {
             id: `user_${Date.now()}`,
-            senderId: 'u3',
+            senderId: currentUserId,
             senderName: '0x71C...8e29',
             role: 'investor',
-            content: inputValue.trim(),
+            content,
             timestamp: new Date(),
             image: imagePreview || undefined,
         };
@@ -263,13 +370,10 @@ const Groups: React.FC = () => {
             ...prev,
             [selectedGroup]: [...(prev[selectedGroup] || []), newMsg],
         }));
-        const capturedInput = inputValue.trim();
-        setInputValue('');
-        setImagePreview(null);
 
-        if (capturedInput || imagePreview) {
+        if (content || imagePreview) {
             setTimeout(() => {
-                const replies = getAgentReplies(capturedInput, imagePreview !== null, selectedGroup);
+                const replies = getAgentReplies(content, imagePreview !== null, selectedGroup);
                 if (replies.length > 0) {
                     const newReplies = replies.map((r, idx) => ({
                         ...r,
@@ -285,13 +389,29 @@ const Groups: React.FC = () => {
         }
     };
 
+    // --- Delete Message ---
+    const handleDeleteMessage = async (msgId: string) => {
+        if (isRealGroup) {
+            try {
+                await api.deleteGroupMessage(selectedGroup, msgId);
+            } catch (err) {
+                console.error('Failed to delete message:', err);
+                return;
+            }
+        }
+        setLocalMessages(prev => ({
+            ...prev,
+            [selectedGroup]: (prev[selectedGroup] || []).filter(m => m.id !== msgId),
+        }));
+    };
+
     // --- Poll ---
     const handlePostPoll = () => {
         const validOptions = pollOptions.filter(o => o.trim());
         if (!pollQuestion.trim() || validOptions.length < 2) return;
         const pollMsg: GroupMessage = {
             id: `poll_${Date.now()}`,
-            senderId: 'u3',
+            senderId: currentUserId,
             senderName: '0x71C...8e29',
             role: 'investor',
             content: '',
@@ -325,14 +445,14 @@ const Groups: React.FC = () => {
                 ...prev,
                 [selectedGroup]: msgs.map(m => {
                     if (m.id !== msgId || !m.poll) return m;
-                    const alreadyVoted = m.poll.options.some(o => o.votes.includes('u3'));
+                    const alreadyVoted = m.poll.options.some(o => o.votes.includes(currentUserId));
                     if (alreadyVoted) return m;
                     return {
                         ...m,
                         poll: {
                             ...m.poll,
                             options: m.poll.options.map(o =>
-                                o.id === optionId ? { ...o, votes: [...o.votes, 'u3'] } : o
+                                o.id === optionId ? { ...o, votes: [...o.votes, currentUserId] } : o
                             ),
                         },
                     };
@@ -508,7 +628,7 @@ const Groups: React.FC = () => {
         // Send user's filled data as their message
         const userMsg: GroupMessage = {
             id: `user_entity_${Date.now()}`,
-            senderId: 'u3',
+            senderId: currentUserId,
             senderName: 'You',
             role: 'issuer',
             content: `🏢 Company Registration Submitted:\n• Company: ${entityForm.companyName}\n• Country: ${entityForm.country}\n• Reg No: ${entityForm.regNumber}\n• Address: ${entityForm.address}`,
@@ -740,7 +860,7 @@ const Groups: React.FC = () => {
     // --- Render Poll Card ---
     const renderPoll = (poll: Poll, msgId: string) => {
         const totalVotes = poll.options.reduce((sum, o) => sum + o.votes.length, 0);
-        const hasVoted = poll.options.some(o => o.votes.includes('u3'));
+        const hasVoted = poll.options.some(o => o.votes.includes(currentUserId));
         const maxVotes = Math.max(...poll.options.map(o => o.votes.length));
         return (
             <div className="w-full max-w-[380px] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -757,7 +877,7 @@ const Groups: React.FC = () => {
                     {poll.options.map(option => {
                         const pct = totalVotes > 0 ? Math.round((option.votes.length / totalVotes) * 100) : 0;
                         const isLeading = option.votes.length === maxVotes && maxVotes > 0;
-                        const iVoted = option.votes.includes('u3');
+                        const iVoted = option.votes.includes(currentUserId);
                         return (
                             <button
                                 key={option.id}
@@ -1013,10 +1133,10 @@ const Groups: React.FC = () => {
                     <div className="flex-1 flex flex-col min-w-0">
                         <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-4">
                             {currentMessages.map((msg, i) => {
-                                const isMe = msg.senderId === 'u3';
+                                const isMe = msg.senderId === currentUserId;
                                 const showAvatar = i === 0 || currentMessages[i - 1].senderId !== msg.senderId;
                                 return (
-                                    <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                    <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''} group/msg`}>
                                         {showAvatar ? (
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${msg.role === 'agent' ? 'bg-gradient-to-br from-purple-400 to-blue-500 shadow-sm' : msg.role === 'issuer' ? 'bg-blue-100' : 'bg-gray-100'}`}>
                                                 {msg.role === 'agent' ? '🤖' : msg.role === 'issuer' ? '🧑‍💼' : '💎'}
@@ -1054,6 +1174,16 @@ const Groups: React.FC = () => {
                                             <span className={`text-[9px] text-gray-300 font-medium mt-1 block ${isMe ? 'text-right' : ''}`}>
                                                 {formatTime(msg.timestamp)}
                                             </span>
+                                            {/* Delete button */}
+                                            {isMe && (
+                                                <button
+                                                    onClick={() => handleDeleteMessage(msg.id)}
+                                                    className="opacity-0 group-hover/msg:opacity-100 text-[9px] text-red-400 hover:text-red-600 font-medium mt-0.5 transition-opacity cursor-pointer"
+                                                    title="Delete message"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 );
