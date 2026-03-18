@@ -5,8 +5,6 @@ const config: CapacitorConfig = {
   appName: 'Loka Cash',
   webDir: 'dist',
   server: {
-    // Use the remote API in production builds
-    // For local dev, you can override this with a live-reload URL
     androidScheme: 'https',
   },
   plugins: {
