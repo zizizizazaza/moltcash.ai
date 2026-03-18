@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { usePrivy } from '@privy-io/react-auth';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid, YAxis, XAxis } from 'recharts';
 import { Icons } from '../constants';
@@ -284,6 +285,9 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   </button>
                 </div>
 
+                {/* Invite Friends button */}
+                <InvitationCodesTopEntry variant="card" />
+
               </div>
 
               {/* --- Right Card: Chart & History --- */}
@@ -475,6 +479,8 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
               </div>
 
             </div>
+
+
           </>
         ) : (
           /* ============ ENTERPRISE TAB ============ */
@@ -975,5 +981,198 @@ const ActivityItem: React.FC<{ title: string; time: string; amount: string; type
     <span className={`text-sm font-bold shrink-0 ${type === 'INTEREST' ? 'text-green-600' : 'text-black'}`}>{amount}</span>
   </div>
 );
+
+// ── Invitation Codes: entry (topbar or card variant) ──
+const InvitationCodesTopEntry: React.FC<{ variant?: 'topbar' | 'card' }> = ({ variant = 'topbar' }) => {
+  const [open, setOpen] = useState(false);
+  if (!api.isAuthenticated) return null;
+
+  if (variant === 'card') {
+    return (
+      <>
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full relative overflow-hidden rounded-2xl transition-all group"
+          style={{
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #222 50%, #182018 100%)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15), 0 2px 12px rgba(0,230,118,0.1)',
+            border: '1px solid rgba(255,255,255,0.06)'
+          }}
+        >
+          {/* Shimmer on hover */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+            style={{ background: 'linear-gradient(105deg, transparent 35%, rgba(0,230,118,0.07) 50%, transparent 65%)' }} />
+          {/* Green glow blob */}
+          <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(0,230,118,0.35) 0%, transparent 70%)' }} />
+
+          <div className="relative flex items-center justify-between px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.25)' }}>
+                <svg className="w-4 h-4" style={{ color: '#00E676' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-black text-white leading-tight">Invite Friends</p>
+                <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>Earn rewards for every referral</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full"
+                style={{ color: '#00E676', background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.3)' }}>
+                + New Code
+              </span>
+              <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"
+                style={{ color: 'rgba(255,255,255,0.35)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </button>
+        {open && <InvitationCodesModal onClose={() => setOpen(false)} />}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 px-3 py-2 bg-[#00E676]/10 hover:bg-[#00E676]/20 text-[#00C853] rounded-xl transition-all text-[11px] font-bold"
+        title="Invite Friends"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+        </svg>
+        Invite
+      </button>
+      {open && <InvitationCodesModal onClose={() => setOpen(false)} />}
+    </>
+  );
+};
+
+// ── Invitation Codes Modal ──
+const InvitationCodesModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [codes, setCodes] = useState<Array<{ code: string; maxUses: number; useCount: number; isActive: boolean; createdAt: string }>>([]);
+  const [generating, setGenerating] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getMyInvitationCodes().then(setCodes).catch(() => {});
+  }, []);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const result = await api.generateInvitationCode();
+      setCodes(prev => [{ ...result, isActive: true }, ...prev]);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to generate code');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopy = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease' }}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-[400px] rounded-[28px] shadow-2xl border border-gray-100 overflow-hidden" style={{ animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-[#00E676]/10 rounded-xl flex items-center justify-center">
+              <svg className="w-4.5 h-4.5 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-black">Invite Friends</h2>
+              <p className="text-[10px] text-gray-400 font-medium">Share codes to invite people to Loka</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-all">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Code list */}
+        <div className="px-6 py-4 max-h-[340px] overflow-y-auto space-y-2">
+          {codes.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-400 font-medium">No codes yet</p>
+              <p className="text-xs text-gray-300 mt-1">Generate one to start inviting</p>
+            </div>
+          ) : (
+            codes.map((c) => (
+              <div key={c.code} className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gray-200 transition-all">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-sm font-black text-black font-mono tracking-widest">{c.code}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#00E676] rounded-full" style={{ width: `${Math.min((c.useCount / c.maxUses) * 100, 100)}%` }} />
+                      </div>
+                      <span className="text-[9px] text-gray-400 font-medium">{c.useCount}/{c.maxUses} used</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleCopy(c.code)}
+                  className={`px-3 py-1.5 text-[10px] font-bold rounded-xl transition-all ${
+                    copiedCode === c.code
+                      ? 'bg-[#00E676]/10 text-[#00C853] border border-[#00E676]/30'
+                      : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300 hover:text-black'
+                  }`}
+                >
+                  {copiedCode === c.code ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 pt-2">
+          <button
+            onClick={handleGenerate}
+            disabled={generating || codes.length >= 10}
+            className="w-full py-3.5 bg-[#00E676] text-black text-sm font-black rounded-2xl hover:bg-[#00C853] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#00E676]/20"
+          >
+            {generating ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                Generating...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                Generate New Code
+              </>
+            )}
+          </button>
+          {codes.length >= 10 && (
+            <p className="text-[10px] text-gray-400 text-center mt-2">Maximum 10 codes per account</p>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 export default Portfolio;

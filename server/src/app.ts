@@ -21,6 +21,7 @@ import repaymentRoutes from './routes/repayment.js';
 import liquidationRoutes from './routes/liquidation.js';
 import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
+import invitationRoutes from './routes/invitation.js';
 import prisma from './db.js';
 
 const app = express();
@@ -37,6 +38,7 @@ app.use(morgan(config.isProduction ? 'combined' : 'dev'));
 // CORS - support multiple origins
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:5173',
   'https://localhost',        // Capacitor Android (androidScheme: 'https')
   'capacitor://localhost',    // Capacitor iOS
@@ -94,6 +96,7 @@ app.use('/api/repayment', repaymentRoutes);
 app.use('/api/liquidation', liquidationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/invitation', invitationRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

@@ -19,247 +19,212 @@ const logoSvg = (c1: string, c2: string, letter: string, w = 100, h = 100) => {
 
 // Visual config per project
 const PROJECT_VISUALS: Record<string, { c1: string; c2: string; icon: string; letter: string }> = {
-  'AI Agent Marketplace': { c1: '#4f46e5', c2: '#7c3aed', icon: '🤖', letter: 'A' },
-  'Climapp.io Utility': { c1: '#047857', c2: '#0d9488', icon: '🌿', letter: 'C' },
-  'Market Maker AI': { c1: '#0f172a', c2: '#334155', icon: '📈', letter: 'M' },
-  'MEV Searcher Agent': { c1: '#b45309', c2: '#dc2626', icon: '⚡', letter: 'M' },
-  'Copy Trading AI': { c1: '#9333ea', c2: '#db2777', icon: '🔄', letter: 'C' },
-
-  'DigitalOcean Tier': { c1: '#0e7490', c2: '#0f766e', icon: '🌊', letter: 'D' },
-  'DeFi Yield Optimizer': { c1: '#6d28d9', c2: '#4338ca', icon: '💎', letter: 'D' },
+  'Draftly - 3D Web Builder': { c1: '#7c3aed', c2: '#a855f7', icon: '🎨', letter: 'D' },
+  'POST BRIDGE - Social Media': { c1: '#e11d48', c2: '#f43f5e', icon: '📱', letter: 'P' },
+  'Deeptrue - AI Translation': { c1: '#0284c7', c2: '#0ea5e9', icon: '🌐', letter: 'D' },
+  'PxlSafe - Video Editor Tools': { c1: '#0f172a', c2: '#334155', icon: '🎬', letter: 'P' },
+  'Rezi - AI Resume Builder': { c1: '#4f46e5', c2: '#6366f1', icon: '📄', letter: 'R' },
+  'Comp AI - Compliance Automation': { c1: '#047857', c2: '#0d9488', icon: '🛡️', letter: 'C' },
 };
 const getVisual = (title: string) => PROJECT_VISUALS[title] || { c1: '#64748b', c2: '#334155', icon: '💰', letter: '?' };
 
 const MOCK_ASSETS: MarketAsset[] = [
   {
     id: '1',
-    title: 'AI Agent Marketplace',
-    subtitle: 'Making it easier for AI agent markets to showcase themselves on a platform that facilitates exchanges.',
-    category: 'SaaS',
-    issuer: 'AgentHub Inc.',
-    issuerLogo: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=100&h=100&fit=crop',
+    title: 'Rezi - AI Resume Builder',
+    subtitle: 'AI-Powered Career Platform — Best AI resume builder with ~1M new users annually.',
+    category: 'AI',
+    issuer: 'Rezi Inc.',
+    issuerLogo: '/logos/rezi.png',
     faceValue: 100,
-    askPrice: 95.00,
-    apy: 18.5,
-    durationDays: 30,
-    creditScore: 780,
-    status: 'Fundraising',
-    targetAmount: 500000,
-    raisedAmount: 105000,
-    backersCount: 4,
-    remainingCap: 395000,
-    coverageRatio: 1.6,
+    askPrice: 96,
+    apy: 15.5,
+    durationDays: 180,
+    creditScore: 820,
+    status: 'Funded',
+    targetAmount: 800000,
+    raisedAmount: 780000,
+    backersCount: 12,
+    remainingCap: 20000,
+    coverageRatio: 2.1,
     verifiedSource: 'Stripe API',
-    description: 'AI Agent Marketplace is building the leading discovery and exchange platform for autonomous AI agents. Our platform connects agent developers with enterprise buyers seeking specialized AI capabilities.',
-    useOfFunds: 'Platform development and agent onboarding incentives.',
+    description: 'The best AI resume builder in the world with ~1M new users annually. Rezi Enterprise supports 300+ organisations including Fortune 500 companies and universities. $271K/mo verified Stripe revenue. MRR $290,693. +8% MoM. 60% profit margin. Listed at $15M on TrustMRR.',
+    useOfFunds: 'AI model training, enterprise sales expansion, job seeker marketplace.',
     monthlyRevenue: [
-      { month: 'Aug', amount: 120000 },
-      { month: 'Sep', amount: 145000 },
-      { month: 'Oct', amount: 180000 },
-      { month: 'Nov', amount: 210000 },
-      { month: 'Dec', amount: 260000 },
-      { month: 'Jan', amount: 300000 }
+      { month: 'Aug', amount: 232000 },
+      { month: 'Sep', amount: 246000 },
+      { month: 'Oct', amount: 255000 },
+      { month: 'Nov', amount: 262000 },
+      { month: 'Dec', amount: 268000 },
+      { month: 'Jan', amount: 271104 }
     ],
-    coverImage: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop'
+    coverImage: '/covers/rezi.png'
   },
   {
     id: '2',
-    title: 'Climapp.io Utility',
-    subtitle: 'AI-enabled platform that helps you understand and manage your utility bills — all in one place.',
-    category: 'SaaS',
-    issuer: 'Climapp Inc.',
-    issuerLogo: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&h=100&fit=crop',
+    title: 'POST BRIDGE - Social Media',
+    subtitle: 'Multi-Platform Content Publishing — Schedule and publish across all platforms.',
+    category: 'AI',
+    issuer: 'Post Bridge Inc.',
+    issuerLogo: '/logos/postbridge.png',
     faceValue: 100,
-    askPrice: 98.00,
-    apy: 14.2,
-    durationDays: 90,
-    creditScore: 750,
+    askPrice: 97,
+    apy: 18.2,
+    durationDays: 270,
+    creditScore: 800,
     status: 'Fundraising',
-    targetAmount: 300000,
-    raisedAmount: 6000,
-    backersCount: 2,
-    remainingCap: 294000,
-    coverageRatio: 1.4,
-    verifiedSource: 'QuickBooks Verified',
-    description: 'Climapp.io uses AI to analyze utility consumption patterns and recommend cost-saving strategies for households and businesses. Our SaaS model generates recurring subscription revenue.',
-    useOfFunds: 'AI model training and customer acquisition.',
+    targetAmount: 500000,
+    raisedAmount: 325000,
+    backersCount: 8,
+    remainingCap: 175000,
+    coverageRatio: 1.8,
+    verifiedSource: 'Stripe API',
+    description: 'POST BRIDGE lets you post to multiple social platforms simultaneously. $28,901 verified Stripe revenue in last 30 days. MRR $30,958. +65% MoM growth. 92% profit margin. 1,503 active subscriptions. Founded Sep 2024 by Jack Friks. Listed at $1.4M on TrustMRR.',
+    useOfFunds: 'Platform scaling, new social network integrations, marketing.',
     monthlyRevenue: [
-      { month: 'Aug', amount: 85000 },
-      { month: 'Sep', amount: 92000 },
-      { month: 'Oct', amount: 98000 },
-      { month: 'Nov', amount: 110000 },
-      { month: 'Dec', amount: 125000 },
-      { month: 'Jan', amount: 140000 }
+      { month: 'Sep', amount: 3200 },
+      { month: 'Oct', amount: 7400 },
+      { month: 'Nov', amount: 11200 },
+      { month: 'Dec', amount: 17600 },
+      { month: 'Jan', amount: 22400 },
+      { month: 'Feb', amount: 28901 }
     ],
-    coverImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop'
+    coverImage: '/covers/postbridge.png'
   },
   {
     id: '3',
-    title: 'Market Maker AI',
-    subtitle: 'Provides deep liquidity for new pairs with optimized spread management.',
-    category: 'SaaS',
-    issuer: 'LiquidityAI LLC',
-    issuerLogo: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=100&h=100&fit=crop',
+    title: 'Deeptrue - AI Translation',
+    subtitle: 'Real-time Meeting Translation Copilot — Break language barriers in meetings.',
+    category: 'AI',
+    issuer: 'Deeptrue Corp.',
+    issuerLogo: '/logos/deeptrue.png',
     faceValue: 100,
-    askPrice: 92.00,
-    apy: 22.0,
+    askPrice: 95,
+    apy: 20.5,
     durationDays: 120,
-    creditScore: 860,
-    status: 'Funded',
-    targetAmount: 800000,
-    raisedAmount: 760000,
-    backersCount: 124,
-    remainingCap: 40000,
-    coverageRatio: 2.2,
-    verifiedSource: 'API Oracle',
-    description: 'Market Maker AI provides automated, intelligent liquidity provisioning for decentralized exchanges. Our proprietary algorithms ensure tight spreads and deep order books across multiple trading pairs.',
-    useOfFunds: 'Liquidity pool capitalization and algorithm research.',
+    creditScore: 760,
+    status: 'Fundraising',
+    targetAmount: 250000,
+    raisedAmount: 95000,
+    backersCount: 4,
+    remainingCap: 155000,
+    coverageRatio: 1.5,
+    verifiedSource: 'Stripe API',
+    description: 'Real-time AI translation copilot for global meetings on Zoom, Meet, and Teams. $2,022 verified Stripe revenue in last 30 days. MRR $2,001. +19% MoM growth. 80% profit margin. 61 active subscriptions. 30+ languages. Founded 2025.',
+    useOfFunds: 'AI model training, language expansion, enterprise features.',
     monthlyRevenue: [
-      { month: 'Aug', amount: 450000 },
-      { month: 'Sep', amount: 520000 },
-      { month: 'Oct', amount: 580000 },
-      { month: 'Nov', amount: 650000 },
-      { month: 'Dec', amount: 720000 },
-      { month: 'Jan', amount: 810000 }
+      { month: 'Aug', amount: 982 },
+      { month: 'Sep', amount: 1201 },
+      { month: 'Oct', amount: 1430 },
+      { month: 'Nov', amount: 1680 },
+      { month: 'Dec', amount: 1820 },
+      { month: 'Jan', amount: 2022 }
     ],
-    coverImage: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&h=400&fit=crop'
+    coverImage: '/covers/deeptrue.png'
   },
   {
     id: '4',
-    title: 'MEV Searcher Agent',
-    subtitle: 'Captures Maximal Extractable Value opportunities efficiently.',
-    category: 'Compute',
-    issuer: 'MEVLabs Inc.',
-    issuerLogo: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=100&h=100&fit=crop',
+    title: 'Draftly - 3D Web Builder',
+    subtitle: 'No-Code 3D Website Platform — Build stunning 3D websites 10× faster.',
+    category: 'AI',
+    issuer: 'Draftly Space',
+    issuerLogo: '/logos/draftly.png',
     faceValue: 100,
-    askPrice: 94.00,
-    apy: 25.5,
-    durationDays: 60,
-    creditScore: 720,
-    status: 'Fundraising',
-    targetAmount: 400000,
-    raisedAmount: 160000,
-    backersCount: 18,
-    remainingCap: 240000,
-    coverageRatio: 1.3,
-    verifiedSource: 'Stripe API',
-    description: 'MEV Searcher Agent uses advanced algorithms to identify and capture Maximal Extractable Value opportunities across multiple blockchains, generating consistent returns from on-chain arbitrage.',
-    useOfFunds: 'Infrastructure scaling and strategy development.',
-    monthlyRevenue: [
-      { month: 'Aug', amount: 200000 },
-      { month: 'Sep', amount: 240000 },
-      { month: 'Oct', amount: 280000 },
-      { month: 'Nov', amount: 320000 },
-      { month: 'Dec', amount: 380000 },
-      { month: 'Jan', amount: 420000 }
-    ],
-    coverImage: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=400&fit=crop'
-  },
-  {
-    id: '5',
-    title: 'Copy Trading AI',
-    subtitle: 'Mirrors trades of top-performing wallets automatically.',
-    category: 'SaaS',
-    issuer: 'CopyFi Inc.',
-    issuerLogo: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=100&h=100&fit=crop',
-    faceValue: 100,
-    askPrice: 96.00,
-    apy: 16.8,
-    durationDays: 45,
-    creditScore: 800,
+    askPrice: 96,
+    apy: 16.0,
+    durationDays: 240,
+    creditScore: 780,
     status: 'Fundraising',
     targetAmount: 350000,
     raisedAmount: 273000,
-    backersCount: 56,
+    backersCount: 6,
     remainingCap: 77000,
-    coverageRatio: 1.7,
-    verifiedSource: 'API Oracle',
-    description: 'Copy Trading AI automatically mirrors the trading strategies of top-performing wallets using on-chain analysis. Our platform democratizes access to sophisticated trading strategies.',
-    useOfFunds: 'Trading capital and AI model improvements.',
+    coverageRatio: 1.6,
+    verifiedSource: 'DodoPayment API',
+    description: 'Build 3D websites 10× faster with no code. $6,172 verified revenue in last 30 days. MRR $3,165. 100 active subscriptions. 28K+ monthly visitors. 85% profit margin. Founded in India.',
+    useOfFunds: 'Template marketplace, 3D engine optimisation, team growth.',
     monthlyRevenue: [
-      { month: 'Aug', amount: 180000 },
-      { month: 'Sep', amount: 210000 },
-      { month: 'Oct', amount: 245000 },
-      { month: 'Nov', amount: 280000 },
-      { month: 'Dec', amount: 310000 },
-      { month: 'Jan', amount: 350000 }
+      { month: 'Aug', amount: 3800 },
+      { month: 'Sep', amount: 4200 },
+      { month: 'Oct', amount: 4600 },
+      { month: 'Nov', amount: 5100 },
+      { month: 'Dec', amount: 5600 },
+      { month: 'Jan', amount: 6172 }
     ],
-    coverImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop'
+    coverImage: '/covers/draftly.png'
+  },
+  {
+    id: '5',
+    title: 'PxlSafe - Video Editor Tools',
+    subtitle: 'AI-Powered Plugin Suite for Creators — Professional video editing made easy.',
+    category: 'AI',
+    issuer: 'PxlSafe Studio',
+    issuerLogo: '/logos/pxlsafe.png',
+    faceValue: 100,
+    askPrice: 97,
+    apy: 14.8,
+    durationDays: 365,
+    creditScore: 740,
+    status: 'Fundraising',
+    targetAmount: 300000,
+    raisedAmount: 48000,
+    backersCount: 5,
+    remainingCap: 252000,
+    coverageRatio: 1.4,
+    verifiedSource: 'LemonSqueezy API',
+    description: 'AI-powered plugin suite for video editors. MVX AI (Premiere Pro) and AutoVFX (AI VFX generator). $6,300/mo total revenue. MRR $4,500 from 90+ subscribers. 1,600+ customers, 34K Instagram following. 90% profit margin.',
+    useOfFunds: 'New plugin development, macOS app, marketing campaigns.',
+    monthlyRevenue: [
+      { month: 'Aug', amount: 3100 },
+      { month: 'Sep', amount: 3800 },
+      { month: 'Oct', amount: 4500 },
+      { month: 'Nov', amount: 5200 },
+      { month: 'Dec', amount: 5700 },
+      { month: 'Jan', amount: 6300 }
+    ],
+    coverImage: '/covers/pxlsafe.png'
   },
   {
     id: '6',
-    title: 'Cloudflare Capacity',
-    subtitle: 'Global edge network capacity lending with 12% APY.',
-    category: 'Compute',
-    issuer: 'EdgeFund LLC',
-    issuerLogo: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=100&h=100&fit=crop',
+    title: 'Comp AI - Compliance Automation',
+    subtitle: 'AI Cybersecurity Compliance Engine — Get SOC 2 & ISO 27001 compliant fast.',
+    category: 'AI',
+    issuer: 'Comp AI Ltd.',
+    issuerLogo: '/logos/compai.png',
     faceValue: 100,
-    askPrice: 97.00,
-    apy: 12.0,
-    durationDays: 30,
-    creditScore: 830,
-    status: 'Fundraising',
-    targetAmount: 500000,
-    raisedAmount: 350000,
-    backersCount: 42,
-    remainingCap: 150000,
-    coverageRatio: 1.8,
-    verifiedSource: 'Cloudflare Partner',
-    description: 'Cloudflare Capacity finances edge computing infrastructure expansion. By funding global CDN and compute node deployments, investors earn stable returns from enterprise usage fees.',
-    useOfFunds: 'Edge node deployments and bandwidth procurement.',
-    monthlyRevenue: [
-      { month: 'Aug', amount: 250000 },
-      { month: 'Sep', amount: 270000 },
-      { month: 'Oct', amount: 290000 },
-      { month: 'Nov', amount: 310000 },
-      { month: 'Dec', amount: 330000 },
-      { month: 'Jan', amount: 350000 }
-    ],
-    coverImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop'
-  },
-  {
-    id: '7',
-    title: 'DigitalOcean Tier',
-    subtitle: 'Financing for SME cloud deployments with high retention.',
-    category: 'Compute',
-    issuer: 'OceanScale Inc.',
-    issuerLogo: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=100&h=100&fit=crop',
-    faceValue: 100,
-    askPrice: 96.00,
-    apy: 14.0,
-    durationDays: 30,
-    creditScore: 790,
-    status: 'Fundraising',
+    askPrice: 93,
+    apy: 22.0,
+    durationDays: 90,
+    creditScore: 680,
+    status: 'Failed',
     targetAmount: 400000,
-    raisedAmount: 240000,
-    backersCount: 37,
-    remainingCap: 160000,
-    coverageRatio: 1.6,
-    verifiedSource: 'DigitalOcean Partner',
-    description: 'DigitalOcean Tier finances cloud infrastructure for SME customers with high retention rates. Our lending pool is backed by verified monthly recurring revenue from DigitalOcean usage data.',
-    useOfFunds: 'Cloud capacity expansion and customer onboarding.',
+    raisedAmount: 0,
+    backersCount: 0,
+    remainingCap: 400000,
+    coverageRatio: 0.9,
+    verifiedSource: 'Stripe API',
+    description: 'The fastest way to get compliant with SOC 2 and ISO 27001 using AI automation. $482K verified Stripe revenue in last 30 days. MRR $8,700 (subscription). $2M total revenue. Failed to reach fundraising target within deadline. Listed on TrustMRR.',
+    useOfFunds: 'AI compliance engine, framework expansion, enterprise onboarding.',
     monthlyRevenue: [
-      { month: 'Aug', amount: 180000 },
-      { month: 'Sep', amount: 195000 },
-      { month: 'Oct', amount: 210000 },
-      { month: 'Nov', amount: 225000 },
-      { month: 'Dec', amount: 240000 },
-      { month: 'Jan', amount: 260000 }
+      { month: 'Aug', amount: 8200 },
+      { month: 'Sep', amount: 8400 },
+      { month: 'Oct', amount: 8600 },
+      { month: 'Nov', amount: 8600 },
+      { month: 'Dec', amount: 8700 },
+      { month: 'Jan', amount: 8700 }
     ],
-    coverImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop'
+    coverImage: '/covers/compai.png'
   }
 ];
 
-// Unsplash image map per project (realistic photos)
+// Project images (local covers + logos)
 const PROJECT_IMAGES: Record<string, { cover: string; logo: string }> = {
-  'AI Agent Marketplace': { cover: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=100&h=100&fit=crop' },
-  'Climapp.io Utility': { cover: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&h=100&fit=crop' },
-  'Market Maker AI': { cover: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=100&h=100&fit=crop' },
-  'MEV Searcher Agent': { cover: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=100&h=100&fit=crop' },
-  'Copy Trading AI': { cover: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=100&h=100&fit=crop' },
-
-  'DigitalOcean Tier': { cover: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=100&h=100&fit=crop' },
-  'DeFi Yield Optimizer': { cover: 'https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=800&h=400&fit=crop', logo: 'https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=100&h=100&fit=crop' },
+  'Draftly - 3D Web Builder': { cover: '/covers/draftly.png', logo: '/logos/draftly.png' },
+  'POST BRIDGE - Social Media': { cover: '/covers/postbridge.png', logo: '/logos/postbridge.png' },
+  'Deeptrue - AI Translation': { cover: '/covers/deeptrue.png', logo: '/logos/deeptrue.png' },
+  'PxlSafe - Video Editor Tools': { cover: '/covers/pxlsafe.png', logo: '/logos/pxlsafe.png' },
+  'Rezi - AI Resume Builder': { cover: '/covers/rezi.png', logo: '/logos/rezi.png' },
+  'Comp AI - Compliance Automation': { cover: '/covers/compai.png', logo: '/logos/compai.png' },
 };
 
 const mapApiProject = (p: any): MarketAsset => {
@@ -576,7 +541,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
       {/* Header Section */}
       <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:items-start justify-between mb-6">
         <div className="flex gap-3 sm:gap-6 items-start">
-          <img src={asset.issuerLogo} className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0" alt={asset.title} />
+          <img src={asset.coverImage} className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0" alt={asset.title} />
           <div className="min-w-0">
             <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-black tracking-tight mb-2 sm:mb-3 truncate sm:whitespace-normal" title={asset.title}>{asset.title}</h1>
             <p className="text-[12px] sm:text-[14px] text-gray-500 font-medium leading-relaxed max-w-2xl line-clamp-2 sm:line-clamp-none" title={asset.subtitle}>
@@ -1197,12 +1162,27 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                 </div>
               </div>
 
-              {/* High Level Metrics */}
+              {/* High Level Metrics — real per-project data */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {[
-                  { label: '30d Gross Flow', value: `$1,245,600`, sub: 'Up 11.2% MoM', trend: 'up' },
-                  { label: 'Coverage Ratio', value: '2.49x', sub: 'Calculated at Maturity', trend: 'safe' },
-                  { label: 'MRR', value: '$42,000', sub: 'Enterprise Focus', trend: 'up' }
+                  {
+                    label: '30d Gross Flow',
+                    value: `$${(asset.monthlyRevenue[asset.monthlyRevenue.length - 1]?.amount || 0).toLocaleString()}`,
+                    sub: `MoM Growth · ${asset.verifiedSource}`,
+                    trend: 'up'
+                  },
+                  {
+                    label: 'Coverage Ratio',
+                    value: `${asset.coverageRatio}x`,
+                    sub: 'Calculated at Maturity',
+                    trend: 'safe'
+                  },
+                  {
+                    label: 'MRR (Verified)',
+                    value: `$${mrr.toLocaleString()}`,
+                    sub: asset.verifiedSource,
+                    trend: 'up'
+                  }
                 ].map((stat, i) => (
                   <div key={i} className="p-4 sm:p-6 bg-white glass rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
                     <p className="text-[10px] font-bold text-gray-400  tracking-widest mb-2 sm:mb-3">{stat.label}</p>
@@ -1220,8 +1200,8 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                 <div className="bg-white rounded-2xl sm:rounded-[24px] border border-gray-100 p-4 sm:p-8 space-y-6 sm:space-y-8 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex items-baseline gap-2 sm:gap-3">
-                      <h4 className="text-xl sm:text-3xl font-black text-black">$79,479</h4>
-                      <p className="text-[#00E676] text-xs font-bold flex items-center gap-1">↑ 139.3% <span className="text-gray-400 font-medium">vs. prev period</span></p>
+                      <h4 className="text-xl sm:text-3xl font-black text-black">${mrr.toLocaleString()}</h4>
+                      <p className="text-[#00E676] text-xs font-bold flex items-center gap-1">↑ MRR <span className="text-gray-400 font-medium">· {asset.verifiedSource}</span></p>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="px-4 py-2 rounded-xl border border-gray-100 bg-gray-50 text-[11px] font-bold text-gray-600 flex items-center gap-2 cursor-pointer shadow-sm hover:bg-gray-100 transition-colors">

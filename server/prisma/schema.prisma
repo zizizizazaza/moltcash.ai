@@ -21,6 +21,7 @@ model User {
   kycStatus       String   @default("none") // none, pending, verified, rejected
   creditScore     Int      @default(100)
   riskAccepted    Boolean  @default(false)
+  invitedByCode   String?  // the invitation code this user used to join
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -40,9 +41,28 @@ model User {
   notifications       Notification[]
   redemptionQueue     RedemptionQueue[]
   groupMembers        GroupMember[]
+  invitationCodes     InvitationCode[]  // codes this user generated
 
   @@index([email])
   @@index([walletAddress])
+}
+
+model InvitationCode {
+  id          String    @id @default(cuid())
+  code        String    @unique                // e.g. "LOKA-A1B2C3"
+  createdById String                           // user who created the code
+  usedById    String?                          // user who redeemed the code
+  usedAt      DateTime?                        // when it was used
+  maxUses     Int       @default(1)            // how many times this code can be used
+  useCount    Int       @default(0)            // current usage count
+  isActive    Boolean   @default(true)         // admin can disable
+  expiresAt   DateTime?                        // optional expiry
+  createdAt   DateTime  @default(now())
+
+  createdBy   User      @relation(fields: [createdById], references: [id])
+
+  @@index([code])
+  @@index([createdById])
 }
 
 // ============ Projects & Fundraising ============

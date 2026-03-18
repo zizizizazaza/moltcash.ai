@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.CHAT);
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalInitialStep, setAuthModalInitialStep] = useState<'login' | 'invite'>('login');
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const { ready, authenticated } = usePrivy();
@@ -31,10 +32,7 @@ const App: React.FC = () => {
   const isWalletConnected = ready && authenticated;
 
   useEffect(() => {
-    const hasSeenRisk = localStorage.getItem('loka_risk_accepted');
-    if (!hasSeenRisk) {
-      setShowRiskModal(true);
-    }
+    // Disclaimer removed — no longer auto-show risk modal
 
     const handleNav = () => setCurrentPage(Page.CHAT);
     const handleNavSwap = () => setCurrentPage(Page.SWAP);
@@ -57,6 +55,14 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // After OAuth redirect: if authenticated but no invite code, show invite step
+  useEffect(() => {
+    if (ready && authenticated && !localStorage.getItem('loka_invite_code')) {
+      setAuthModalInitialStep('invite');
+      setShowAuthModal(true);
+    }
+  }, [ready, authenticated]);
+
   const triggerComingSoon = () => {
     setShowComingSoon(true);
     setTimeout(() => setShowComingSoon(false), 3000);
@@ -68,6 +74,7 @@ const App: React.FC = () => {
   };
 
   const connectWallet = () => {
+    setAuthModalInitialStep('login');
     setShowAuthModal(true);
   };
 
@@ -90,7 +97,7 @@ const App: React.FC = () => {
       </div>
 
       {showRiskModal && <RiskModal onAccept={acceptRisk} onClose={() => setShowRiskModal(false)} />}
-      {showAuthModal && <AuthModal onLogin={handleLogin} onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal initialStep={authModalInitialStep} onLogin={handleLogin} onClose={() => setShowAuthModal(false)} />}
       <TxModal />
 
       {/* Desktop Sidebar — hidden on mobile */}
