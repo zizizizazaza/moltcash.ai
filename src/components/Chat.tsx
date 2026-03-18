@@ -279,7 +279,7 @@ const Chat: React.FC = () => {
                 description: selectedAsset.desc,
             } : undefined;
 
-            const response = await fetch('/api/chat/stream', {
+            const response = await fetch('https://nftkashai.online/lokacash/api/chat/stream', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ content: text, agentId: activeAgent, sessionId, assetContext }),
@@ -657,9 +657,10 @@ const Chat: React.FC = () => {
                 </div>
             ) : (
             <div className="flex flex-1 overflow-hidden relative">
-                {/* Chat History Sidebar */}
-                <div className={`h-full bg-[#fafafa] border-r border-gray-100 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${leftSidebarCollapsed ? 'w-0 overflow-hidden opacity-0' : 'w-full absolute inset-0 z-40 md:relative md:w-64 opacity-100'}`}>
-                    <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                {/* Chat History Sidebar — only render when expanded */}
+                {!leftSidebarCollapsed && (
+                <div className="h-full bg-[#fafafa] border-r border-gray-100 flex flex-col shrink-0 w-full absolute inset-0 z-40 md:relative md:w-64">
+                    <div className="flex items-center justify-between px-4 pt-8 md:pt-4 pb-3">
                         <h2 className="text-xs font-black text-black tracking-widest uppercase">History</h2>
                         <button
                             onClick={() => setLeftSidebarCollapsed(true)}
@@ -711,14 +712,15 @@ const Chat: React.FC = () => {
                         ))}
                     </div>
                 </div>
+                )}
 
                 {/* Main Chat Area */}
-                <main className="flex-1 flex flex-col relative bg-white border-l border-gray-100">
+                <main className="flex-1 flex flex-col relative bg-white md:border-l md:border-gray-100">
                     {/* Sidebar Toggle Button */}
                     {leftSidebarCollapsed && (
                         <button
                             onClick={() => setLeftSidebarCollapsed(false)}
-                            className="absolute top-4 left-4 z-30 w-9 h-9 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-400 hover:text-black hover:border-gray-300 hover:shadow-md transition-all"
+                            className="absolute top-8 md:top-4 left-4 z-30 w-9 h-9 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-400 hover:text-black hover:border-gray-300 hover:shadow-md transition-all"
                             title="Show chat history"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
@@ -998,8 +1000,8 @@ const Chat: React.FC = () => {
                                 <div className="min-h-full w-full flex flex-col max-w-5xl mx-auto px-4 sm:px-10 pt-16 sm:pt-32 pb-8 sm:pb-32">
                                     <div className="flex flex-col items-center mb-8 sm:mb-10">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-xl flex items-center justify-center text-black font-black shadow-lg text-sm sm:text-base">
-                                                L
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                                                <img src="/logo-removebg.png" alt="Loka" className="w-full h-full object-contain" />
                                             </div>
                                             <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight">Loka AI</h1>
                                         </div>
@@ -1289,7 +1291,7 @@ const Chat: React.FC = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+                                <div className="px-4 pt-12 pb-4 sm:p-8 space-y-6 sm:space-y-8 max-w-5xl mx-auto">
                                     {/* Project Details Card at top of chat — only show when asset is @-selected */}
                                     {(() => {
                                         if (!selectedAssetName) return null;

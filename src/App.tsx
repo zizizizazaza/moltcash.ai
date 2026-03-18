@@ -104,8 +104,8 @@ const App: React.FC = () => {
       <nav className="hidden md:flex w-20 bg-white border-r border-gray-100 flex-col items-center py-6 shrink-0 z-50 shadow-sm relative">
         <div className="flex flex-col items-center gap-8 w-full">
           {/* Logo */}
-          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center font-black text-white hover:rotate-12 transition-transform cursor-pointer mb-2" onClick={() => setCurrentPage(Page.CHAT)}>
-            L
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center hover:rotate-12 transition-transform cursor-pointer mb-2 overflow-hidden" onClick={() => setCurrentPage(Page.CHAT)}>
+            <img src="/logo-removebg.png" alt="Loka" className="w-full h-full object-contain" />
           </div>
 
           {/* Primary Nav Links */}
@@ -154,7 +154,7 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="flex-1 flex flex-col overflow-hidden h-full relative pb-16 md:pb-0">
+      <main className="flex-1 flex flex-col overflow-hidden h-full relative pb-16 md:pb-0 safe-top md:!pt-0">
         <div className="flex-1 overflow-y-auto">
           {currentPage === Page.DASHBOARD && <Dashboard />}
           {currentPage === Page.SWAP && <Swap />}
@@ -170,7 +170,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Mobile Bottom Tab Bar — visible only on mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-1 z-50 safe-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-50 safe-bottom">
         <MobileTabButton active={currentPage === Page.CHAT} onClick={() => setCurrentPage(Page.CHAT)} icon={<Icons.Assets />} label="Assets" />
         <MobileTabButton active={currentPage === Page.GROUPS} onClick={() => setCurrentPage(Page.GROUPS)} icon={<Icons.Groups />} label="Groups" />
         <MobileTabButton active={currentPage === Page.TRADE} onClick={() => setCurrentPage(Page.TRADE)} icon={<Icons.Market />} label="Market" />
@@ -206,6 +206,7 @@ const MobileTabButton: React.FC<{ active: boolean; label: string; icon: React.Re
     <span className="text-[10px] font-bold tracking-wide">{label}</span>
   </button>
 );
+
 
 
 export default App;

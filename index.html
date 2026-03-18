@@ -5,6 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Loka Cash | AIUSD Treasury Stablecoin</title>
+  <link rel="icon" type="image/png" href="/logo-removebg.png">
+  <link rel="apple-touch-icon" href="/logo-removebg.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Outfit:wght@400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap"
@@ -223,14 +225,33 @@
       animation: idleGlow 3s ease-in-out infinite;
     }
 
+    /* Safe area for Capacitor / mobile notch & home indicator */
+    .safe-bottom {
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+    }
+    .safe-top {
+      /* env(safe-area-inset-top) works on iOS but returns 0 on most Android WebViews.
+         We use max() so Android still gets a comfortable 12px minimum top padding. */
+      padding-top: max(env(safe-area-inset-top, 0px), 12px);
+    }
+
     /* Hide scrollbar globally (keep scroll) */
     ::-webkit-scrollbar {
       display: none;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent;
     }
 
     * {
       -ms-overflow-style: none;
       scrollbar-width: none;
+    }
+
+    /* Force overlay scrolling so scrollbar doesn't take layout space on Android WebView */
+    .overflow-y-auto {
+      overflow-y: overlay;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* Utility to re-show scrollbar if needed */

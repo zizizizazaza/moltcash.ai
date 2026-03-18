@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { PrivyProvider } from '@privy-io/react-auth';
+import { Capacitor } from '@capacitor/core';
+import { AppUrlListener } from './components/AppUrlListener';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -8,6 +10,12 @@ const privyAppId = import.meta.env.VITE_PRIVY_APP_ID?.trim();
 if (!privyAppId) {
   throw new Error('Missing VITE_PRIVY_APP_ID. Please set it in your .env file.');
 }
+
+// Use production domain for OAuth redirect on mobile (Capacitor)
+const isNative = Capacitor.isNativePlatform();
+const customOAuthRedirectUrl = isNative
+  ? 'https://www.loka.cash/redirect'
+  : undefined;
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,12 +25,14 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
+    <AppUrlListener />
     <PrivyProvider
       appId={privyAppId}
       config={{
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
+        ...(customOAuthRedirectUrl ? { customOAuthRedirectUrl } : {}),
       }}
     >
       <ErrorBoundary>

@@ -40,6 +40,9 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
+  'https://localhost',        // Capacitor Android (androidScheme: 'https')
+  'capacitor://localhost',    // Capacitor iOS
+  'http://localhost',         // Capacitor fallback
   config.frontendUrl,
 ].filter(Boolean);
 
