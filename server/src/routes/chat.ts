@@ -251,7 +251,7 @@ router.delete('/history', authRequired, async (req: AuthRequest, res, next) => {
 router.delete('/conversations/:sessionId', authRequired, async (req: AuthRequest, res, next) => {
   try {
     await prisma.chatMessage.deleteMany({
-      where: { userId: req.userId, sessionId: req.params.sessionId },
+      where: { userId: req.userId, sessionId: req.params.sessionId as string },
     });
     res.json({ ok: true });
   } catch (err) {
