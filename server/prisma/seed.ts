@@ -23,168 +23,145 @@ async function seed() {
 
   console.log(`  ✅ User: ${user.email}`);
 
-  // Create projects (matching frontend mock data)
+  // Create projects based on TrustMRR verified startups
   const projects = [
     {
-      title: 'AI Agent Marketplace',
-      subtitle: 'Autonomous Agent Revenue Stream',
-      category: 'Compute',
-      issuer: 'AgentDAO',
+      title: 'Rezi - AI Resume Builder',
+      subtitle: 'AI-Powered Career Platform',
+      category: 'AI',
+      issuer: 'Rezi Inc.',
+      faceValue: 100,
+      askPrice: 96,
+      apy: 15.5,
+      durationDays: 180,
+      creditScore: 820,
+      status: 'Funded',
+      targetAmount: 800000,
+      raisedAmount: 780000,
+      backersCount: 12,
+      remainingCap: 20000,
+      coverageRatio: 2.1,
+      verifiedSource: 'Stripe API',
+      description: 'The best AI resume builder in the world with ~1M new users annually. Rezi Enterprise supports 300+ organizations including Fortune 500 companies and universities. $271K/mo verified Stripe revenue, $290K MRR, $8.6M total revenue.',
+      useOfFunds: 'AI model training, enterprise sales expansion, job seeker marketplace',
+      coverImage: '/covers/rezi.png',
+      issuerLogo: '/logos/rezi.png',
+      endDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // funded
+    },
+    {
+      title: 'POST BRIDGE - Social Media',
+      subtitle: 'Multi-Platform Content Publishing',
+      category: 'SaaS',
+      issuer: 'Post Bridge Inc.',
       faceValue: 100,
       askPrice: 97,
-      apy: 18.5,
-      durationDays: 180,
-      creditScore: 780,
+      apy: 18.2,
+      durationDays: 270,
+      creditScore: 790,
       status: 'Fundraising',
       targetAmount: 500000,
-      raisedAmount: 105000,
-      backersCount: 4,
-      remainingCap: 395000,
-      coverageRatio: 1.5,
+      raisedAmount: 325000,
+      backersCount: 8,
+      remainingCap: 175000,
+      coverageRatio: 1.8,
       verifiedSource: 'Stripe API',
-      description: 'Marketplace for autonomous AI agents generating revenue through task completion and API services.',
-      useOfFunds: 'GPU infrastructure scaling, agent training, marketplace development',
-      coverImage: '',
-      issuerLogo: '',
+      description: 'Post your content to multiple social media platforms at the same time, all-in-one place. $29K/mo verified Stripe revenue, 1,507 active subscriptions, growing 66% MoM. 92% profit margin. Founded in Canada, ranked #181 on TrustMRR.',
+      useOfFunds: 'Platform scaling, new social network integrations, marketing',
+      coverImage: '/covers/postbridge.png',
+      issuerLogo: '/logos/postbridge.png',
+      endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    },
+    {
+      title: 'PxlSafe - Video Editor Tools',
+      subtitle: 'AI-Powered Plugin Suite for Creators',
+      category: 'SaaS',
+      issuer: 'PxlSafe Studio',
+      faceValue: 100,
+      askPrice: 98,
+      apy: 14.8,
+      durationDays: 365,
+      creditScore: 750,
+      status: 'Fundraising',
+      targetAmount: 300000,
+      raisedAmount: 48000,
+      backersCount: 5,
+      remainingCap: 252000,
+      coverageRatio: 1.4,
+      verifiedSource: 'LemonSqueezy API',
+      description: 'AI-powered plugin suite for video editors. $6.3K/mo verified revenue with 90+ subscribers across MVX AI (Premiere Pro) and AutoVFX (AI VFX generator). 1,600+ customers, 34K Instagram following. 90% profit margin.',
+      useOfFunds: 'New plugin development, macOS app, marketing campaigns',
+      coverImage: '/covers/pxlsafe.png',
+      issuerLogo: '/logos/pxlsafe.png',
       endDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
     },
     {
-      title: 'Climapp.io Utility',
-      subtitle: 'Climate Data SaaS Revenue',
+      title: 'Deeptrue - AI Translation',
+      subtitle: 'Real-time Meeting Translation Copilot',
       category: 'SaaS',
-      issuer: 'ClimApp Inc.',
-      faceValue: 100,
-      askPrice: 98,
-      apy: 14.2,
-      durationDays: 365,
-      creditScore: 720,
-      status: 'Fundraising',
-      targetAmount: 300000,
-      raisedAmount: 6000,
-      backersCount: 2,
-      remainingCap: 294000,
-      coverageRatio: 1.2,
-      verifiedSource: 'QuickBooks',
-      description: 'B2B climate data analytics platform serving enterprise customers with real-time environmental insights.',
-      useOfFunds: 'Data infrastructure, sales team expansion, API development',
-      coverImage: '',
-      issuerLogo: '',
-      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-    },
-    {
-      title: 'Market Maker AI',
-      subtitle: 'Algorithmic Trading Revenue',
-      category: 'Compute',
-      issuer: 'QuantFlow Labs',
+      issuer: 'Deeptrue Corp.',
       faceValue: 100,
       askPrice: 95,
-      apy: 22.0,
-      durationDays: 90,
-      creditScore: 810,
-      status: 'Funded',
-      targetAmount: 800000,
-      raisedAmount: 760000,
-      backersCount: 8,
-      remainingCap: 40000,
-      coverageRatio: 2.1,
-      verifiedSource: 'Stripe API',
-      description: 'High-frequency market making AI generating consistent returns through spread capture.',
-      useOfFunds: 'Trading infrastructure, risk management systems, compliance',
-      coverImage: '',
-      issuerLogo: '',
-      endDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // already past (funded)
-    },
-    {
-      title: 'MEV Searcher Agent',
-      subtitle: 'On-chain MEV Extraction',
-      category: 'Compute',
-      issuer: 'FlashLabs',
-      faceValue: 100,
-      askPrice: 93,
-      apy: 25.5,
+      apy: 20.5,
       durationDays: 120,
-      creditScore: 690,
+      creditScore: 710,
       status: 'Fundraising',
-      targetAmount: 400000,
-      raisedAmount: 160000,
-      backersCount: 5,
-      remainingCap: 240000,
-      coverageRatio: 1.8,
-      verifiedSource: 'On-chain Analytics',
-      description: 'MEV extraction bot operating across multiple EVM chains.',
-      useOfFunds: 'Node infrastructure, strategy development, gas optimization',
-      coverImage: '',
-      issuerLogo: '',
-      endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      targetAmount: 250000,
+      raisedAmount: 95000,
+      backersCount: 4,
+      remainingCap: 155000,
+      coverageRatio: 1.6,
+      verifiedSource: 'Stripe API',
+      description: 'Real-time AI translation copilot for global meetings on Zoom, Meet, Teams. $2,022 verified Stripe revenue in last 30 days. MRR $2,001. +19% MoM. 80% profit margin. 61 active subscriptions. 30+ languages. Founded 2025.',
+      useOfFunds: 'AI model training, language expansion, enterprise features',
+      coverImage: '/covers/deeptrue.png',
+      issuerLogo: '/logos/deeptrue.png',
+      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
     },
     {
-      title: 'Copy Trading AI',
-      subtitle: 'Social Trading Revenue',
+      title: 'Draftly - 3D Web Builder',
+      subtitle: 'No-Code 3D Website Platform',
       category: 'SaaS',
-      issuer: 'MirrorTrade',
+      issuer: 'Draftly Space',
       faceValue: 100,
-      askPrice: 96,
-      apy: 16.8,
-      durationDays: 270,
-      creditScore: 750,
+      askPrice: 97,
+      apy: 16.0,
+      durationDays: 240,
+      creditScore: 730,
       status: 'Fundraising',
       targetAmount: 350000,
       raisedAmount: 273000,
-      backersCount: 3,
-      remainingCap: 77000,
-      coverageRatio: 1.6,
-      verifiedSource: 'Stripe API',
-      description: 'AI-powered copy trading platform with automated portfolio management.',
-      useOfFunds: 'AI model training, platform development, marketing',
-      coverImage: '',
-      issuerLogo: '',
-      endDate: new Date(Date.now() + 270 * 24 * 60 * 60 * 1000),
-    },
-    {
-      title: 'DigitalOcean Tier',
-      subtitle: 'Cloud Infrastructure Revenue',
-      category: 'SaaS',
-      issuer: 'CloudPool Inc.',
-      faceValue: 100,
-      askPrice: 99,
-      apy: 12.5,
-      durationDays: 360,
-      creditScore: 770,
-      status: 'Fundraising',
-      targetAmount: 450000,
-      raisedAmount: 45000,
       backersCount: 6,
-      remainingCap: 405000,
-      coverageRatio: 1.3,
-      verifiedSource: 'DigitalOcean API',
-      description: 'Tiered cloud infrastructure provisioning generating recurring revenue from managed Kubernetes and database services.',
-      useOfFunds: 'Server expansion, managed services development, customer acquisition',
-      coverImage: '',
-      issuerLogo: '',
-      endDate: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000),
+      remainingCap: 77000,
+      coverageRatio: 1.5,
+      verifiedSource: 'DodoPayment API',
+      description: 'Build 3D websites 10× faster. No-code platform with $6.6K/mo verified revenue, 100 active subscriptions. 28K+ monthly visitors. 85% profit margin. Founded in India.',
+      useOfFunds: 'Template marketplace, 3D engine optimization, team growth',
+      coverImage: '/covers/draftly.png',
+      issuerLogo: '/logos/draftly.png',
+      endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
     },
     {
-      title: 'DeFi Yield Optimizer',
-      subtitle: 'Automated Yield Farming Revenue',
-      category: 'Compute',
-      issuer: 'YieldMax Labs',
+      title: 'Comp AI - Compliance Automation',
+      subtitle: 'AI Cybersecurity Compliance Engine',
+      category: 'AI',
+      issuer: 'Comp AI Ltd.',
       faceValue: 100,
-      askPrice: 92,
-      apy: 28.0,
-      durationDays: 60,
-      creditScore: 580,
+      askPrice: 93,
+      apy: 22.0,
+      durationDays: 90,
+      creditScore: 680,
       status: 'Failed',
-      targetAmount: 250000,
+      targetAmount: 400000,
       raisedAmount: 0,
       backersCount: 0,
-      remainingCap: 250000,
-      coverageRatio: 0.8,
-      verifiedSource: 'On-chain Analytics',
-      description: 'Automated yield farming strategy aggregator that failed to reach its funding goal.',
-      useOfFunds: 'Smart contract audits, strategy development, liquidity bootstrapping',
-      coverImage: '',
-      issuerLogo: '',
-      endDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // expired 30 days ago
+      remainingCap: 400000,
+      coverageRatio: 0.9,
+      verifiedSource: 'Stripe API',
+      description: 'The fastest way to get compliant with cybersecurity frameworks like SOC 2 and ISO 27001 using AI automation. $482K revenue in last 30 days, $8.7K MRR, $2M total revenue. Failed to reach fundraising target within deadline.',
+      useOfFunds: 'AI compliance engine, framework expansion, enterprise onboarding',
+      coverImage: '/covers/compai.png',
+      issuerLogo: '/logos/compai.png',
+      endDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // expired
     },
   ];
 
@@ -225,8 +202,8 @@ async function seed() {
   await prisma.portfolioHolding.createMany({
     data: [
       { userId: user.id, asset: 'AIUSD', amount: 10000, avgCost: 1.0, currentApy: 5.24 },
-      { userId: user.id, asset: 'T-Bill Fund', amount: 2000, avgCost: 99.5, currentApy: 4.8 },
-      { userId: user.id, asset: 'AI Agent Marketplace', amount: 450.88, avgCost: 97, currentApy: 18.5 },
+      { userId: user.id, asset: 'Rezi - AI Resume Builder', amount: 5000, avgCost: 96, currentApy: 15.5 },
+      { userId: user.id, asset: 'POST BRIDGE - Social Media', amount: 2000, avgCost: 97, currentApy: 18.2 },
     ],
   });
   console.log('  ✅ Portfolio holdings');
@@ -246,15 +223,15 @@ async function seed() {
 
   // Find funded projects for repayment schedules
   const allProjects = await prisma.project.findMany();
-  const marketMakerAI = allProjects.find(p => p.title === 'Market Maker AI')!;
-  const copyTradingAI = allProjects.find(p => p.title === 'Copy Trading AI')!;
-  const aiAgentMarketplace = allProjects.find(p => p.title === 'AI Agent Marketplace')!;
+  const reziProject = allProjects.find(p => p.title === 'Rezi - AI Resume Builder')!;
+  const postBridgeProject = allProjects.find(p => p.title === 'POST BRIDGE - Social Media')!;
+  const draftlyProject = allProjects.find(p => p.title === 'Draftly - 3D Web Builder')!;
 
-  // Create investments for demo user in funded projects
+  // Create investments for demo user
   const inv1 = await prisma.investment.create({
     data: {
       userId: user.id,
-      projectId: marketMakerAI.id,
+      projectId: reziProject.id,
       amount: 15000,
       shares: 150,
       status: 'active',
@@ -263,7 +240,7 @@ async function seed() {
   const inv2 = await prisma.investment.create({
     data: {
       userId: user.id,
-      projectId: copyTradingAI.id,
+      projectId: postBridgeProject.id,
       amount: 5000,
       shares: 50,
       status: 'active',
@@ -272,7 +249,7 @@ async function seed() {
   const inv3 = await prisma.investment.create({
     data: {
       userId: user.id,
-      projectId: aiAgentMarketplace.id,
+      projectId: draftlyProject.id,
       amount: 2000,
       shares: 20,
       status: 'active',
@@ -280,15 +257,15 @@ async function seed() {
   });
   console.log('  ✅ Investments (3 projects)');
 
-  // --- Market Maker AI: 6-month schedule, 4 paid + 1 overdue + 1 upcoming ---
+  // --- Rezi AI: 6-month schedule, 4 paid + 1 overdue + 1 upcoming ---
   const now = new Date();
-  const mmSchedule = [];
+  const captureSchedule = [];
   for (let i = 1; i <= 6; i++) {
     const dueDate = new Date(now);
-    dueDate.setMonth(dueDate.getMonth() - 6 + i); // spread across past to future
-    dueDate.setDate(15); // due on 15th
-    const principalDue = 760000 / 6;
-    const interestDue = (760000 * 0.22) / 6;
+    dueDate.setMonth(dueDate.getMonth() - 6 + i);
+    dueDate.setDate(15);
+    const principalDue = 800000 / 6;
+    const interestDue = (800000 * 0.155) / 6;
     const totalDue = principalDue + interestDue;
 
     let status = 'upcoming';
@@ -299,14 +276,13 @@ async function seed() {
       status = 'paid';
       paidAmount = totalDue;
       paidAt = new Date(dueDate);
-      paidAt.setDate(paidAt.getDate() - 2); // paid 2 days before due
+      paidAt.setDate(paidAt.getDate() - 2);
     } else if (i === 5) {
-      status = 'overdue'; // missed this one
+      status = 'overdue';
     }
-    // i === 6 stays 'upcoming'
 
-    mmSchedule.push({
-      projectId: marketMakerAI.id,
+    captureSchedule.push({
+      projectId: reziProject.id,
       periodNumber: i,
       dueDate,
       principalDue: Math.round(principalDue * 100) / 100,
@@ -317,17 +293,17 @@ async function seed() {
       paidAt,
     });
   }
-  await prisma.repaymentSchedule.createMany({ data: mmSchedule });
-  console.log('  ✅ Repayment: Market Maker AI (4 paid, 1 overdue, 1 upcoming)');
+  await prisma.repaymentSchedule.createMany({ data: captureSchedule });
+  console.log('  ✅ Repayment: Rezi AI (4 paid, 1 overdue, 1 upcoming)');
 
-  // --- Copy Trading AI: 9-month schedule, 3 paid + 6 upcoming (on track) ---
-  const ctSchedule = [];
+  // --- POST BRIDGE: 9-month schedule, 3 paid + 6 upcoming (on track) ---
+  const pbSchedule = [];
   for (let i = 1; i <= 9; i++) {
     const dueDate = new Date(now);
     dueDate.setMonth(dueDate.getMonth() - 3 + i);
     dueDate.setDate(1);
-    const principalDue = 350000 / 9;
-    const interestDue = (350000 * 0.168) / 9;
+    const principalDue = 500000 / 9;
+    const interestDue = (500000 * 0.182) / 9;
     const totalDue = principalDue + interestDue;
 
     let status = 'upcoming';
@@ -338,11 +314,11 @@ async function seed() {
       status = 'paid';
       paidAmount = totalDue;
       paidAt = new Date(dueDate);
-      paidAt.setDate(paidAt.getDate() + 1); // paid 1 day after due (still on time)
+      paidAt.setDate(paidAt.getDate() + 1);
     }
 
-    ctSchedule.push({
-      projectId: copyTradingAI.id,
+    pbSchedule.push({
+      projectId: postBridgeProject.id,
       periodNumber: i,
       dueDate,
       principalDue: Math.round(principalDue * 100) / 100,
@@ -353,17 +329,17 @@ async function seed() {
       paidAt,
     });
   }
-  await prisma.repaymentSchedule.createMany({ data: ctSchedule });
-  console.log('  ✅ Repayment: Copy Trading AI (3 paid, 6 upcoming)');
+  await prisma.repaymentSchedule.createMany({ data: pbSchedule });
+  console.log('  ✅ Repayment: POST BRIDGE (3 paid, 6 upcoming)');
 
-  // --- AI Agent Marketplace: 12-month schedule, 2 paid + 10 upcoming (early stage) ---
-  const amSchedule = [];
+  // --- Draftly: 12-month schedule, 2 paid + 10 upcoming (early stage) ---
+  const drSchedule = [];
   for (let i = 1; i <= 12; i++) {
     const dueDate = new Date(now);
     dueDate.setMonth(dueDate.getMonth() - 2 + i);
     dueDate.setDate(20);
-    const principalDue = 500000 / 12;
-    const interestDue = (500000 * 0.185) / 12;
+    const principalDue = 350000 / 12;
+    const interestDue = (350000 * 0.16) / 12;
     const totalDue = principalDue + interestDue;
 
     let status = 'upcoming';
@@ -377,8 +353,8 @@ async function seed() {
       paidAt.setDate(paidAt.getDate() - 1);
     }
 
-    amSchedule.push({
-      projectId: aiAgentMarketplace.id,
+    drSchedule.push({
+      projectId: draftlyProject.id,
       periodNumber: i,
       dueDate,
       principalDue: Math.round(principalDue * 100) / 100,
@@ -389,12 +365,12 @@ async function seed() {
       paidAt,
     });
   }
-  await prisma.repaymentSchedule.createMany({ data: amSchedule });
-  console.log('  ✅ Repayment: AI Agent Marketplace (2 paid, 10 upcoming)');
+  await prisma.repaymentSchedule.createMany({ data: drSchedule });
+  console.log('  ✅ Repayment: Draftly (2 paid, 10 upcoming)');
 
   // Create interest payment transactions for the demo user
   const interestTxs = [];
-  for (const s of [...mmSchedule, ...ctSchedule, ...amSchedule].filter(s => s.status === 'paid')) {
+  for (const s of [...captureSchedule, ...pbSchedule, ...drSchedule].filter(s => s.status === 'paid')) {
     interestTxs.push({
       userId: user.id,
       type: 'INTEREST',
@@ -412,15 +388,15 @@ async function seed() {
 
   // Create an issuer user (for enterprise tab)
   const issuer = await prisma.user.upsert({
-    where: { email: 'issuer@quantflow.io' },
+    where: { email: 'issuer@rezi.ai' },
     update: {},
     create: {
-      email: 'issuer@quantflow.io',
-      name: 'QuantFlow Labs',
+      email: 'issuer@rezi.ai',
+      name: 'Rezi Inc.',
       authProvider: 'email',
       role: 'issuer',
       kycStatus: 'verified',
-      creditScore: 810,
+      creditScore: 820,
       riskAccepted: true,
     },
   });
@@ -430,9 +406,9 @@ async function seed() {
   const enterprise = await prisma.enterpriseVerification.create({
     data: {
       userId: issuer.id,
-      companyName: 'QuantFlow Labs Pte Ltd',
-      country: 'Singapore',
-      registrationNo: '202398765B',
+      companyName: 'Rezi Inc.',
+      country: 'United States',
+      registrationNo: 'DE-2022-AI765',
       step: 4,
       status: 'verified',
       creditAwarded: 100,
@@ -446,14 +422,14 @@ async function seed() {
     data: {
       enterpriseId: enterprise.id,
       userId: issuer.id,
-      projectName: 'Market Maker AI',
-      category: 'Compute',
-      monthlyRevenue: 120000,
+      projectName: 'Rezi - AI Resume Builder',
+      category: 'AI',
+      monthlyRevenue: 271000,
       requestedAmount: 800000,
-      proposedApy: 22,
-      durationDays: 90,
+      proposedApy: 15.5,
+      durationDays: 180,
       status: 'approved',
-      description: 'High-frequency market making AI',
+      description: 'AI-powered resume builder platform',
       collateralType: 'deposit',
       collateralValue: 240000,
       revenueSource: 'Stripe API',
@@ -464,8 +440,8 @@ async function seed() {
   // Add collateral for Market Maker AI
   await prisma.collateral.createMany({
     data: [
-      { projectId: marketMakerAI.id, type: 'deposit', description: 'USDC Security Deposit', value: 150000, status: 'pledged' },
-      { projectId: marketMakerAI.id, type: 'receivable', description: 'Q2 2026 Trading Revenue Receivable', value: 90000, status: 'pledged' },
+      { projectId: reziProject.id, type: 'deposit', description: 'USDC Security Deposit', value: 150000, status: 'pledged' },
+      { projectId: reziProject.id, type: 'receivable', description: 'Q2 2026 SaaS Revenue Receivable', value: 90000, status: 'pledged' },
     ],
   });
   console.log('  ✅ Collateral (Market Maker AI)');

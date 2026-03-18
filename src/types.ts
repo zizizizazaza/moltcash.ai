@@ -15,7 +15,7 @@ export interface MarketAsset {
   id: string;
   title: string;
   subtitle: string;
-  category: 'Compute' | 'SaaS' | 'E-commerce';
+  category: 'Compute' | 'SaaS' | 'E-commerce' | 'AI';
   issuer: string;
   faceValue: number;
   askPrice: number;

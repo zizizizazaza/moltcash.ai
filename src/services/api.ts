@@ -2,8 +2,8 @@
  * Frontend API client for communicating with the backend server.
  */
 
-// const API_BASE = '/api';
-const API_BASE = 'https://nftkashai.online/lokacash/api';
+const API_BASE = '/api';
+// const API_BASE = 'https://nftkashai.online/lokacash/api';
 
 class ApiClient {
   private token: string | null = null;
@@ -353,6 +353,32 @@ class ApiClient {
 
   async getLiquidationSummary(projectId: string) {
     return this.request<any>(`/liquidation/${encodeURIComponent(projectId)}/summary`);
+  }
+
+  // ============ Invitation Codes ============
+
+  async validateInvitationCode(code: string) {
+    return this.request<{ valid: boolean; reason?: string; code?: string }>('/invitation/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async useInvitationCode(code: string) {
+    return this.request<{ ok: boolean; code: string }>('/invitation/use', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async generateInvitationCode() {
+    return this.request<{ code: string; maxUses: number; useCount: number; createdAt: string }>('/invitation/generate', {
+      method: 'POST',
+    });
+  }
+
+  async getMyInvitationCodes() {
+    return this.request<Array<{ code: string; maxUses: number; useCount: number; isActive: boolean; expiresAt: string | null; createdAt: string }>>('/invitation/my-codes');
   }
 }
 

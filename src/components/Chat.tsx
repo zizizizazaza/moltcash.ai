@@ -46,16 +46,12 @@ function parseTradeAction(content: string): { text: string; action: TradeAction 
 }
 
 const cashFlowAssets = [
-    { title: 'AI Agent Marketplace', category: 'Platform', image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop', desc: 'Making it easier for AI agent markets to showcase themselves on a platform that facilitates exchanges.', progress: 21, apy: '18.5%', term: '30 Days', backers: 4 },
-    { title: 'Climapp.io Utility', category: 'Software', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop', desc: 'AI-enabled platform that helps you understand and manage your utility bills — all in one place.', progress: 2, apy: '14.2%', term: '90 Days', backers: 2 },
-    { title: 'Market Maker AI', category: 'Liquidity', image: 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=400&h=300&fit=crop', desc: 'Provides deep liquidity for new pairs with optimized spread management.', progress: 95, apy: '22.0%', term: '120 Days', backers: 124 },
-    { title: 'MEV Searcher Agent', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=300&fit=crop', desc: 'Captures Maximal Extractable Value opportunities efficiently.', progress: 40, apy: '25.5%', term: '60 Days', backers: 18 },
-    { title: 'Copy Trading AI', category: 'Social Trading', image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop', desc: 'Mirrors trades of top-performing wallets automatically.', progress: 78, apy: '16.8%', term: '45 Days', backers: 56 },
-    { title: 'AWS Cloud Note', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Secure yield generated from backing AWS capacity reservations.', progress: 50, apy: '12.0%', term: '30 Days', backers: 23 },
-    { title: 'Stripe Escrow Pool', category: 'DeFi Data', image: 'https://images.unsplash.com/photo-1563986768609-322da13575f2?w=400&h=300&fit=crop', desc: 'Automated revenue streaming and escrow financing.', progress: 90, apy: '11.5%', term: '30 Days', backers: 89 },
-    { title: 'Cloudflare Capacity', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop', desc: 'Global edge network capacity lending with 12% APY.', progress: 70, apy: '12.0%', term: '30 Days', backers: 42 },
-    { title: 'Amazon FBA Sellers', category: 'E-commerce', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop', desc: 'Inventory-backed financing for proven Amazon FBA vendors.', progress: 85, apy: '15.0%', term: '30 Days', backers: 115 },
-    { title: 'DigitalOcean Tier', category: 'Infrastructure', image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=300&fit=crop', desc: 'Financing for SME cloud deployments with high retention.', progress: 60, apy: '14.0%', term: '30 Days', backers: 37 }
+    { title: 'Draftly - 3D Web Builder', category: 'AI/Web3', image: '/covers/draftly.png', desc: 'Build 3D websites 10× faster. $6,172/mo verified revenue. MRR $3,165. 100 active subscriptions. 85% profit margin.', progress: 78, apy: '16%', term: '240 Days', backers: 6 },
+    { title: 'POST BRIDGE - Social Media', category: 'AI/Marketing', image: '/covers/postbridge.png', desc: 'Multi-platform social media publishing. $28,901/mo verified Stripe revenue. MRR $30,958. +65% MoM. 1,503 active subscriptions.', progress: 65, apy: '18.2%', term: '270 Days', backers: 8 },
+    { title: 'Deeptrue - AI Translation', category: 'AI/Language', image: '/covers/deeptrue.png', desc: 'Real-time AI meeting translation. $2,022/mo verified Stripe revenue. MRR $2,001. +19% MoM. 61 subscriptions. 30+ languages.', progress: 38, apy: '20.5%', term: '120 Days', backers: 4 },
+    { title: 'PxlSafe - Video Editor Tools', category: 'AI/Creator', image: '/covers/pxlsafe.png', desc: 'AI plugin suite for video editors. $6,300/mo total revenue. MRR $4,500 from 90+ subscribers. 1,600+ customers. 90% profit margin.', progress: 16, apy: '14.8%', term: '365 Days', backers: 5 },
+    { title: 'Rezi - AI Resume Builder', category: 'AI/Career', image: '/covers/rezi.png', desc: 'Best AI resume builder. $271,104/mo verified Stripe revenue. MRR $290,693. +8% MoM. ~1M users annually. Listed at $15M.', progress: 98, apy: '15.5%', term: '180 Days', backers: 12 },
+    { title: 'Comp AI - Compliance Automation', category: 'AI/Security', image: '/covers/compai.png', desc: 'Fastest SOC 2 & ISO 27001 compliance via AI. $482K/mo verified Stripe revenue. MRR $8,700 (subscriptions). $2M total revenue.', progress: 0, apy: '22%', term: '90 Days', backers: 0 },
 ];
 
 const Chat: React.FC = () => {
@@ -81,6 +77,13 @@ const Chat: React.FC = () => {
     const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID());
     const abortControllerRef = useRef<AbortController | null>(null);
     const pendingVoiceSendRef = useRef(false);
+
+    // Invitation code gate
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
+    const [inviteError, setInviteError] = useState<string | null>(null);
+    const [inviteChecking, setInviteChecking] = useState(false);
+    const pendingMessageRef = useRef<string | null>(null);
 
     // Voice hook — handles ASR + TTS + voice mode
     const voice = useVoice({
@@ -489,12 +492,50 @@ const Chat: React.FC = () => {
     const handleSend = () => {
         if (!inputText.trim() || isStreaming) return;
 
+        // Check invitation code before sending
+        const hasInvite = localStorage.getItem('loka_invite_code');
+        if (!hasInvite) {
+            pendingMessageRef.current = inputText.trim();
+            setShowInviteModal(true);
+            return;
+        }
+
         const text = inputText.trim();
         const userMsg = { role: 'user', content: text, timestamp: new Date().toLocaleTimeString() };
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
 
         sendToAI(text);
+    };
+
+    const handleInviteSubmit = async () => {
+        if (!inviteCode.trim()) return;
+        setInviteChecking(true);
+        setInviteError(null);
+        try {
+            const result = await api.validateInvitationCode(inviteCode.trim());
+            if (result.valid) {
+                localStorage.setItem('loka_invite_code', inviteCode.trim().toUpperCase());
+                api.useInvitationCode(inviteCode.trim()).catch(() => {});
+                setShowInviteModal(false);
+                setInviteCode('');
+                // Auto-send the pending message
+                if (pendingMessageRef.current) {
+                    const text = pendingMessageRef.current;
+                    pendingMessageRef.current = null;
+                    const userMsg = { role: 'user', content: text, timestamp: new Date().toLocaleTimeString() };
+                    setMessages(prev => [...prev, userMsg]);
+                    setInputText('');
+                    sendToAI(text);
+                }
+            } else {
+                setInviteError(result.reason || 'Invalid code');
+            }
+        } catch {
+            setInviteError('Failed to verify code. Please try again.');
+        } finally {
+            setInviteChecking(false);
+        }
     };
 
     const handleInlineActionSubmit = () => {
@@ -1804,6 +1845,65 @@ const Chat: React.FC = () => {
                     )}
                 </main>
             </div>
+            )}
+
+            {/* ── Invitation Code Modal (chat gate) ── */}
+            {showInviteModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.3s ease' }}>
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowInviteModal(false)} />
+                    <div className="relative bg-white w-full max-w-[380px] overflow-hidden rounded-[32px] shadow-2xl border border-gray-100" style={{ animation: 'slideUp 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
+                        {/* Header */}
+                        <div className="px-8 pt-10 pb-2 text-center">
+                            <div className="w-16 h-16 mx-auto mb-5 bg-[#00E676]/10 rounded-2xl flex items-center justify-center">
+                                <svg className="w-7 h-7 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-black text-black tracking-tight">Invitation Required</h2>
+                            <p className="text-sm text-gray-400 font-medium mt-1.5">Enter your code to unlock access</p>
+                        </div>
+                        {/* Body */}
+                        <div className="px-8 py-6 space-y-4">
+                            {inviteError && (
+                                <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-2xl">
+                                    <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <span className="text-xs text-red-600 font-medium">{inviteError}</span>
+                                </div>
+                            )}
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-2 ml-1">Invitation Code</label>
+                                <input
+                                    type="text"
+                                    value={inviteCode}
+                                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleInviteSubmit()}
+                                    placeholder="ABC123"
+                                    disabled={inviteChecking}
+                                    className="w-full py-4 px-5 bg-gray-50 border-2 border-gray-100 rounded-2xl text-base text-black placeholder-gray-300 outline-none focus:border-[#00E676] focus:bg-white transition-all disabled:opacity-60 tracking-[0.25em] font-mono font-bold text-center"
+                                    autoFocus
+                                />
+                            </div>
+                            <button
+                                onClick={handleInviteSubmit}
+                                disabled={!inviteCode.trim() || inviteChecking}
+                                className="w-full py-4 bg-[#00E676] text-black rounded-2xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#00C853] active:scale-[0.98] shadow-lg shadow-[#00E676]/20"
+                            >
+                                {inviteChecking ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                                        Verifying...
+                                    </span>
+                                ) : 'Continue'}
+                            </button>
+                        </div>
+                        {/* Footer */}
+                        <div className="px-8 pb-8 text-center">
+                            <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
+                                Don't have a code? Ask an existing<br/>Loka member to share one with you.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
