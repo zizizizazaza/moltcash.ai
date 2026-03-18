@@ -11,6 +11,16 @@ const OAuthCallbackHandler: React.FC = () => {
         typeof window !== 'undefined' && window.location.search.includes('privy_oauth_')
     );
 
+    // Listen for in-place URL updates from AppUrlListener (popstate)
+    useEffect(() => {
+        const checkOAuthParams = () => {
+            if (window.location.search.includes('privy_oauth_')) {
+                setHasOAuthParams(true);
+            }
+        };
+        window.addEventListener('popstate', checkOAuthParams);
+        return () => window.removeEventListener('popstate', checkOAuthParams);
+    }, []);
 
     const linkedWallets = (user?.linkedAccounts ?? []).filter(
         (acc) => acc.type === 'wallet' || acc.type === 'smart_wallet'

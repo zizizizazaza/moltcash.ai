@@ -72,6 +72,7 @@ const Chat: React.FC = () => {
     const [isInputFocused, setIsInputFocused] = useState(false);
     const [selectedAssetName, setSelectedAssetName] = useState<string | null>(null);
     const [showActionMenu, setShowActionMenu] = useState(false);
+    const [showEarningStrategy, setShowEarningStrategy] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
     const [marketAssets, setMarketAssets] = useState<MarketAsset[]>([]);
     const [detailAsset, setDetailAsset] = useState<MarketAsset | null>(null);
@@ -1134,48 +1135,54 @@ const Chat: React.FC = () => {
                                                 )}
                                             </div>
 
-                                            <div className="group relative ml-2 flex items-center h-full">
-                                                <div className="w-9 h-9 bg-violet-50 border border-violet-100 rounded-full cursor-help hover:bg-violet-100 transition-all flex items-center justify-center shadow-sm">
+                                            <div className="relative ml-2 flex items-center h-full">
+                                                <div
+                                                    onClick={() => setShowEarningStrategy(!showEarningStrategy)}
+                                                    className="w-9 h-9 bg-violet-50 border border-violet-100 rounded-full cursor-pointer hover:bg-violet-100 transition-all flex items-center justify-center shadow-sm"
+                                                >
                                                     <Icons.Coins className="w-5 h-5 text-violet-600" />
                                                 </div>
 
-                                                <div className="absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-4 w-64 sm:w-72 p-4 sm:p-6 bg-black shadow-2xl rounded-[24px] sm:rounded-[32px] opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-[100] transform translate-y-3 group-hover:translate-y-0 border border-white/10">
-                                                    <p className="text-[9px] font-black text-violet-400 tracking-[0.3em] mb-4 uppercase text-center">Earning Strategy</p>
-                                                    <div className="space-y-4">
-                                                        <div className="flex items-start gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">✨</div>
-                                                            <div>
-                                                                <p className="text-[11px] font-black text-white leading-tight flex items-center justify-between">
-                                                                    Early Bird Bonus
-                                                                    <span className="text-violet-400">+20 pts</span>
-                                                                </p>
-                                                                <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">Subscribe within first 48h of asset release.</p>
+                                                {showEarningStrategy && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-[99]" onClick={() => setShowEarningStrategy(false)} />
+                                                        <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 p-5 bg-black shadow-2xl rounded-[24px] z-[100] border border-white/10">
+                                                            <p className="text-[9px] font-black text-violet-400 tracking-[0.3em] mb-4 uppercase text-center">Earning Strategy</p>
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">✨</div>
+                                                                    <div>
+                                                                        <p className="text-[11px] font-black text-white leading-tight flex items-center justify-between">
+                                                                            Early Bird Bonus
+                                                                            <span className="text-violet-400">+20 pts</span>
+                                                                        </p>
+                                                                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">Subscribe within first 48h of asset release.</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">🐳</div>
+                                                                    <div>
+                                                                        <p className="text-[11px] font-black text-white leading-tight flex items-center justify-between">
+                                                                            High-Volume Tier
+                                                                            <span className="text-amber-400">+50 pts</span>
+                                                                        </p>
+                                                                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">One-time bonus for single subscriptions &gt;$5k.</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">⌛</div>
+                                                                    <div>
+                                                                        <p className="text-[11px] font-black text-white leading-tight flex items-center justify-between">
+                                                                            Loyalty Stream
+                                                                            <span className="text-blue-400">+10 pts</span>
+                                                                        </p>
+                                                                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">Earn every 30 days of continuous holding.</p>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-start gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">🐳</div>
-                                                            <div>
-                                                                <p className="text-[11px] font-black text-white leading-tight flex items-center justify-between">
-                                                                    High-Volume Tier
-                                                                    <span className="text-amber-400">+50 pts</span>
-                                                                </p>
-                                                                <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">One-time bonus for single subscriptions &gt;$5k.</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-start gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">⌛</div>
-                                                            <div>
-                                                                <p className="text-[11px] font-black text-white leading-tight flex items-center justify-between">
-                                                                    Loyalty Stream
-                                                                    <span className="text-blue-400">+10 pts</span>
-                                                                </p>
-                                                                <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">Earn every 30 days of continuous holding.</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {/* Decorative Arrow */}
-                                                    <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-black rotate-45 border-r border-b border-white/10" />
-                                                </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
