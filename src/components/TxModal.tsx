@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useFundWallet, usePrivy, useWallets } from '@privy-io/react-auth';
+import { useFundWallet, usePrivy } from '@privy-io/react-auth';
 
 type ModalAction = 'deposit' | 'withdraw';
 type FiatProvider = 'coinbase' | 'onramper';
@@ -16,8 +16,7 @@ const TxModal: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [modalAction, setModalAction] = useState<ModalAction | null>(null);
 
-    const { ready, authenticated } = usePrivy();
-    const { wallets } = useWallets();
+    const { ready, authenticated, user } = usePrivy();
     const { fundWallet } = useFundWallet();
 
     const getErrorMessage = (error: unknown): string => {
@@ -27,15 +26,15 @@ const TxModal: React.FC = () => {
     };
 
     const openOnramper = (walletAddress: string, amount: string, fiat: string) => {
-        const apiKey = import.meta.env.VITE_ONRAMPER_API_KEY?.trim();
+        const apiKey = ((import.meta as any).env?.VITE_ONRAMPER_API_KEY as string | undefined)?.trim();
         if (!apiKey) {
             throw new Error('Missing VITE_ONRAMPER_API_KEY. Please set it in your .env file.');
         }
 
         const onramperUrl = new URL('https://buy.onramper.dev/');
-        onramperUrl.searchParams.set('apiKey', apiKey);
+        onramperUrl.searchParams.set('apiKey', apiKey || '');
 
- 
+
         const normalizedFiat = fiat === 'EUR' ? 'EUR' : 'USD';
         onramperUrl.searchParams.set('defaultFiat', normalizedFiat);
 
@@ -63,10 +62,13 @@ const TxModal: React.FC = () => {
         setIsSubmitting(false);
     };
 
-    const walletList = (wallets ?? []) as Array<{ address?: string; walletClientType?: string }>;
-    const privyWalletAddress = walletList.find((w) => w.walletClientType === 'privy' && Boolean(w.address))?.address;
-    const fallbackWalletAddress = walletList.find((w) => Boolean(w.address))?.address;
-    const targetAddress = privyWalletAddress ?? fallbackWalletAddress ?? '';
+    // Use user.linkedAccounts (same as Portfolio.tsx) — works reliably on Android WebView
+    // unlike useWallets() which requires full wallet provider initialization
+    const linkedWallets = (user?.linkedAccounts ?? []).filter(
+        (acc) => (acc.type === 'wallet' || acc.type === 'smart_wallet') && 'address' in acc
+    ) as Array<{ address: string; walletClientType?: string }>;
+    const privyEmbeddedWallet = linkedWallets.find((w) => w.walletClientType === 'privy');
+    const targetAddress = privyEmbeddedWallet?.address ?? linkedWallets[0]?.address ?? '';
 
     useEffect(() => {
         const handleOpenModal = (e: Event) => {
@@ -97,7 +99,7 @@ const TxModal: React.FC = () => {
                 return;
             }
 
-                if (!targetAddress) {
+            if (!targetAddress) {
                 setSubmitError('No wallet address found. Please reconnect and try again.');
                 return;
             }
@@ -125,7 +127,7 @@ const TxModal: React.FC = () => {
                         asset: 'USDC',
                         // 'manual' = direct to Receive funds (QR + address), skipping Pay with card / Receive funds choice
                         defaultFundingMethod: paymentMethod === 'exchange' ? 'manual' : paymentMethod,
-                        card: paymentMethod === 'card' ? { preferredProvider: fiatProvider } : undefined
+                        card: paymentMethod === 'card' ? { preferredProvider: fiatProvider as any } : undefined
                     }
                 });
                 handleClose();
@@ -289,9 +291,8 @@ const TxModal: React.FC = () => {
                                 <p className="text-[11px] font-semibold text-gray-400 mb-1.5 px-1">Card Provider</p>
                                 <button onClick={() => { setShowProviderPicker(!showProviderPicker); setShowMethodPicker(false); }} className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-300 transition-all group">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black ${
-                                            fiatProvider === 'coinbase' ? 'bg-blue-600' : 'bg-orange-500'
-                                        }`}>
+                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black ${fiatProvider === 'coinbase' ? 'bg-blue-600' : 'bg-orange-500'
+                                            }`}>
                                             {fiatProvider === 'coinbase' ? 'C' : 'O'}
                                         </div>
                                         <div className="text-left">

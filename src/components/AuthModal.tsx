@@ -20,7 +20,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
             onLogin();
         },
         onError: (error) => {
-            setAuthError(error instanceof Error ? error.message : String(error ?? 'Login failed'));
+            setAuthError(String(error || 'Login failed'));
             console.error('OAuth login error:', error);
         },
     });
@@ -31,7 +31,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
             onLogin();
         },
         onError: (error) => {
-            setAuthError(error instanceof Error ? error.message : String(error ?? 'Email login failed'));
+            setAuthError(String(error || 'Email login failed'));
             console.error('Email login error:', error);
         },
     });
@@ -83,7 +83,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
             <div className="relative bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-8 space-y-8 transform transition-all">
                 {/* Header */}
                 <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-black text-white rounded-xl mx-auto flex items-center justify-center font-serif text-2xl italic mb-4">L</div>
+                    <div className="w-12 h-12 rounded-xl mx-auto flex items-center justify-center mb-4 overflow-hidden"><img src="/logo-removebg.png" alt="Loka" className="w-full h-full object-contain" /></div>
                     <h2 className="text-2xl font-bold text-black tracking-tight">Sign In</h2>
                     <p className="text-sm text-gray-500 font-medium">Create a smart wallet or connect your own.</p>
                 </div>
