@@ -52,7 +52,7 @@ const useSchema = z.object({
   code: z.string().min(1).max(20),
 });
 
-router.post('/use', authOptional, async (req, res, next) => {
+router.post('/use', authOptional, async (req: AuthRequest, res, next) => {
   try {
     const { code } = useSchema.parse(req.body);
     const upperCode = code.toUpperCase().trim();
