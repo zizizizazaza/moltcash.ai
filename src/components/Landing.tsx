@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icons } from '../constants';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Intersection Observer hook for scroll animations
 const useInView = (options?: IntersectionObserverInit) => {
@@ -484,6 +485,69 @@ const Landing: React.FC = () => {
                                         <p className="text-sm font-semibold text-gray-800 mb-2">Native Yield & RWA Discounting</p>
                                         <p className="text-xs text-gray-500 leading-relaxed">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ─── Download App Section ─── */}
+                <section className="pt-24 pb-12">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="relative rounded-[2.5rem] overflow-hidden border shadow-[0_20px_60px_rgba(0,0,0,0.06)]" style={{ backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(0,0,0,0.06)' }}>
+                            {/* Background glows */}
+                            <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#BAFF29]/20 rounded-full blur-[80px]" />
+                            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#BAFF29]/10 rounded-full blur-[80px]" />
+
+                            <div className="relative z-10 p-8 sm:p-12 md:p-16 flex flex-col md:flex-row items-center gap-10 md:gap-16">
+                                {/* Left: Text + Download Button */}
+                                <div className="flex-1 text-center md:text-left">
+                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold tracking-wide mb-6 border" style={{ backgroundColor: 'rgba(186,255,41,0.15)', borderColor: 'rgba(186,255,41,0.3)', color: '#4a7a10' }}>
+                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.237a.625.625 0 00-1.074.636l1.36 2.296a7.5 7.5 0 00-11.618 0l1.36-2.296a.625.625 0 10-1.074-.636L5.022 4.865A7.5 7.5 0 002 11.25h20a7.5 7.5 0 00-3.022-6.385l-1.455-2.628zM8.25 9.375a.875.875 0 110-1.75.875.875 0 010 1.75zm7.5 0a.875.875 0 110-1.75.875.875 0 010 1.75zM2 12.75h20v.75a8.25 8.25 0 01-8.25 8.25h-3.5A8.25 8.25 0 012 13.5v-.75z" /></svg>
+                                        ANDROID APP
+                                    </div>
+                                    <h3 className="text-3xl md:text-4xl font-black text-black tracking-tight mb-4 leading-tight">
+                                        Take Loka Cash<br />everywhere you go.
+                                    </h3>
+                                    <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md">
+                                        Trade, chat with AI, manage your portfolio, and execute on-chain transactions — all from your pocket. Scan the QR code or tap the button below.
+                                    </p>
+
+                                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                                        <a
+                                            href="/downloads/lokacash.apk"
+                                            download
+                                            className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl text-sm font-black shadow-xl hover:scale-105 hover:shadow-2xl transition-all duration-300 border"
+                                            style={{ backgroundColor: '#BAFF29', color: '#1a1a00', borderColor: 'rgba(186,255,41,0.5)' }}
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                            Download APK
+                                        </a>
+                                        <span className="text-xs font-bold text-gray-400">v1.0.0 · 5.8 MB</span>
+                                    </div>
+                                </div>
+
+                                {/* Right: QR Code */}
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="bg-white rounded-3xl p-5 shadow-lg border border-gray-100">
+                                        <QRCodeSVG
+                                            value="https://www.loka.cash/downloads/lokacash.apk"
+                                            size={180}
+                                            level="H"
+                                            includeMargin={false}
+                                            bgColor="#FFFFFF"
+                                            fgColor="#000000"
+                                            imageSettings={{
+                                                src: '/logo-removebg.png',
+                                                x: undefined,
+                                                y: undefined,
+                                                height: 36,
+                                                width: 36,
+                                                excavate: true,
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Scan to download</p>
                                 </div>
                             </div>
                         </div>
