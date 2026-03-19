@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 
 /* ═══════════════════════════════════════════════
    Loka Developer Platform — API Page
    Flat UI / Full-Width Grid / Minimalist Typographic
+   Enhanced with Risk Assessment, Download, etc.
 ═══════════════════════════════════════════════ */
 
 // ─── Scroll Reveal ─────────────────────────────
@@ -22,12 +24,12 @@ const useScrollReveal = (threshold = 0.05) => {
   return { ref, isVisible };
 };
 
-const Reveal: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({
-  children, className = '', delay = 0
+const Reveal: React.FC<{ children: React.ReactNode; className?: string; delay?: number; id?: string }> = ({
+  children, className = '', delay = 0, id
 }) => {
   const { ref, isVisible } = useScrollReveal();
   return (
-    <div ref={ref}
+    <div ref={ref} id={id}
       className={`transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'} ${className}`}
       style={{ transitionDelay: `${delay}ms` }}>
       {children}
@@ -117,80 +119,155 @@ const ParticleCanvas: React.FC = () => {
 
 // ─── Data ───────────────────────────────────────
 const CODE: Record<string, string> = {
-  React: `import { LokaCashPrivyRoot, useLokaCashDeposit }
-from '@lokacash/fiat/react';
+  'React': `import { LokaCashPrivyRoot, useLokaCashDeposit, useLokaCashWithdraw } from '@lokacash/fiat/react';
 
+// 1. Wrap your entire application in 1 line
 export default function App() {
   return (
-    <LokaCashPrivyRoot apiKey="lk_live_xxxx">
+    <LokaCashPrivyRoot apiKey="lk_live_xxxxxxxxxxxx">
       <DeFiDashboard />
     </LokaCashPrivyRoot>
   );
 }
 
+// 2. On-Ramp: buy crypto with fiat
 function DeFiDashboard() {
-  const { open } = useLokaCashDeposit();
+  const deposit = useLokaCashDeposit();
+  const withdraw = useLokaCashWithdraw();
+  
   return (
-    <button onClick={() => open({
-      amount: '1000', asset: 'USDC',
-      preferredProvider: 'onramper'
-    })}>
-      Deposit via Credit Card
-    </button>
+    <div>
+      <button 
+        onClick={() => deposit.open({ amount: '1000', asset: 'USDC' })}
+        disabled={deposit.isOpening}
+      >
+        Buy USDC
+      </button>
+
+      {/* 3. Off-Ramp: sell crypto to fiat via MoonPay */}
+      <button
+        onClick={() => withdraw.open({ crypto: 'eth', fiat: 'usd' })}
+        disabled={withdraw.isOpening}
+      >
+        Sell ETH → USD
+      </button>
+    </div>
   );
 }`,
   'Node.js': `const { LokaClient } = require("@lokacash/node-sdk");
-const loka = new LokaClient("lk_live_xxxx");
 
-async function autonomousInvest() {
-  // Find AAA opportunities
-  const picks = await loka.ai.getOpportunities({
-    minApy: 12.5, riskLevel: "Low",
-    assetClass: "Cash Flow Notes"
+// Initialize the Loka Enterprise Client
+const client = new LokaClient("lk_live_xxxxxxxxxxxx");
+
+async function runAutonomousInvestment() {
+  // 1. Ask the AI Risk Engine for AAA-rated opportunities
+  const recommendations = await client.ai.getOpportunities({
+    minApy: 12.5,
+    riskLevel: "Low",
+    assetClass: "Real Estate Cash Flows"
   });
 
-  // Execute on-chain in one call
-  const tx = await loka.invest({
-    projectId: picks[0].id,
-    amountUsdc: 50_000, autoStake: true
+  const topPick = recommendations[0];
+  console.log(\`🤖 AI selected: \${topPick.name} (Score: \${topPick.aiRating})\`);
+
+  // 2. Instantly execute the investment programmatically
+  const tx = await client.invest({
+    projectId: topPick.id,
+    amountUsdc: 50000,
+    autoStake: true
   });
-  console.log("✅ TX:", tx.hash);
+
+  console.log(\`✅ Invested! TX Hash: \${tx.hash}\`);
+}
+
+runAutonomousInvestment();`,
+  'Python': `from loka.agent import LokaAgentSDK
+
+sdk = LokaAgentSDK("lk_live_xxxxxxxxxxxx")
+
+# Give your autonomous AI Agent a financial brain
+def fetch_and_analyze_market():
+    print("🧠 Scanning real-world asset yields...")
+    
+    # Direct access to the Loka Oracle Network
+    market_data = sdk.market.get_live_yields(sector="SME_Loans")
+    
+    for asset in market_data:
+        # Utilize DeepSeek V3 integration for deep risk profiling
+        risk_report = sdk.ai.generate_risk_report(asset.id)
+        
+        if risk_report.safety_score > 90:
+            print(f"🔥 Prime Asset Found: {asset.name} yielding {asset.apy}%")
+            # Agent can now trigger smart contract interactions
+            
+fetch_and_analyze_market()`,
+  'Risk Assessment': `// Evaluate transaction risk via Loka's consensus engine
+const response = await fetch('https://api.loka.cash/api/v1/risk/evaluate', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer lk_live_xxxxxxxxxxxx',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    subject_id: 'user_12345',
+    subject_type: 'user',
+    trust_score: 0.75,
+    action_type: 'payment',
+    amount: 3000.00,
+    currency: 'USD',
+    geo_location: 'NY,US',
+    channel: 'web',
+  }),
+});
+
+const result = await response.json();
+// => { decision: "approve", risk_level: "low", confidence: 0.91 }
+
+if (result.decision === 'challenge') {
+  // Submit evidence to appeal
+  await fetch(\`/api/v1/risk/challenge/\${result.challenge_id}/respond\`, {
+    method: 'POST',
+    body: JSON.stringify({
+      evidence: [{ type: 'purpose_proof', content: 'invoice_url' }]
+    }),
+  });
 }`,
-  Python: `from loka.agent import LokaAgentSDK
-sdk = LokaAgentSDK("lk_live_xxxx")
-
-def run_agent():
-    # Live market yield feed
-    assets = sdk.market.get_live_yields(
-        sector="SME_Loans"
-    )
-    for asset in assets:
-        # DeepSeek V3 risk profiling
-        risk = sdk.ai.risk_report(asset.id)
-        if risk.safety_score > 90:
-            print(f"🔥 {asset.name} · {asset.apy}%")
-            sdk.invest(asset.id, amount=10_000)
-
-run_agent()`,
 };
 
 const USE_CASES = [
-  { id: 'wallet', label: 'DeFi Wallets', desc: 'No bank redirects, no friction. Drop in the Fiat SDK, and users buy USDC instantly directly inside your wallet UI. Access 190+ countries out of the box.' },
-  { id: 'agent', label: 'AI Agents', desc: 'Feed unstructured REST endpoints directly to your LLM. Let your agent query yields, score credit risks on the fly, and execute standard trades fully autonomously.' },
-  { id: 'institution', label: 'Institutions', desc: 'WebSocket streams power algorithmic trading bots. Subscribe to on-chain repayment events and auto-reinvest AIUSD yield programmatically with sub-50ms latency.' },
+  { id: 'wallet', label: 'DeFi Wallets', desc: 'Integrate the Fiat SDK to let users buy USDC directly into your wallet interface, instantly converting fiat to on-chain purchasing power without leaving your app.', metric: '+40% Conversion' },
+  { id: 'agent', label: 'Autonomous AI Agents', desc: 'Feed our REST APIs directly to your LLM agent. Let it query real-time RWA yields, assess credit scores via our AI engine, and execute trades fully autonomously.', metric: '100% On-Chain' },
+  { id: 'institution', label: 'Institutional Funds', desc: 'Use our Webhooks and WebSocket streams to build algorithmic trading bots for cash flow assets, automatically reinvesting AIUSD stablecoins for compound yield.', metric: '<50ms Latency' },
 ];
 
 const ENDPOINTS = [
-  { method: 'GET', path: '/v1/projects', desc: 'List active projects with pagination' },
-  { method: 'POST', path: '/v1/projects/:id/invest', desc: 'Invest liquidity into a cash flow note' },
-  { method: 'DELETE', path: '/v1/projects/:id/revoke', desc: 'Revoke and refund during fundraising' },
-  { method: 'POST', path: '/v1/portfolio/mint', desc: 'Mint AIUSD stablecoin from collateral' },
-  { method: 'POST', path: '/v1/portfolio/redeem', desc: 'Redeem AIUSD back to underlying USDC' },
-  { method: 'GET', path: '/v1/portfolio/holdings', desc: 'Retrieve full user portfolio state' },
-  { method: 'GET', path: '/v1/credit/score', desc: 'AI-powered credit score for assets' },
+  { method: 'GET', path: '/v1/projects', desc: 'List all fundraising projects with filters' },
+  { method: 'POST', path: '/v1/projects/:id/invest', desc: 'Invest in a cash flow project' },
+  { method: 'DELETE', path: '/v1/projects/:id/revoke', desc: 'Revoke investment during fundraising' },
+  { method: 'POST', path: '/v1/portfolio/mint', desc: 'Mint AIUSD from USDC' },
+  { method: 'POST', path: '/v1/portfolio/redeem', desc: 'Redeem AIUSD to USDC' },
+  { method: 'GET', path: '/v1/portfolio/holdings', desc: 'Get user portfolio holdings' },
+  { method: 'GET', path: '/v1/credit/score', desc: 'Get AI-powered credit score' },
+  { method: 'POST', path: '/v1/chat/send', desc: 'Send message to AI advisor' },
 ];
 
+const METHOD_COLORS: Record<string, { bg: string; text: string }> = {
+  GET: { bg: '#f5f5f5', text: '#555' },
+  POST: { bg: '#000', text: '#fff' },
+  PUT: { bg: '#e5e5e5', text: '#333' },
+  DELETE: { bg: '#fafafa', text: '#b91c1c' },
+};
+
 const PARTNERS = ['Coinbase', 'Base', 'Privy', 'DeepSeek', 'Onramper'];
+
+// ─── Nav Links ─────────────────────────────────
+const NAV_LINKS = [
+  { label: 'SDK', href: '#sdk' },
+  { label: 'API', href: '#api' },
+  { label: 'Risk', href: '#risk' },
+  { label: 'Use Cases', href: '#usecases' },
+  { label: 'Endpoints', href: '#endpoints' },
+];
 
 // ─── Copy Button ────────────────────────────────
 const CopyBtn: React.FC<{ code: string }> = ({ code }) => {
@@ -208,36 +285,124 @@ const CopyBtn: React.FC<{ code: string }> = ({ code }) => {
 };
 
 // ─── Code Block ─────────────────────────────────
+const highlightLine = (raw: string): string => {
+  // Escape HTML first
+  let line = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const trimmed = line.trimStart();
+  // Full comment lines
+  if (trimmed.startsWith('//') || (trimmed.startsWith('#') && !trimmed.startsWith('#!'))) {
+    return `<span class="cc">${line}</span>`;
+  }
+
+  // Extract strings and comments into placeholders to prevent regex cascading
+  const slots: string[] = [];
+  const ph = (html: string) => { slots.push(html); return `\u2997PH${slots.length - 1}HP\u2998`; };
+
+  // Inline comments — extract first
+  line = line.replace(/(\/\/.*)$/, (_, c) => ph(`<span class="cc">${c}</span>`));
+
+  // Double-quoted strings
+  line = line.replace(/"([^"]*)"/g, (_, inner) => {
+    if (inner.startsWith('lk_live_')) return ph(`"<span class="cv">${inner}</span>"`);
+    return ph(`<span class="cs">"${inner}"</span>`);
+  });
+
+  // Single-quoted strings
+  line = line.replace(/'([^']*)'/g, (_, inner) => ph(`<span class="cs">'${inner}'</span>`));
+
+  // Template literal backtick strings
+  line = line.replace(/`([^`]*)`/g, (_, inner) => ph(`<span class="cs">\`${inner}\`</span>`));
+
+  // Keywords
+  line = line.replace(/\b(import|from|export default|return|const|let|function|async|await|def|for|if|class|require|print)\b/g,
+    '<span class="ck">$1</span>');
+
+  // Numbers (only in remaining text, not inside placeholders)
+  line = line.replace(/\b(\d[\d_]*\.?\d*)\b/g, '<span class="cn">$1</span>');
+
+  // Restore placeholders
+  line = line.replace(/\u2997PH(\d+)HP\u2998/g, (_, idx) => slots[parseInt(idx)]);
+
+  return line;
+};
+
+const codeStyles = `
+.cc { color: #6b7280 }
+.ck { color: #a8a29e }
+.cs { color: #e5e5e5 }
+.cv { color: #fff }
+.cn { color: #d4d4d8 }
+`;
+
 const CodeBlock: React.FC<{ code: string }> = ({ code }) => {
-  const h = code
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/(\/\/.+)/g, '<span style="color:#6b7280">$1</span>')
-    .replace(/(#.+)/g, '<span style="color:#6b7280">$1</span>')
-    .replace(/\b(import|from|export default|return|const|let|function|async|await|def|for|if|class|require)\b/g,
-      '<span style="color:#a8a29e">$1</span>') // Light gray for keywords
-    .replace(/"(lk_live_[^"]+)"/g, '"<span style="color:#fff">$1</span>"')
-    .replace(/("([^"<]+)")/g, match => match.includes('#fff') ? match : `<span style="color:#e5e5e5">${match}</span>`)
-    .replace(/\b(\d[\d_]*\.?\d*)\b/g, '<span style="color:#d4d4d8">$1</span>');
+  const lines = code.split('\n');
   return (
-    <div className="font-mono text-[11px] sm:text-xs leading-[1.8] tracking-tight">
-      {h.split('\n').map((line, i) => (
-        <div key={i} className="flex hover:bg-white/[0.04] transition-colors rounded items-start px-2">
-          <span className="w-8 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-[#333] mr-4 pt-px shrink-0">{i + 1}</span>
-          <span className="text-gray-300 whitespace-pre-wrap break-words flex-1" dangerouslySetInnerHTML={{ __html: line || ' ' }} />
-        </div>
-      ))}
-    </div>
+    <>
+      <style>{codeStyles}</style>
+      <div className="font-mono text-[11px] sm:text-xs leading-[1.8] tracking-tight">
+        {lines.map((line, i) => (
+          <div key={i} className="flex hover:bg-white/[0.04] transition-colors rounded items-start px-2">
+            <span className="w-8 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-[#333] mr-4 pt-px shrink-0">{i + 1}</span>
+            <span className="text-gray-300 whitespace-pre-wrap break-words flex-1" dangerouslySetInnerHTML={{ __html: highlightLine(line) || ' ' }} />
+          </div>
+        ))}
+      </div>
+    </>
   );
 };
+
+// ─── Risk Decision Card (Flat variant) ──────────
+const RiskDecisionCard: React.FC<{ title: string; desc: string; borderHover: string }> = ({ title, desc, borderHover }) => (
+  <div className={`p-6 bg-white border border-gray-200 hover:${borderHover} transition-all group`}>
+    <h4 className="text-sm font-black text-black mb-1.5">{title}</h4>
+    <p className="text-[11px] text-gray-500 leading-relaxed">{desc}</p>
+  </div>
+);
 
 // ─── Main ───────────────────────────────────────
 const ApiLanding: React.FC = () => {
   const [activeLang, setActiveLang] = useState('React');
   const [activeCase, setActiveCase] = useState('wallet');
+  const [scrolled, setScrolled] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled((containerRef.current?.scrollTop || 0) > 50);
+    };
+    const container = containerRef.current;
+    container?.addEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToSection = (href: string) => {
+    const id = href.replace('#', '');
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
-    <div className="h-full overflow-y-auto bg-white text-black selection:bg-black selection:text-white font-sans">
+    <div ref={containerRef} className="h-full overflow-y-auto bg-white text-black selection:bg-black selection:text-white font-sans">
       
+      {/* ── Sticky Nav (Flat) ── */}
+      <div className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-200' : 'bg-transparent'}`}>
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 flex items-center justify-between h-14">
+          <span className={`font-black text-lg tracking-tight transition-opacity duration-300 ${scrolled ? 'opacity-100' : 'opacity-0'}`}>Loka</span>
+          <nav className={`hidden md:flex items-center gap-8 transition-opacity duration-300 ${scrolled ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            {NAV_LINKS.map(link => (
+              <button key={link.href} onClick={() => scrollToSection(link.href)}
+                className="text-sm font-bold text-gray-500 hover:text-black transition-colors">
+                {link.label}
+              </button>
+            ))}
+          </nav>
+          <button className={`hidden sm:block px-5 py-2 text-sm font-bold bg-black text-white hover:bg-gray-900 transition-all ${scrolled ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            Get API Key
+          </button>
+        </div>
+      </div>
+
       {/* ── 1. Hero (Full-width, flat, typography focus) ── */}
       <section className="relative w-full min-h-[85vh] flex flex-col justify-center border-b border-gray-200 bg-[#fafafa]">
         {/* Flat Grid Pattern */}
@@ -260,7 +425,8 @@ const ApiLanding: React.FC = () => {
           
           <Reveal delay={200}>
             <p className="text-lg sm:text-xl text-gray-500 font-medium leading-relaxed max-w-2xl mt-8">
-              On-ramp fiat liquidity, run AI credit analysis, and execute on-chain investments — all through a single endpoint. Ship in hours, not months.
+              Powering the next generation of financial applications. Access instant fiat on-ramps,
+              AI-driven credit scoring, and programmatic cash flow investments — all through a single endpoint.
             </p>
           </Reveal>
           
@@ -291,23 +457,57 @@ const ApiLanding: React.FC = () => {
         </div>
       </section>
 
-      {/* ── 2. SDK Showcase (50/50 Split) ── */}
-      <section className="border-b border-gray-200 flex flex-col lg:flex-row">
+      {/* ── 2. SDK Showcase (50/50 Split) — Enhanced with On-Ramp & Off-Ramp ── */}
+      <section id="sdk" className="border-b border-gray-200 flex flex-col lg:flex-row">
         {/* Left: Copy */}
         <div className="lg:w-1/2 p-8 sm:p-16 xl:p-24 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white flex flex-col justify-center">
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Drop-in Fiat Liquidity.</h2>
+            <div className="flex gap-2 mb-8">
+              <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">On-Ramp</span>
+              <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">Off-Ramp</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Full-Cycle Fiat SDK.</h2>
             <p className="text-base text-gray-600 leading-relaxed mb-10 max-w-md">
-              Integrate global on-ramps in 5 lines of code. We abstracted the UI overlays, routing, and geo-compliance across 190+ countries.
+              We abstracted away the fiat integration nightmare. <strong>Coinbase</strong> + <strong>Onramper</strong> for on-ramp, <strong>MoonPay</strong> for off-ramp — your users can buy and sell crypto across 190+ countries.
             </p>
+
+            {/* Quick Start Steps */}
+            <div className="border border-gray-200 p-5 mb-10">
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Quick Start</div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 bg-black text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
+                  <div>
+                    <code className="text-[11px] font-mono bg-gray-100 text-black px-2 py-1 border border-gray-200 block w-fit select-all">npm install @lokacash/fiat</code>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 bg-black text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
+                  <div>
+                    <code className="text-[11px] font-mono bg-gray-100 text-black px-2 py-1 border border-gray-200 block w-fit select-all">{`<LokaCashPrivyRoot apiKey="lk_live_...">`}</code>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 bg-black text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
+                  <div>
+                    <code className="text-[11px] font-mono bg-gray-100 text-black px-2 py-1 border border-gray-200 block w-fit select-all">useLokaCashDeposit() / useWithdraw()</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-8">
               <div className="border-l-2 border-black pl-5">
-                <h4 className="text-sm font-bold text-black mb-1">Privy Native Integration</h4>
-                <p className="text-sm text-gray-500">Root Wrapper supercharges `useFundWallet`. Zero config required.</p>
+                <h4 className="text-sm font-bold text-black mb-1">On-Ramp: Coinbase + Onramper</h4>
+                <p className="text-sm text-gray-500">Instant USDC deposits via credit card, bank transfer, Apple Pay, and 50+ payment methods worldwide.</p>
               </div>
               <div className="border-l-2 border-gray-200 pl-5 hover:border-gray-400 transition-colors">
-                <h4 className="text-sm font-bold text-black mb-1">Universal Direct Overlay</h4>
-                <p className="text-sm text-gray-500">Using MetaMask? Just pass the 0x address. We handle the rest.</p>
+                <h4 className="text-sm font-bold text-black mb-1">Off-Ramp: MoonPay Sell</h4>
+                <p className="text-sm text-gray-500">Let users sell ETH, USDC, USDT, or BTC and withdraw fiat directly to their bank account via MoonPay.</p>
+              </div>
+              <div className="border-l-2 border-gray-200 pl-5 hover:border-gray-400 transition-colors">
+                <h4 className="text-sm font-bold text-black mb-1">Direct Mode: Any Wallet</h4>
+                <p className="text-sm text-gray-500">Using MetaMask? Just pass the 0x address. We handle the entire UI overlay.</p>
               </div>
             </div>
           </Reveal>
@@ -333,7 +533,7 @@ const ApiLanding: React.FC = () => {
       </section>
 
       {/* ── 3. API Grid (Flat Borders) ── */}
-      <section className="bg-white border-b border-gray-200">
+      <section id="api" className="bg-white border-b border-gray-200">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
           <Reveal>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl">A Backend Built for True Autonomy.</h2>
@@ -374,8 +574,139 @@ const ApiLanding: React.FC = () => {
         </div>
       </section>
 
-      {/* ── 4. Use Cases (Sticky scroll layout) ── */}
-      <section className="bg-[#fafafa] border-b border-gray-200">
+      {/* ── 3.5 Risk Assessment Engine (NEW — Flat Style) ── */}
+      <section id="risk" className="bg-[#fafafa] border-b border-gray-200">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
+          <Reveal>
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <div className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 border border-gray-300 mb-8">
+                Risk Assessment Engine
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black tracking-tight mb-6 leading-tight">
+                The compliance layer<br />
+                <span className="text-gray-400">Wall Street trusts.</span>
+              </h2>
+              <p className="text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
+                Every transaction passes through a <strong className="text-black">Sequencer</strong> that routes it to specialized validators running in <strong className="text-black">parallel</strong> — Amount, Identity, Geo, Velocity — each producing an independent risk score. A <strong className="text-black">Weighted Consensus Engine</strong> aggregates all scores in under 340ms.
+              </p>
+            </div>
+          </Reveal>
+
+          {/* Quick Start row */}
+          <Reveal delay={100}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16">
+              {[
+                { step: '1', label: 'Get Key', code: 'curl -X POST /api/v1/auth/keys', desc: 'Generate your API key from the dashboard' },
+                { step: '2', label: 'Evaluate', code: 'POST /api/v1/risk/evaluate', desc: 'Send a transaction payload for scoring' },
+                { step: '3', label: 'Handle', code: "if (res.decision === 'challenge')", desc: 'Route by decision: approve, challenge, or reject' },
+              ].map(item => (
+                <div key={item.step} className="bg-white border border-gray-200 p-5 hover:border-gray-400 transition-colors">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 bg-black text-white text-[10px] font-black flex items-center justify-center">{item.step}</div>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">{item.label}</span>
+                  </div>
+                  <code className="text-[10px] font-mono bg-gray-100 text-black px-2 py-1 border border-gray-200 block w-fit select-all">{item.code}</code>
+                  <p className="text-[10px] text-gray-400 mt-2">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          {/* Risk bento: 3-column layout */}
+          <Reveal delay={200}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-gray-200 border border-gray-200">
+              
+              {/* Left: Decision Cards */}
+              <div className="lg:col-span-3 flex flex-col divide-y divide-gray-200 bg-white">
+                <div className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 bg-black text-white flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                  </div>
+                  <h4 className="text-sm font-black text-black mb-1">Approve</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">Low-risk transactions pass through instantly with confidence &gt; 0.85. Zero human intervention.</p>
+                </div>
+                <div className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 bg-gray-200 text-gray-600 flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01" /></svg>
+                    </div>
+                  </div>
+                  <h4 className="text-sm font-black text-black mb-1">Challenge</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">Elevated risk triggers a secure evidence request. Users submit proof to continue.</p>
+                </div>
+                <div className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 bg-gray-100 text-gray-400 flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </div>
+                  </div>
+                  <h4 className="text-sm font-black text-black mb-1">Reject</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">Critical threats blocked instantly — sanctions, fraud patterns, structuring attempts.</p>
+                </div>
+              </div>
+
+              {/* Center: Code Terminal */}
+              <div className="lg:col-span-6 bg-[#0a0a0b] flex flex-col text-white">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                  <span className="text-[11px] font-bold text-white tracking-widest uppercase">risk-engine.ts</span>
+                  <CopyBtn code={CODE['Risk Assessment']} />
+                </div>
+                <div className="p-6 overflow-x-auto flex-1 flex flex-col justify-center">
+                  <CodeBlock code={CODE['Risk Assessment']} />
+                </div>
+              </div>
+
+              {/* Right: Pipeline + Features */}
+              <div className="lg:col-span-3 flex flex-col bg-white">
+                {/* Pipeline */}
+                <div className="p-6 border-b border-gray-200 flex-1">
+                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Consensus Pipeline</div>
+                  <div className="flex flex-col items-center gap-0 mt-2">
+                    <div className="w-full py-2.5 bg-black text-white text-[10px] font-bold text-center">
+                      Sequencer
+                    </div>
+                    <div className="w-px h-4 bg-gray-300" />
+                    <div className="grid grid-cols-2 gap-1 w-full">
+                      {['Amount', 'Identity', 'Geo', 'Velocity'].map(v => (
+                        <div key={v} className="py-2 bg-gray-100 text-gray-600 text-[9px] font-black text-center border border-gray-200 hover:bg-gray-200 transition-colors">
+                          {v}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="w-px h-4 bg-gray-300" />
+                    <div className="w-full py-2.5 bg-black text-white text-[10px] font-bold text-center">
+                      Consensus
+                    </div>
+                  </div>
+                </div>
+                {/* Why Loka Risk */}
+                <div className="p-6 bg-[#0a0a0b] text-white flex-1">
+                  <div className="text-sm font-black mb-4">Why Loka Risk?</div>
+                  <div className="space-y-3">
+                    {[
+                      'Sub-second parallel evaluation',
+                      'Built-in challenge & appeal flow',
+                      'Full audit trail per session',
+                      'Configurable validator weights',
+                      'Zero false-positive guarantee SLA',
+                    ].map((text, i) => (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className="w-1 h-1 bg-gray-500 rounded-full mt-1.5 flex-shrink-0" />
+                        <span className="text-[11px] text-gray-400 leading-snug">{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── 4. Use Cases (Sticky scroll layout — Enhanced with metrics) ── */}
+      <section id="usecases" className="bg-white border-b border-gray-200">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
           
           <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
@@ -389,8 +720,13 @@ const ApiLanding: React.FC = () => {
                   <div className="flex flex-col gap-2">
                     {USE_CASES.map((uc) => (
                       <button key={uc.id} onClick={() => setActiveCase(uc.id)}
-                        className={`text-left px-5 py-4 border-l-2 transition-all duration-300 ${activeCase === uc.id ? 'border-black bg-white shadow-sm' : 'border-transparent hover:border-gray-300'}`}>
-                        <h4 className={`text-base font-bold mb-1 ${activeCase === uc.id ? 'text-black' : 'text-gray-500'}`}>{uc.label}</h4>
+                        className={`text-left px-5 py-4 border-l-2 transition-all duration-300 ${activeCase === uc.id ? 'border-black bg-gray-50' : 'border-transparent hover:border-gray-300'}`}>
+                        <div className="flex items-center justify-between">
+                          <h4 className={`text-base font-bold mb-1 ${activeCase === uc.id ? 'text-black' : 'text-gray-500'}`}>{uc.label}</h4>
+                          {activeCase === uc.id && (
+                            <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-0.5 border border-gray-200">{uc.metric}</span>
+                          )}
+                        </div>
                         {activeCase === uc.id && (
                           <p className="text-sm text-gray-600 leading-relaxed mt-2 animate-fade-in">{uc.desc}</p>
                         )}
@@ -401,10 +737,10 @@ const ApiLanding: React.FC = () => {
               </Reveal>
             </div>
 
-            {/* Right Col: Code Viewer */}
-            <div className="lg:w-2/3">
+            {/* Right Col: Dual Code Viewers */}
+            <div className="lg:w-2/3 space-y-4">
               <Reveal delay={100}>
-                <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white shadow-xl min-h-[400px]">
+                <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white min-h-[300px]">
                   <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                     <span className="text-[11px] font-bold text-white tracking-widest uppercase">
                       {activeCase === 'wallet' ? 'wallet.tsx' : activeCase === 'agent' ? 'agent.py' : 'quant.ts'}
@@ -416,13 +752,26 @@ const ApiLanding: React.FC = () => {
                   </div>
                 </div>
               </Reveal>
+              <Reveal delay={200}>
+                <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white min-h-[250px]">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                    <span className="text-[11px] font-bold text-white tracking-widest uppercase">
+                      risk-engine.ts
+                    </span>
+                    <CopyBtn code={CODE['Risk Assessment']} />
+                  </div>
+                  <div className="p-6 overflow-x-auto flex-1 flex flex-col justify-center">
+                    <CodeBlock code={CODE['Risk Assessment']} />
+                  </div>
+                </div>
+              </Reveal>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── 5. Endpoints Table (Typography focused) ── */}
-      <section className="bg-white border-b border-gray-200">
+      <section id="endpoints" className="bg-white border-b border-gray-200">
         <div className="max-w-[1000px] mx-auto px-6 sm:px-12 py-20 lg:py-32">
           <Reveal>
             <div className="flex items-end justify-between mb-12 border-b border-black pb-4">
@@ -438,28 +787,80 @@ const ApiLanding: React.FC = () => {
           
           <Reveal delay={100}>
             <div className="flex flex-col">
-              {ENDPOINTS.map((ep, i) => (
-                <div key={i} className={`flex flex-col sm:flex-row sm:items-center py-5 group hover:bg-gray-50 transition-colors px-4 border-b border-gray-100`}>
-                  <div className="flex items-center gap-4 sm:w-[400px] shrink-0 mb-2 sm:mb-0">
-                    <span className={`text-[10px] font-black px-2 py-1 uppercase tracking-wider w-16 text-center
-                      ${ep.method === 'GET' ? 'bg-gray-100 text-gray-600' : ep.method === 'POST' ? 'bg-black text-white' : 'bg-red-50 text-red-600'}`}>
-                      {ep.method}
-                    </span>
-                    <code className="text-sm font-mono font-bold text-black">{ep.path}</code>
+              {ENDPOINTS.map((ep, i) => {
+                const mc = METHOD_COLORS[ep.method] || METHOD_COLORS.GET;
+                return (
+                  <div key={i} className="flex flex-col sm:flex-row sm:items-center py-5 group hover:bg-gray-50 transition-colors px-4 border-b border-gray-100">
+                    <div className="flex items-center gap-4 sm:w-[400px] shrink-0 mb-2 sm:mb-0">
+                      <span className="text-[10px] font-black px-2 py-1 uppercase tracking-wider w-16 text-center"
+                        style={{ background: mc.bg, color: mc.text }}>
+                        {ep.method}
+                      </span>
+                      <code className="text-sm font-mono font-bold text-black">{ep.path}</code>
+                    </div>
+                    <span className="text-sm text-gray-500 sm:ml-4 group-hover:text-black transition-colors">{ep.desc}</span>
+                    <button className="hidden sm:block ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-black">
+                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
                   </div>
-                  <span className="text-sm text-gray-500 sm:ml-4 group-hover:text-black transition-colors">{ep.desc}</span>
-                  <button className="hidden sm:block ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-black">
-                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                  </button>
+                );
+              })}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── 6. Download App (NEW — Flat Style) ── */}
+      <section className="bg-[#fafafa] border-b border-gray-200">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
+          <Reveal>
+            <div className="border border-gray-200 bg-white flex flex-col md:flex-row items-center gap-12 md:gap-16 p-8 sm:p-12 md:p-16">
+              {/* Left content */}
+              <div className="flex-1 text-center md:text-left">
+                <span className="inline-flex items-center gap-2 px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase mb-6 bg-black text-white">
+                  Android
+                </span>
+                <h3 className="text-3xl md:text-4xl font-black text-black tracking-tight mb-4 leading-tight">
+                  Take Loka Cash<br />everywhere you go.
+                </h3>
+                <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md mx-auto md:mx-0">
+                  Trade, chat with AI, manage your portfolio, and execute on-chain transactions — all from your pocket.
+                </p>
+                <a href="/downloads/lokacash.apk" download
+                  className="inline-flex items-center gap-3 px-8 py-4 text-sm font-bold bg-black text-white hover:bg-gray-900 transition-colors">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Download APK
+                </a>
+              </div>
+              {/* Right: QR Code */}
+              <div className="flex flex-col items-center gap-4 flex-shrink-0">
+                <div className="bg-white border border-gray-200 p-6">
+                  <QRCodeSVG
+                    value="https://www.loka.cash/downloads/lokacash.apk"
+                    size={180}
+                    level="H"
+                    includeMargin={false}
+                    bgColor="#FFFFFF"
+                    fgColor="#000000"
+                    imageSettings={{
+                      src: '/logo-removebg.png',
+                      x: undefined,
+                      y: undefined,
+                      height: 36,
+                      width: 36,
+                      excavate: true,
+                    }}
+                  />
                 </div>
-              ))}
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scan to download</p>
+              </div>
             </div>
           </Reveal>
         </div>
       </section>
 
       {/* ── CTA ── */}
-      <section className="bg-[#fafafa]">
+      <section className="bg-white">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-32 text-center">
           <Reveal>
             <h2 className="text-4xl sm:text-6xl font-black text-black tracking-tight mb-6">Build the backend.</h2>
@@ -468,10 +869,14 @@ const ApiLanding: React.FC = () => {
               <button className="w-full sm:w-auto px-10 py-4 bg-black text-white text-sm font-bold hover:bg-gray-900 transition-colors">
                 Start Building for Free
               </button>
-              <button className="w-full sm:w-auto px-10 py-4 border border-gray-300 bg-white text-black text-sm font-bold hover:border-black transition-colors">
+              <a href="https://t.me/lance_xyz" target="_blank" rel="noopener noreferrer"
+                className="w-full sm:w-auto px-10 py-4 border border-gray-300 bg-white text-black text-sm font-bold hover:border-black transition-colors">
                 Contact Enterprise Sales
-              </button>
+              </a>
             </div>
+            <p className="text-xs pt-6 text-gray-400">
+              No credit card required for Sandbox access. We respond to Enterprise inquiries within 2 hours.
+            </p>
           </Reveal>
         </div>
       </section>
