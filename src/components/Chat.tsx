@@ -280,7 +280,7 @@ const Chat: React.FC = () => {
                 description: selectedAsset.desc,
             } : undefined;
 
-            const response = await fetch('https://nftkashai.online/lokacash/api/chat/stream', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE || '/api'}/chat/stream`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ content: text, agentId: activeAgent, sessionId, assetContext }),

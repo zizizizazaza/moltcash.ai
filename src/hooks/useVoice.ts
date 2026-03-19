@@ -10,7 +10,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 // ─── ASR (Speech-to-Text) ───────────────────────────────────────────
 
@@ -45,7 +45,11 @@ export function useVoice(options: UseVoiceOptions = {}) {
 
   // Detect if we need fallback
   useEffect(() => {
-    if (!browserSupportsSpeechRecognition) {
+    // Capacitor WebView reports Web Speech API as available but it doesn't actually work
+    const isCapacitor = !!(window as any).Capacitor;
+    const isMobileBrowser = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (!browserSupportsSpeechRecognition || isCapacitor || isMobileBrowser) {
       setUseFallback(true);
     }
   }, [browserSupportsSpeechRecognition]);
@@ -88,46 +92,75 @@ export function useVoice(options: UseVoiceOptions = {}) {
 
   const startMediaRecorder = useCallback(async () => {
     try {
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('[Voice] getUserMedia not available. mediaDevices:', !!navigator.mediaDevices);
+        setIsRecording(false);
+        return;
+      }
+
+      console.log('[Voice] Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/mp4',
-      });
+      console.log('[Voice] ✅ Got audio stream, tracks:', stream.getAudioTracks().length);
+      
+      // Determine best supported mime type
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/wav';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = ''; // Let browser pick default
+          }
+        }
+      }
+      console.log('[Voice] Using mimeType:', mimeType || 'browser default');
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log('[Voice] Audio chunk:', event.data.size, 'bytes, total chunks:', audioChunksRef.current.length);
         }
       };
 
+      mediaRecorder.onerror = (event: any) => {
+        console.error('[Voice] MediaRecorder error:', event.error?.name, event.error?.message);
+      };
+
       mediaRecorder.onstop = async () => {
+        console.log('[Voice] MediaRecorder stopped. Chunks:', audioChunksRef.current.length);
         stream.getTracks().forEach(t => t.stop());
         const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
+        console.log('[Voice] Audio blob size:', audioBlob.size, 'bytes, type:', audioBlob.type);
+        
         if (audioBlob.size < 1000) {
-          // Too short, ignore
+          console.log('[Voice] Audio too short, ignoring');
           setIsRecording(false);
           return;
         }
         // Send to backend for Whisper transcription
         try {
+          console.log('[Voice] Sending to Whisper for transcription...');
           const text = await transcribeAudio(audioBlob);
+          console.log('[Voice] ✅ Transcription result:', text);
           if (text) {
             onRecordingEnd?.(text);
           }
         } catch (err) {
-          console.error('Transcription failed:', err);
+          console.error('[Voice] ❌ Transcription failed:', err);
         }
         setIsRecording(false);
       };
 
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(250); // collect in 250ms chunks
-    } catch (err) {
-      console.error('Microphone access denied:', err);
+      console.log('[Voice] ✅ MediaRecorder started, state:', mediaRecorder.state);
+    } catch (err: any) {
+      console.error('[Voice] ❌ Microphone access error:', err?.name, err?.message, err);
       setIsRecording(false);
-      alert('Microphone access is required for voice input.');
     }
   }, [onRecordingEnd]);
 
@@ -165,13 +198,16 @@ export function useVoice(options: UseVoiceOptions = {}) {
   // ─── Public API ──────────────────────────────────────
 
   const startRecording = useCallback(() => {
+    console.log('[Voice] startRecording called, useFallback:', useFallback);
     lastTranscriptRef.current = '';
     resetTranscript();
 
     if (useFallback) {
+      console.log('[Voice] Using MediaRecorder fallback path');
       setIsRecording(true);
       startMediaRecorder();
     } else {
+      console.log('[Voice] Using Web Speech API path');
       setIsRecording(true);
       SpeechRecognition.startListening({ continuous: true, language });
     }

@@ -235,20 +235,20 @@ if (result.decision === 'challenge') {
 };
 
 const USE_CASES = [
-  { id: 'wallet', label: 'DeFi Wallets', desc: 'Integrate the Fiat SDK to let users buy USDC directly into your wallet interface, instantly converting fiat to on-chain purchasing power without leaving your app.', metric: '+40% Conversion' },
-  { id: 'agent', label: 'Autonomous AI Agents', desc: 'Feed our REST APIs directly to your LLM agent. Let it query real-time RWA yields, assess credit scores via our AI engine, and execute trades fully autonomously.', metric: '100% On-Chain' },
-  { id: 'institution', label: 'Institutional Funds', desc: 'Use our Webhooks and WebSocket streams to build algorithmic trading bots for cash flow assets, automatically reinvesting AIUSD stablecoins for compound yield.', metric: '<50ms Latency' },
+  { id: 'wallet', label: 'Fintech Apps', desc: 'Embed deposit & withdrawal into your app. Users fund their accounts with credit card, bank transfer, or Apple Pay — no redirects, no friction, 190+ countries supported.', metric: '+40% Conversion' },
+  { id: 'agent', label: 'AI Investment Advisors', desc: 'Connect our API to your AI models. Let them screen real-world asset yields, run risk analysis, and allocate capital automatically based on your predefined strategies.', metric: 'Fully Automated' },
+  { id: 'institution', label: 'Fund Managers', desc: 'Real-time portfolio feeds, automated rebalancing triggers, and instant settlement notifications. Build algorithmic strategies on top of our structured product data.', metric: '<50ms Latency' },
 ];
 
 const ENDPOINTS = [
-  { method: 'GET', path: '/v1/projects', desc: 'List all fundraising projects with filters' },
-  { method: 'POST', path: '/v1/projects/:id/invest', desc: 'Invest in a cash flow project' },
-  { method: 'DELETE', path: '/v1/projects/:id/revoke', desc: 'Revoke investment during fundraising' },
-  { method: 'POST', path: '/v1/portfolio/mint', desc: 'Mint AIUSD from USDC' },
-  { method: 'POST', path: '/v1/portfolio/redeem', desc: 'Redeem AIUSD to USDC' },
-  { method: 'GET', path: '/v1/portfolio/holdings', desc: 'Get user portfolio holdings' },
-  { method: 'GET', path: '/v1/credit/score', desc: 'Get AI-powered credit score' },
-  { method: 'POST', path: '/v1/chat/send', desc: 'Send message to AI advisor' },
+  { method: 'GET', path: '/v1/projects', desc: 'Browse available investment opportunities' },
+  { method: 'POST', path: '/v1/projects/:id/invest', desc: 'Allocate capital to a project' },
+  { method: 'DELETE', path: '/v1/projects/:id/revoke', desc: 'Withdraw investment before lock-in' },
+  { method: 'POST', path: '/v1/portfolio/mint', desc: 'Convert USD to AIUSD yield token' },
+  { method: 'POST', path: '/v1/portfolio/redeem', desc: 'Redeem AIUSD back to USD' },
+  { method: 'GET', path: '/v1/portfolio/holdings', desc: 'View full portfolio & performance' },
+  { method: 'GET', path: '/v1/credit/score', desc: 'AI risk score for any asset' },
+  { method: 'POST', path: '/v1/chat/send', desc: 'Ask the AI investment advisor' },
 ];
 
 const METHOD_COLORS: Record<string, { bg: string; text: string }> = {
@@ -417,16 +417,16 @@ const ApiLanding: React.FC = () => {
         <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24">
           <Reveal delay={100}>
             <h1 className="text-5xl sm:text-7xl md:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95] text-black max-w-4xl">
-              Fiat to DeFi.<br />
-              AI Scoring.<br />
-              <span className="text-gray-400">One API.</span>
+              Invest Smarter.<br />
+              AI Risk Scoring.<br />
+              <span className="text-gray-400">One Platform.</span>
             </h1>
           </Reveal>
           
           <Reveal delay={200}>
             <p className="text-lg sm:text-xl text-gray-500 font-medium leading-relaxed max-w-2xl mt-8">
-              Powering the next generation of financial applications. Access instant fiat on-ramps,
-              AI-driven credit scoring, and programmatic cash flow investments — all through a single endpoint.
+              Access high-yield real-world assets, AI-powered risk analysis, and instant fund transfers — 
+              all in one platform. Built for investors, fund managers, and financial platforms.
             </p>
           </Reveal>
           
@@ -448,7 +448,7 @@ const ApiLanding: React.FC = () => {
       {/* ── Partners strip (Flat) ── */}
       <section className="border-b border-gray-200 bg-white">
         <div className="max-w-[1400px] mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-6 opacity-60">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Trusted By Platform Teams</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Powered By Industry Leaders</span>
           <div className="flex gap-8 sm:gap-14">
             {PARTNERS.map(p => (
               <span key={p} className="text-sm sm:text-base font-black text-gray-400 hover:text-black transition-colors cursor-default">{p}</span>
@@ -466,9 +466,9 @@ const ApiLanding: React.FC = () => {
               <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">On-Ramp</span>
               <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">Off-Ramp</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Full-Cycle Fiat SDK.</h2>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Instant Money Movement.</h2>
             <p className="text-base text-gray-600 leading-relaxed mb-10 max-w-md">
-              We abstracted away the fiat integration nightmare. <strong>Coinbase</strong> + <strong>Onramper</strong> for on-ramp, <strong>MoonPay</strong> for off-ramp — your users can buy and sell crypto across 190+ countries.
+              Deposit and withdraw funds seamlessly. <strong>Coinbase</strong> + <strong>Onramper</strong> for deposits, <strong>MoonPay</strong> for withdrawals — support credit cards, bank transfers, Apple Pay across 190+ countries.
             </p>
 
             {/* Quick Start Steps */}
@@ -498,16 +498,16 @@ const ApiLanding: React.FC = () => {
 
             <div className="space-y-8">
               <div className="border-l-2 border-black pl-5">
-                <h4 className="text-sm font-bold text-black mb-1">On-Ramp: Coinbase + Onramper</h4>
-                <p className="text-sm text-gray-500">Instant USDC deposits via credit card, bank transfer, Apple Pay, and 50+ payment methods worldwide.</p>
+                <h4 className="text-sm font-bold text-black mb-1">Deposit: 50+ Payment Methods</h4>
+                <p className="text-sm text-gray-500">Instant account funding via credit card, bank transfer, Apple Pay, Google Pay, and local payment methods worldwide.</p>
               </div>
               <div className="border-l-2 border-gray-200 pl-5 hover:border-gray-400 transition-colors">
-                <h4 className="text-sm font-bold text-black mb-1">Off-Ramp: MoonPay Sell</h4>
-                <p className="text-sm text-gray-500">Let users sell ETH, USDC, USDT, or BTC and withdraw fiat directly to their bank account via MoonPay.</p>
+                <h4 className="text-sm font-bold text-black mb-1">Withdraw: Direct to Bank</h4>
+                <p className="text-sm text-gray-500">Cash out your returns directly to your bank account. Fast settlement, transparent fees, no hidden charges.</p>
               </div>
               <div className="border-l-2 border-gray-200 pl-5 hover:border-gray-400 transition-colors">
-                <h4 className="text-sm font-bold text-black mb-1">Direct Mode: Any Wallet</h4>
-                <p className="text-sm text-gray-500">Using MetaMask? Just pass the 0x address. We handle the entire UI overlay.</p>
+                <h4 className="text-sm font-bold text-black mb-1">Global: 190+ Countries</h4>
+                <p className="text-sm text-gray-500">Multi-currency support with automatic conversion. Invest from anywhere, withdraw to any local bank.</p>
               </div>
             </div>
           </Reveal>
@@ -526,7 +526,7 @@ const ApiLanding: React.FC = () => {
             </div>
             <CopyBtn code={CODE[activeLang]} />
           </div>
-          <div className="p-6 overflow-x-auto flex-1 min-h-[300px] flex flex-col justify-center">
+          <div className="p-6 overflow-x-auto flex-1 overflow-y-auto">
             <CodeBlock code={CODE[activeLang]} />
           </div>
         </div>
@@ -536,8 +536,8 @@ const ApiLanding: React.FC = () => {
       <section id="api" className="bg-white border-b border-gray-200">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
           <Reveal>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl">A Backend Built for True Autonomy.</h2>
-            <p className="text-lg text-gray-500 mb-16 max-w-2xl">No ABIs. No RPC nodes. Power complex DeFi structures using standard HTTP requests and standard JSON responses.</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl">Everything You Need to Build Financial Products.</h2>
+            <p className="text-lg text-gray-500 mb-16 max-w-2xl">AI risk analysis, yield-generating products, real-time notifications, and programmable investment strategies — all accessible through simple API calls.</p>
           </Reveal>
 
           {/* Minimal Grid instead of Cards */}
@@ -546,27 +546,27 @@ const ApiLanding: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 border-b border-gray-200">
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
                   <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">01 / Analysis</div>
-                  <h3 className="text-2xl font-black mb-3">AI Risk Engine</h3>
-                  <p className="text-gray-500 leading-relaxed text-sm">One endpoint returns a DeepSeek-generated risk report, cash flow probability, and borrower fingerprint instantly.</p>
+                  <h3 className="text-2xl font-black mb-3">AI Risk Assessment</h3>
+                  <p className="text-gray-500 leading-relaxed text-sm">Get instant AI-generated risk reports, return probability analysis, and borrower credit profiles for any investment opportunity.</p>
                 </div>
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
-                  <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">02 / Protocol</div>
-                  <h3 className="text-2xl font-black mb-3">AIUSD Standard</h3>
-                  <p className="text-gray-500 leading-relaxed text-sm">Mint & redeem the treasury-backed stablecoin programmatically. Construct auto-compound vaults with zero frontend UI.</p>
+                  <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">02 / Yield</div>
+                  <h3 className="text-2xl font-black mb-3">AIUSD Yield Token</h3>
+                  <p className="text-gray-500 leading-relaxed text-sm">Convert your capital into AIUSD — a yield-generating token backed by real-world assets. Earn returns automatically while maintaining full liquidity.</p>
                 </div>
               </div>
             </Reveal>
             <Reveal delay={200}>
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 border-b border-gray-200">
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
-                  <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">03 / Notification</div>
-                  <h3 className="text-2xl font-black mb-3">Real-Time Webhooks</h3>
-                  <p className="text-gray-500 leading-relaxed text-sm">Instant push notifications when targets are hit, repayments arrive, or yield compounds on-chain. Subscribe rather than poll.</p>
+                  <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">03 / Alerts</div>
+                  <h3 className="text-2xl font-black mb-3">Real-Time Notifications</h3>
+                  <p className="text-gray-500 leading-relaxed text-sm">Get instant alerts when investments hit targets, returns are distributed, or market conditions change. Never miss an opportunity.</p>
                 </div>
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
                   <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">04 / Execution</div>
-                  <h3 className="text-2xl font-black mb-3">Programmatic Assets</h3>
-                  <p className="text-gray-500 leading-relaxed text-sm">Search, filter, and invest in assets via simple HTTP POST. Complete pipeline automation tailored for sophisticated trading bots.</p>
+                  <h3 className="text-2xl font-black mb-3">Automated Investing</h3>
+                  <p className="text-gray-500 leading-relaxed text-sm">Browse, filter, and invest in curated real-world assets programmatically. Set your strategy once and let the system execute automatically.</p>
                 </div>
               </div>
             </Reveal>
@@ -583,11 +583,11 @@ const ApiLanding: React.FC = () => {
                 Risk Assessment Engine
               </div>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black tracking-tight mb-6 leading-tight">
-                The compliance layer<br />
-                <span className="text-gray-400">Wall Street trusts.</span>
+                Institutional-Grade<br />
+                <span className="text-gray-400">Risk Management.</span>
               </h2>
               <p className="text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
-                Every transaction passes through a <strong className="text-black">Sequencer</strong> that routes it to specialized validators running in <strong className="text-black">parallel</strong> — Amount, Identity, Geo, Velocity — each producing an independent risk score. A <strong className="text-black">Weighted Consensus Engine</strong> aggregates all scores in under 340ms.
+                Every transaction is automatically screened by our <strong className="text-black">multi-factor risk engine</strong>. It checks transaction amount, user identity, geography, and transaction velocity <strong className="text-black">in parallel</strong>, then produces a unified risk score in under 340ms — fully automated compliance at scale.
               </p>
             </div>
           </Reveal>
@@ -709,63 +709,61 @@ const ApiLanding: React.FC = () => {
       <section id="usecases" className="bg-white border-b border-gray-200">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
           
-          <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
-            {/* Left Col: Titles & Selector */}
-            <div className="lg:w-1/3">
-              <Reveal>
-                <div className="sticky top-24">
-                  <h2 className="text-3xl font-black tracking-tight mb-2">Built for Builders.</h2>
-                  <p className="text-gray-500 text-sm mb-12">See how teams launch 10x faster with Loka's stack.</p>
-                  
-                  <div className="flex flex-col gap-2">
-                    {USE_CASES.map((uc) => (
-                      <button key={uc.id} onClick={() => setActiveCase(uc.id)}
-                        className={`text-left px-5 py-4 border-l-2 transition-all duration-300 ${activeCase === uc.id ? 'border-black bg-gray-50' : 'border-transparent hover:border-gray-300'}`}>
-                        <div className="flex items-center justify-between">
-                          <h4 className={`text-base font-bold mb-1 ${activeCase === uc.id ? 'text-black' : 'text-gray-500'}`}>{uc.label}</h4>
-                          {activeCase === uc.id && (
-                            <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-0.5 border border-gray-200">{uc.metric}</span>
-                          )}
-                        </div>
-                        {activeCase === uc.id && (
-                          <p className="text-sm text-gray-600 leading-relaxed mt-2 animate-fade-in">{uc.desc}</p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </Reveal>
+          {/* Top: Title & Horizontal Tabs */}
+          <Reveal>
+            <div className="mb-12 text-center">
+              <h2 className="text-3xl font-black tracking-tight mb-2">Who Uses Loka?</h2>
+              <p className="text-gray-500 text-sm mb-8">See how financial teams are building with our platform.</p>
+              
+              <div className="flex flex-wrap gap-3 justify-center">
+                {USE_CASES.map((uc) => (
+                  <button key={uc.id} onClick={() => setActiveCase(uc.id)}
+                    className={`px-5 py-3 border transition-all duration-300 ${activeCase === uc.id ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400 hover:text-black'}`}>
+                    <div className="flex items-center gap-3">
+                      <h4 className="text-sm font-bold">{uc.label}</h4>
+                      {activeCase === uc.id && (
+                        <span className="text-[10px] font-black bg-white/20 px-2 py-0.5">{uc.metric}</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              {/* Active description */}
+              {USE_CASES.filter(uc => uc.id === activeCase).map(uc => (
+                <p key={uc.id} className="text-base text-gray-600 leading-relaxed mt-6 max-w-2xl mx-auto">{uc.desc}</p>
+              ))}
             </div>
+          </Reveal>
 
-            {/* Right Col: Dual Code Viewers */}
-            <div className="lg:w-2/3 space-y-4">
-              <Reveal delay={100}>
-                <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white min-h-[300px]">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                    <span className="text-[11px] font-bold text-white tracking-widest uppercase">
-                      {activeCase === 'wallet' ? 'wallet.tsx' : activeCase === 'agent' ? 'agent.py' : 'quant.ts'}
-                    </span>
-                    <CopyBtn code={activeCase === 'wallet' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
-                  </div>
-                  <div className="p-6 overflow-x-auto flex-1 flex flex-col justify-center">
-                    <CodeBlock code={activeCase === 'wallet' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
-                  </div>
+          {/* Bottom: Two Code Blocks Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Reveal delay={100}>
+              <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                  <span className="text-[11px] font-bold text-white tracking-widest uppercase">
+                    {activeCase === 'wallet' ? 'wallet.tsx' : activeCase === 'agent' ? 'agent.py' : 'quant.ts'}
+                  </span>
+                  <CopyBtn code={activeCase === 'wallet' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
                 </div>
-              </Reveal>
-              <Reveal delay={200}>
-                <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white min-h-[250px]">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                    <span className="text-[11px] font-bold text-white tracking-widest uppercase">
-                      risk-engine.ts
-                    </span>
-                    <CopyBtn code={CODE['Risk Assessment']} />
-                  </div>
-                  <div className="p-6 overflow-x-auto flex-1 flex flex-col justify-center">
-                    <CodeBlock code={CODE['Risk Assessment']} />
-                  </div>
+                <div className="p-6 overflow-x-auto overflow-y-auto max-h-[500px]">
+                  <CodeBlock code={activeCase === 'wallet' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
                 </div>
-              </Reveal>
-            </div>
+              </div>
+            </Reveal>
+            <Reveal delay={200}>
+              <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                  <span className="text-[11px] font-bold text-white tracking-widest uppercase">
+                    risk-engine.ts
+                  </span>
+                  <CopyBtn code={CODE['Risk Assessment']} />
+                </div>
+                <div className="p-6 overflow-x-auto overflow-y-auto max-h-[500px]">
+                  <CodeBlock code={CODE['Risk Assessment']} />
+                </div>
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -863,8 +861,8 @@ const ApiLanding: React.FC = () => {
       <section className="bg-white">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-32 text-center">
           <Reveal>
-            <h2 className="text-4xl sm:text-6xl font-black text-black tracking-tight mb-6">Build the backend.</h2>
-            <p className="text-xl text-gray-500 mb-12 max-w-xl mx-auto font-medium">Stop wrestling with legacy banking APIs. Generate your key and ship in hours.</p>
+            <h2 className="text-4xl sm:text-6xl font-black text-black tracking-tight mb-6">Start Investing Smarter.</h2>
+            <p className="text-xl text-gray-500 mb-12 max-w-xl mx-auto font-medium">Access AI-powered investment tools and high-yield real-world assets. Get started in minutes.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button className="w-full sm:w-auto px-10 py-4 bg-black text-white text-sm font-bold hover:bg-gray-900 transition-colors">
                 Start Building for Free
@@ -875,7 +873,7 @@ const ApiLanding: React.FC = () => {
               </a>
             </div>
             <p className="text-xs pt-6 text-gray-400">
-              No credit card required for Sandbox access. We respond to Enterprise inquiries within 2 hours.
+              Free to explore. No minimum investment. Enterprise inquiries answered within 2 hours.
             </p>
           </Reveal>
         </div>
