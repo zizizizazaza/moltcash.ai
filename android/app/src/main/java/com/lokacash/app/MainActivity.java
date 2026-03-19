@@ -5,8 +5,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
-import android.webkit.PermissionRequest;
-import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.webkit.CookieManager;
@@ -16,6 +14,7 @@ import android.content.pm.PackageManager;
 import android.Manifest;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.annotation.NonNull;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -32,6 +31,13 @@ public class MainActivity extends BridgeActivity {
         View decorView = window.getDecorView();
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(window, decorView);
         controller.setAppearanceLightStatusBars(true);
+
+        // Pre-request microphone permission on app start
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.RECORD_AUDIO}, MIC_PERMISSION_CODE);
+        }
 
         // Handle deep link on initial launch
         handleDeepLink(getIntent());
@@ -53,7 +59,6 @@ public class MainActivity extends BridgeActivity {
             if (url.startsWith("https://www.loka.cash")) {
                 WebView webView = getBridge().getWebView();
                 if (webView != null) {
-                    // Pass OAuth params to app's WebView
                     String query = data.getQuery();
                     if (query != null && query.contains("privy_oauth")) {
                         webView.loadUrl("https://localhost/?" + query);
@@ -90,29 +95,10 @@ public class MainActivity extends BridgeActivity {
             cookieManager.setAcceptCookie(true);
             cookieManager.setAcceptThirdPartyCookies(webView, true);
 
-            // Handle WebView permission requests (microphone, camera, etc.)
-            webView.setWebChromeClient(new WebChromeClient() {
-                @Override
-                public void onPermissionRequest(final PermissionRequest request) {
-                    String[] resources = request.getResources();
-                    for (String resource : resources) {
-                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
-                            // Check if we have the Android-level audio permission
-                            if (ContextCompat.checkSelfPermission(MainActivity.this,
-                                    Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                                request.grant(request.getResources());
-                            } else {
-                                ActivityCompat.requestPermissions(MainActivity.this,
-                                        new String[]{Manifest.permission.RECORD_AUDIO}, MIC_PERMISSION_CODE);
-                                // Grant after request (the dialog will show)
-                                request.grant(request.getResources());
-                            }
-                            return;
-                        }
-                    }
-                    request.deny();
-                }
-            });
+            // NOTE: Do NOT set a custom WebChromeClient here.
+            // Capacitor's BridgeWebChromeClient already handles WebView permission
+            // requests (microphone, camera) via onPermissionRequest.
+            // Overriding it breaks Capacitor's bridge and getUserMedia.
         }
     }
 }

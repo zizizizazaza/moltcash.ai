@@ -20,20 +20,40 @@
     <a id="openBtn" style="display:none" href="#">Open Loka Cash</a>
   </div>
   <script>
-    // Try to open the app using Android Intent URL
     var search = window.location.search;
-    var intentUrl = 'intent://www.loka.cash/redirect' + search + '#Intent;scheme=https;package=com.lokacash.app;end';
-    
-    // Attempt 1: Android Intent URL (works on most Android browsers)
-    window.location.href = intentUrl;
-    
-    // Attempt 2: If intent didn't work after 2 seconds, show manual button
-    setTimeout(function() {
-      document.getElementById('msg').textContent = 'If the app did not open automatically, tap the button below:';
-      var btn = document.getElementById('openBtn');
-      btn.style.display = 'inline-block';
-      btn.href = intentUrl;
-    }, 2000);
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    var isAndroid = /Android/.test(navigator.userAgent);
+
+    if (isAndroid) {
+      // Android: use Intent URL
+      var intentUrl = 'intent://www.loka.cash/redirect' + search + '#Intent;scheme=https;package=com.lokacash.app;end';
+      window.location.href = intentUrl;
+
+      setTimeout(function() {
+        document.getElementById('msg').textContent = 'If the app did not open automatically, tap the button below:';
+        var btn = document.getElementById('openBtn');
+        btn.style.display = 'inline-block';
+        btn.href = intentUrl;
+      }, 2000);
+    } else if (isIOS) {
+      // iOS: use Universal Link (https scheme directly)
+      var universalLink = 'https://www.loka.cash/redirect' + search;
+      // Also try custom URL scheme as fallback
+      var customScheme = 'lokacash://redirect' + search;
+      
+      // Try custom URL scheme first (works for installed apps)
+      window.location.href = customScheme;
+      
+      setTimeout(function() {
+        document.getElementById('msg').textContent = 'If the app did not open automatically, tap the button below:';
+        var btn = document.getElementById('openBtn');
+        btn.style.display = 'inline-block';
+        btn.href = customScheme;
+      }, 2000);
+    } else {
+      // Desktop or other: just show the params
+      document.getElementById('msg').textContent = 'OAuth callback received. Close this window and return to the app.';
+    }
   </script>
 </body>
 </html>
