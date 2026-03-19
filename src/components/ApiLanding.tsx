@@ -340,7 +340,7 @@ const CodeBlock: React.FC<{ code: string }> = ({ code }) => {
   return (
     <>
       <style>{codeStyles}</style>
-      <div className="font-mono text-[11px] sm:text-xs leading-[1.8] tracking-tight">
+      <div className="font-mono text-[10px] sm:text-xs leading-[1.8] tracking-tight">
         {lines.map((line, i) => (
           <div key={i} className="flex hover:bg-white/[0.04] transition-colors rounded items-start px-2">
             <span className="w-8 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-[#333] mr-4 pt-px shrink-0">{i + 1}</span>
@@ -387,7 +387,7 @@ const ApiLanding: React.FC = () => {
       
       {/* ── Sticky Nav (Flat) ── */}
       <div className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-200' : 'bg-transparent'}`}>
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 flex items-center justify-between h-14">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-12 flex items-center justify-between h-14">
           <span className={`font-black text-lg tracking-tight transition-opacity duration-300 ${scrolled ? 'opacity-100' : 'opacity-0'}`}>Loka</span>
           <nav className={`hidden md:flex items-center gap-8 transition-opacity duration-300 ${scrolled ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             {NAV_LINKS.map(link => (
@@ -404,7 +404,7 @@ const ApiLanding: React.FC = () => {
       </div>
 
       {/* ── 1. Hero (Full-width, flat, typography focus) ── */}
-      <section className="relative w-full min-h-[85vh] flex flex-col justify-center border-b border-gray-200 bg-[#fafafa]">
+      <section className="relative w-full min-h-[60vh] sm:min-h-[85vh] flex flex-col justify-center border-b border-gray-200 bg-[#fafafa]">
         {/* Flat Grid Pattern */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
           style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
@@ -414,9 +414,9 @@ const ApiLanding: React.FC = () => {
           <ParticleCanvas />
         </div>
 
-        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24">
+        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 text-center sm:text-left">
           <Reveal delay={100}>
-            <h1 className="text-5xl sm:text-7xl md:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95] text-black max-w-4xl">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95] text-black max-w-4xl mx-auto sm:mx-0">
               Invest Smarter.<br />
               AI Risk Scoring.<br />
               <span className="text-gray-400">One Platform.</span>
@@ -424,20 +424,20 @@ const ApiLanding: React.FC = () => {
           </Reveal>
           
           <Reveal delay={200}>
-            <p className="text-lg sm:text-xl text-gray-500 font-medium leading-relaxed max-w-2xl mt-8">
+            <p className="text-base sm:text-lg md:text-xl text-gray-500 font-medium leading-relaxed max-w-2xl mt-6 sm:mt-8 mx-auto sm:mx-0">
               Access high-yield real-world assets, AI-powered risk analysis, and instant fund transfers — 
               all in one platform. Built for investors, fund managers, and financial platforms.
             </p>
           </Reveal>
           
           <Reveal delay={300}>
-            <div className="flex flex-col sm:flex-row items-center gap-4 mt-12">
-              <button className="w-full sm:w-auto px-8 py-4 bg-black text-white text-sm font-bold hover:bg-gray-900 transition-colors flex items-center justify-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mt-8 sm:mt-12">
+              <button className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-black text-white text-sm font-bold hover:bg-gray-900 transition-colors flex items-center justify-center gap-2">
                 Generate API Key
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
               </button>
               <a href="https://github.com/loka-network" target="_blank" rel="noopener noreferrer"
-                className="w-full sm:w-auto px-8 py-4 bg-transparent border border-gray-300 text-black text-sm font-bold hover:border-black transition-colors flex items-center justify-center gap-2">
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-transparent border border-gray-300 text-black text-sm font-bold hover:border-black transition-colors flex items-center justify-center gap-2">
                 View Documentation
               </a>
             </div>
@@ -447,9 +447,9 @@ const ApiLanding: React.FC = () => {
 
       {/* ── Partners strip (Flat) ── */}
       <section className="border-b border-gray-200 bg-white">
-        <div className="max-w-[1400px] mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-6 opacity-60">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6 opacity-60">
           <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Powered By Industry Leaders</span>
-          <div className="flex gap-8 sm:gap-14">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 md:gap-14">
             {PARTNERS.map(p => (
               <span key={p} className="text-sm sm:text-base font-black text-gray-400 hover:text-black transition-colors cursor-default">{p}</span>
             ))}
@@ -460,14 +460,14 @@ const ApiLanding: React.FC = () => {
       {/* ── 2. SDK Showcase (50/50 Split) — Enhanced with On-Ramp & Off-Ramp ── */}
       <section id="sdk" className="border-b border-gray-200 flex flex-col lg:flex-row">
         {/* Left: Copy */}
-        <div className="lg:w-1/2 p-8 sm:p-16 xl:p-24 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white flex flex-col justify-center">
+        <div className="lg:w-1/2 p-5 sm:p-12 lg:p-16 xl:p-24 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white flex flex-col justify-center text-center sm:text-left">
           <Reveal>
-            <div className="flex gap-2 mb-8">
+            <div className="flex gap-2 mb-8 justify-center sm:justify-start">
               <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">On-Ramp</span>
               <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">Off-Ramp</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Instant Money Movement.</h2>
-            <p className="text-base text-gray-600 leading-relaxed mb-10 max-w-md">
+            <p className="text-base text-gray-600 leading-relaxed mb-10 max-w-md mx-auto sm:mx-0">
               Deposit and withdraw funds seamlessly. <strong>Coinbase</strong> + <strong>Onramper</strong> for deposits, <strong>MoonPay</strong> for withdrawals — support credit cards, bank transfers, Apple Pay across 190+ countries.
             </p>
 
@@ -534,10 +534,10 @@ const ApiLanding: React.FC = () => {
 
       {/* ── 3. API Grid (Flat Borders) ── */}
       <section id="api" className="bg-white border-b border-gray-200">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-12 sm:py-20 lg:py-32">
           <Reveal>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl">Everything You Need to Build Financial Products.</h2>
-            <p className="text-lg text-gray-500 mb-16 max-w-2xl">AI risk analysis, yield-generating products, real-time notifications, and programmable investment strategies — all accessible through simple API calls.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">Everything You Need to Build Financial Products.</h2>
+            <p className="text-base sm:text-lg text-gray-500 mb-10 sm:mb-16 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">AI risk analysis, yield-generating products, real-time notifications, and programmable investment strategies — all accessible through simple API calls.</p>
           </Reveal>
 
           {/* Minimal Grid instead of Cards */}
@@ -576,13 +576,13 @@ const ApiLanding: React.FC = () => {
 
       {/* ── 3.5 Risk Assessment Engine (NEW — Flat Style) ── */}
       <section id="risk" className="bg-[#fafafa] border-b border-gray-200">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-12 sm:py-20 lg:py-32">
           <Reveal>
             <div className="text-center max-w-3xl mx-auto mb-16">
               <div className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 border border-gray-300 mb-8">
                 Risk Assessment Engine
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black tracking-tight mb-6 leading-tight">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black tracking-tight mb-6 leading-tight">
                 Institutional-Grade<br />
                 <span className="text-gray-400">Risk Management.</span>
               </h2>
@@ -614,10 +614,10 @@ const ApiLanding: React.FC = () => {
 
           {/* Risk bento: 3-column layout */}
           <Reveal delay={200}>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-gray-200 border border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-px bg-gray-200 border border-gray-200">
               
               {/* Left: Decision Cards */}
-              <div className="lg:col-span-3 flex flex-col divide-y divide-gray-200 bg-white">
+              <div className="md:col-span-3 flex flex-col divide-y divide-gray-200 bg-white">
                 <div className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-6 h-6 bg-black text-white flex items-center justify-center">
@@ -648,7 +648,7 @@ const ApiLanding: React.FC = () => {
               </div>
 
               {/* Center: Code Terminal */}
-              <div className="lg:col-span-6 bg-[#0a0a0b] flex flex-col text-white">
+              <div className="md:col-span-6 bg-[#0a0a0b] flex flex-col text-white">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                   <span className="text-[11px] font-bold text-white tracking-widest uppercase">risk-engine.ts</span>
                   <CopyBtn code={CODE['Risk Assessment']} />
@@ -659,7 +659,7 @@ const ApiLanding: React.FC = () => {
               </div>
 
               {/* Right: Pipeline + Features */}
-              <div className="lg:col-span-3 flex flex-col bg-white">
+              <div className="md:col-span-3 flex flex-col bg-white">
                 {/* Pipeline */}
                 <div className="p-6 border-b border-gray-200 flex-1">
                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Consensus Pipeline</div>
@@ -707,20 +707,20 @@ const ApiLanding: React.FC = () => {
 
       {/* ── 4. Use Cases (Sticky scroll layout — Enhanced with metrics) ── */}
       <section id="usecases" className="bg-white border-b border-gray-200">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-12 sm:py-20 lg:py-32">
           
           {/* Top: Title & Horizontal Tabs */}
           <Reveal>
             <div className="mb-12 text-center">
-              <h2 className="text-3xl font-black tracking-tight mb-2">Who Uses Loka?</h2>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">Who Uses Loka?</h2>
               <p className="text-gray-500 text-sm mb-8">See how financial teams are building with our platform.</p>
               
               <div className="flex flex-wrap gap-3 justify-center">
                 {USE_CASES.map((uc) => (
                   <button key={uc.id} onClick={() => setActiveCase(uc.id)}
-                    className={`px-5 py-3 border transition-all duration-300 ${activeCase === uc.id ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400 hover:text-black'}`}>
+                    className={`px-3 sm:px-5 py-2 sm:py-3 border transition-all duration-300 ${activeCase === uc.id ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400 hover:text-black'}`}>
                     <div className="flex items-center gap-3">
-                      <h4 className="text-sm font-bold">{uc.label}</h4>
+                      <h4 className="text-xs sm:text-sm font-bold">{uc.label}</h4>
                       {activeCase === uc.id && (
                         <span className="text-[10px] font-black bg-white/20 px-2 py-0.5">{uc.metric}</span>
                       )}
@@ -770,9 +770,9 @@ const ApiLanding: React.FC = () => {
 
       {/* ── 5. Endpoints Table (Typography focused) ── */}
       <section id="endpoints" className="bg-white border-b border-gray-200">
-        <div className="max-w-[1000px] mx-auto px-6 sm:px-12 py-20 lg:py-32">
+        <div className="max-w-[1000px] mx-auto px-4 sm:px-12 py-12 sm:py-20 lg:py-32">
           <Reveal>
-            <div className="flex items-end justify-between mb-12 border-b border-black pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-12 border-b border-black pb-4">
               <div>
                 <h2 className="text-3xl font-black tracking-tight text-black">Data Endpoints</h2>
                 <p className="text-sm text-gray-500 mt-2">Standard JSON. OpenAPI 3.0 specs available.</p>
@@ -789,14 +789,14 @@ const ApiLanding: React.FC = () => {
                 const mc = METHOD_COLORS[ep.method] || METHOD_COLORS.GET;
                 return (
                   <div key={i} className="flex flex-col sm:flex-row sm:items-center py-5 group hover:bg-gray-50 transition-colors px-4 border-b border-gray-100">
-                    <div className="flex items-center gap-4 sm:w-[400px] shrink-0 mb-2 sm:mb-0">
-                      <span className="text-[10px] font-black px-2 py-1 uppercase tracking-wider w-16 text-center"
+                    <div className="flex items-center gap-3 sm:gap-4 sm:w-[400px] shrink-0 mb-1 sm:mb-0">
+                      <span className="text-[10px] font-black px-2 py-1 uppercase tracking-wider w-14 sm:w-16 text-center flex-shrink-0"
                         style={{ background: mc.bg, color: mc.text }}>
                         {ep.method}
                       </span>
-                      <code className="text-sm font-mono font-bold text-black">{ep.path}</code>
+                      <code className="text-xs sm:text-sm font-mono font-bold text-black break-all">{ep.path}</code>
                     </div>
-                    <span className="text-sm text-gray-500 sm:ml-4 group-hover:text-black transition-colors">{ep.desc}</span>
+                    <span className="text-xs sm:text-sm text-gray-500 sm:ml-4 group-hover:text-black transition-colors">{ep.desc}</span>
                     <button className="hidden sm:block ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-black">
                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </button>
@@ -810,7 +810,7 @@ const ApiLanding: React.FC = () => {
 
       {/* ── 6. Download App (NEW — Flat Style) ── */}
       <section className="bg-[#fafafa] border-b border-gray-200">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-20 lg:py-32">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-12 sm:py-20 lg:py-32">
           <Reveal>
             <div className="border border-gray-200 bg-white flex flex-col md:flex-row items-center gap-12 md:gap-16 p-8 sm:p-12 md:p-16">
               {/* Left content */}
@@ -818,7 +818,7 @@ const ApiLanding: React.FC = () => {
                 <span className="inline-flex items-center gap-2 px-4 py-1.5 text-[10px] font-black tracking-[0.2em] uppercase mb-6 bg-black text-white">
                   Android
                 </span>
-                <h3 className="text-3xl md:text-4xl font-black text-black tracking-tight mb-4 leading-tight">
+                <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-black tracking-tight mb-4 leading-tight">
                   Take Loka Cash<br />everywhere you go.
                 </h3>
                 <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md mx-auto md:mx-0">
@@ -859,10 +859,10 @@ const ApiLanding: React.FC = () => {
 
       {/* ── CTA ── */}
       <section className="bg-white">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-24 py-32 text-center">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-16 sm:py-32 text-center">
           <Reveal>
-            <h2 className="text-4xl sm:text-6xl font-black text-black tracking-tight mb-6">Start Investing Smarter.</h2>
-            <p className="text-xl text-gray-500 mb-12 max-w-xl mx-auto font-medium">Access AI-powered investment tools and high-yield real-world assets. Get started in minutes.</p>
+            <h2 className="text-3xl sm:text-4xl md:text-6xl font-black text-black tracking-tight mb-6">Start Investing Smarter.</h2>
+            <p className="text-base sm:text-xl text-gray-500 mb-8 sm:mb-12 max-w-xl mx-auto font-medium">Access AI-powered investment tools and high-yield real-world assets. Get started in minutes.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button className="w-full sm:w-auto px-10 py-4 bg-black text-white text-sm font-bold hover:bg-gray-900 transition-colors">
                 Start Building for Free

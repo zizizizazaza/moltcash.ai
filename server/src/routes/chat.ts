@@ -285,6 +285,7 @@ router.post('/transcribe', authRequired, upload.single('audio'), async (req: Aut
     // or just base like "https://api.x.cn/v1" — extract origin and build Whisper URL
     const urlOrigin = baseUrl.replace(/\/v1\/.*$/, '').replace(/\/v1\/?$/, '');
     const whisperUrl = `${urlOrigin}/v1/audio/transcriptions`;
+    console.log('[Transcribe] baseUrl:', baseUrl, '→ whisperUrl:', whisperUrl);
 
     const formData = new FormData();
     formData.append('file', new Blob([file.buffer], { type: file.mimetype }), file.originalname || 'audio.webm');
@@ -300,8 +301,8 @@ router.post('/transcribe', authRequired, upload.single('audio'), async (req: Aut
 
     if (!response.ok) {
       const errBody = await response.text();
-      console.error('[Transcribe] Whisper API error:', response.status, errBody);
-      res.status(502).json({ error: 'Transcription service error' });
+      console.error('[Transcribe] Whisper API error:', response.status, response.statusText, errBody);
+      res.status(502).json({ error: 'Transcription service error', detail: errBody });
       return;
     }
 
