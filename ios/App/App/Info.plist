@@ -47,5 +47,22 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+
+	<!-- Microphone permission for voice input -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Loka Cash needs microphone access for voice input</string>
+
+	<!-- Custom URL scheme for OAuth redirects (lokacash://) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.lokacash.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>lokacash</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
