@@ -104,8 +104,8 @@ const App: React.FC = () => {
       <nav className="hidden md:flex w-20 bg-white border-r border-gray-100 flex-col items-center py-6 shrink-0 z-50 shadow-sm relative">
         <div className="flex flex-col items-center gap-8 w-full">
           {/* Logo */}
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center hover:rotate-12 transition-transform cursor-pointer mb-2 overflow-hidden" onClick={() => setCurrentPage(Page.CHAT)}>
-            <img src="/logo-removebg.png" alt="Loka" className="w-full h-full object-contain" />
+          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center font-black text-white hover:rotate-12 transition-transform cursor-pointer mb-2" onClick={() => setCurrentPage(Page.CHAT)}>
+            L
           </div>
 
           {/* Primary Nav Links */}

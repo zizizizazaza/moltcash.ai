@@ -1000,8 +1000,8 @@ const Chat: React.FC = () => {
                                 <div className="min-h-full w-full flex flex-col max-w-5xl mx-auto px-4 sm:px-10 pt-16 sm:pt-32 pb-8 sm:pb-32">
                                     <div className="flex flex-col items-center mb-8 sm:mb-10">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                                                <img src="/logo-removebg.png" alt="Loka" className="w-full h-full object-contain" />
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-xl flex items-center justify-center text-black font-black shadow-lg text-sm sm:text-base">
+                                                L
                                             </div>
                                             <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight">Loka AI</h1>
                                         </div>
