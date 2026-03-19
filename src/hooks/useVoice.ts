@@ -104,9 +104,10 @@ export function useVoice(options: UseVoiceOptions = {}) {
       console.log('[Voice] ✅ Got audio stream, tracks:', stream.getAudioTracks().length);
       
       // Determine best supported mime type
-      let mimeType = 'audio/webm;codecs=opus';
+      // Prefer mp4 over webm because some Whisper providers (e.g. lingyaai) don't support webm
+      let mimeType = 'audio/mp4';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/mp4';
+        mimeType = 'audio/webm;codecs=opus';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
           mimeType = 'audio/wav';
           if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -174,7 +175,8 @@ export function useVoice(options: UseVoiceOptions = {}) {
 
   async function transcribeAudio(audioBlob: Blob): Promise<string> {
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'recording.webm');
+    const ext = audioBlob.type.includes('mp4') ? 'mp4' : audioBlob.type.includes('webm') ? 'webm' : 'wav';
+    formData.append('audio', audioBlob, `recording.${ext}`);
     formData.append('language', language);
 
     const token = sessionStorage.getItem('loka_token');
