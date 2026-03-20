@@ -235,9 +235,12 @@ if (result.decision === 'challenge') {
 };
 
 const USE_CASES = [
-  { id: 'wallet', label: 'Fintech Apps', desc: 'Embed deposit & withdrawal into your app. Users fund their accounts with credit card, bank transfer, or Apple Pay — no redirects, no friction, 190+ countries supported.', metric: '+40% Conversion' },
-  { id: 'agent', label: 'AI Investment Advisors', desc: 'Connect our API to your AI models. Let them screen real-world asset yields, run risk analysis, and allocate capital automatically based on your predefined strategies.', metric: 'Fully Automated' },
-  { id: 'institution', label: 'Fund Managers', desc: 'Real-time portfolio feeds, automated rebalancing triggers, and instant settlement notifications. Build algorithmic strategies on top of our structured product data.', metric: '<50ms Latency' },
+  { id: 'fintech', label: 'FinTechs', desc: 'Add new financial capabilities as your roadmap evolves. Embed deposit, withdrawal, and yield products with infrastructure designed for speed, compliance, and scale.', metric: '+40% Conversion' },
+  { id: 'agent', label: 'AI Agents', desc: 'Connect our API to your AI models. Let them screen real-world asset yields, run risk analysis, and allocate capital automatically based on predefined strategies.', metric: 'Fully Automated' },
+  { id: 'fund', label: 'Fund Managers', desc: 'Real-time portfolio feeds, automated rebalancing triggers, and instant settlement notifications. Build algorithmic strategies on top of structured product data.', metric: '<50ms Latency' },
+  { id: 'bank', label: 'Banks & Institutions', desc: 'Digital money infrastructure banks can trust. Integrate compliant on/off-ramp, custody, and yield-bearing products into your existing banking stack.', metric: 'Enterprise Ready' },
+  { id: 'payment', label: 'Payment Platforms', desc: 'Real-time global payments and settlement, built into your existing stack. Enable cross-border transfers with automatic FX conversion.', metric: '190+ Countries' },
+  { id: 'gaming', label: 'Gaming Platforms', desc: 'Move player funds quickly and compliantly across borders and around the clock. Enable in-game purchases and tournament payouts seamlessly.', metric: '24/7 Settlement' },
 ];
 
 const ENDPOINTS = [
@@ -363,7 +366,7 @@ const RiskDecisionCard: React.FC<{ title: string; desc: string; borderHover: str
 // ─── Main ───────────────────────────────────────
 const ApiLanding: React.FC = () => {
   const [activeLang, setActiveLang] = useState('React');
-  const [activeCase, setActiveCase] = useState('wallet');
+  const [activeCase, setActiveCase] = useState('fintech');
   const [scrolled, setScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -417,16 +420,16 @@ const ApiLanding: React.FC = () => {
         <div className="relative z-10 w-full max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 text-center sm:text-left">
           <Reveal delay={100}>
             <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95] text-black max-w-4xl mx-auto sm:mx-0">
-              Invest Smarter.<br />
-              AI Risk Scoring.<br />
-              <span className="text-gray-400">One Platform.</span>
-            </h1>
+               The Infrastructure Behind<br />
+               AI‑Powered<br />
+               <span className="text-gray-400">Finance.</span>
+             </h1>
           </Reveal>
           
           <Reveal delay={200}>
             <p className="text-base sm:text-lg md:text-xl text-gray-500 font-medium leading-relaxed max-w-2xl mt-6 sm:mt-8 mx-auto sm:mx-0">
-              Access high-yield real-world assets, AI-powered risk analysis, and instant fund transfers — 
-              all in one platform. Built for investors, fund managers, and financial platforms.
+              Loka is the trusted platform that enables fintechs, funds, and AI agents
+              to launch compliant investment products with built-in risk management.
             </p>
           </Reveal>
           
@@ -448,7 +451,7 @@ const ApiLanding: React.FC = () => {
       {/* ── Partners strip (Flat) ── */}
       <section className="border-b border-gray-200 bg-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6 opacity-60">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Powered By Industry Leaders</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Trusted by Industry Leaders</span>
           <div className="flex flex-wrap justify-center gap-4 sm:gap-8 md:gap-14">
             {PARTNERS.map(p => (
               <span key={p} className="text-sm sm:text-base font-black text-gray-400 hover:text-black transition-colors cursor-default">{p}</span>
@@ -536,7 +539,7 @@ const ApiLanding: React.FC = () => {
       <section id="api" className="bg-white border-b border-gray-200">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-12 sm:py-20 lg:py-32">
           <Reveal>
-            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">Everything You Need to Build Financial Products.</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">A Regulated Gateway to Modern Finance.</h2>
             <p className="text-base sm:text-lg text-gray-500 mb-10 sm:mb-16 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">AI risk analysis, yield-generating products, real-time notifications, and programmable investment strategies — all accessible through simple API calls.</p>
           </Reveal>
 
@@ -712,8 +715,8 @@ const ApiLanding: React.FC = () => {
           {/* Top: Title & Horizontal Tabs */}
           <Reveal>
             <div className="mb-12 text-center">
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">Who Uses Loka?</h2>
-              <p className="text-gray-500 text-sm mb-8">See how financial teams are building with our platform.</p>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">Built for the Institutions Shaping What's Next</h2>
+               <p className="text-gray-500 text-sm mb-8">See how financial teams across industries are building with our platform.</p>
               
               <div className="flex flex-wrap gap-3 justify-center">
                 {USE_CASES.map((uc) => (
@@ -742,12 +745,12 @@ const ApiLanding: React.FC = () => {
               <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                   <span className="text-[11px] font-bold text-white tracking-widest uppercase">
-                    {activeCase === 'wallet' ? 'wallet.tsx' : activeCase === 'agent' ? 'agent.py' : 'quant.ts'}
+                    {activeCase === 'fintech' ? 'fintech.ts' : activeCase === 'agent' ? 'agent.py' : 'quant.ts'}
                   </span>
-                  <CopyBtn code={activeCase === 'wallet' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
+                  <CopyBtn code={activeCase === 'fintech' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
                 </div>
                 <div className="p-6 overflow-x-auto overflow-y-auto max-h-[500px]">
-                  <CodeBlock code={activeCase === 'wallet' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
+                  <CodeBlock code={activeCase === 'fintech' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
                 </div>
               </div>
             </Reveal>
@@ -861,8 +864,8 @@ const ApiLanding: React.FC = () => {
       <section className="bg-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-16 sm:py-32 text-center">
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl md:text-6xl font-black text-black tracking-tight mb-6">Start Investing Smarter.</h2>
-            <p className="text-base sm:text-xl text-gray-500 mb-8 sm:mb-12 max-w-xl mx-auto font-medium">Access AI-powered investment tools and high-yield real-world assets. Get started in minutes.</p>
+            <h2 className="text-3xl sm:text-4xl md:text-6xl font-black text-black tracking-tight mb-6">Start Building on Loka.</h2>
+             <p className="text-base sm:text-xl text-gray-500 mb-8 sm:mb-12 max-w-xl mx-auto font-medium">Integrate AI-powered financial infrastructure into your product. Get started in minutes.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button className="w-full sm:w-auto px-10 py-4 bg-black text-white text-sm font-bold hover:bg-gray-900 transition-colors">
                 Start Building for Free
