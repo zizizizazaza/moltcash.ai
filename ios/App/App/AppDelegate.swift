@@ -34,19 +34,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        // Handle lokacash:// deep links (OAuth redirects)
-        if url.scheme == "lokacash" {
-            // Extract query from lokacash://redirect?privy_oauth_state=...
-            if let query = url.query, query.contains("privy_oauth") {
-                // Route OAuth params to the WebView
-                if let bridge = (window?.rootViewController as? CAPBridgeViewController)?.bridge {
-                    let webViewUrl = "https://localhost/?" + query
-                    bridge.webView?.load(URLRequest(url: URL(string: webViewUrl)!))
-                    return true
-                }
-            }
-        }
-        // Default Capacitor handling
+        // Let Capacitor/App deliver OAuth callbacks to JS via appUrlOpen.
         return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
     }
 

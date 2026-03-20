@@ -9,6 +9,9 @@ const config: CapacitorConfig = {
     iosScheme: 'https',
   },
   plugins: {
+    App: {
+      urlScheme: 'lokacash',
+    },
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 2000,
