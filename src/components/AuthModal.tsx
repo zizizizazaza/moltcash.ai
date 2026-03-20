@@ -122,7 +122,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose, initialStep = '
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.3s ease' }}>
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={step === 'invite' ? undefined : onClose} />
             <div
                 className="relative bg-white w-full max-w-[380px] overflow-hidden rounded-[32px] shadow-2xl border border-gray-100"
                 style={{ animation: 'slideUp 0.35s cubic-bezier(0.16,1,0.3,1)' }}
