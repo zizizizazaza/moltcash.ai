@@ -1,18 +1,22 @@
 /**
  * useVoice — unified voice input (ASR) + output (TTS) hook
  *
- * Strategy:
- * - ASR: Web Speech API via react-speech-recognition (Chrome/Edge/Android)
- *        Falls back to MediaRecorder + backend Whisper for iOS/Firefox
- * - TTS: Native speechSynthesis API (all browsers)
- * - Voice Mode: continuous listen → speak → listen loop
+ * Three-tier ASR strategy (fastest to slowest):
+ *  1. Capacitor Native  — Android/iOS app (SpeechRecognizer SDK, <500ms)
+ *  2. Web Speech API   — Desktop Chrome/Edge, Android Chrome browser (<1s)
+ *  3. Whisper fallback — Firefox / old browsers (~13s, last resort)
+ *
+ * TTS: Native speechSynthesis API (all browsers)
+ * Voice Mode: continuous listen → speak → listen loop
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
-// ─── ASR (Speech-to-Text) ───────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────
+
+type AsrMode = 'capacitor' | 'webSpeech' | 'whisper';
 
 interface UseVoiceOptions {
   language?: string;
@@ -21,15 +25,38 @@ interface UseVoiceOptions {
   autoSendOnSilence?: boolean;
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function detectAsrMode(browserSupportsSpeechRecognition: boolean): AsrMode {
+  // IMPORTANT: window.Capacitor is present even in desktop browsers because the
+  // Capacitor JS lib is always bundled. We must use isNativePlatform() to check
+  // whether we're actually running inside a real iOS/Android app.
+  const cap = (window as any).Capacitor;
+  const isNative = !!(cap?.isNativePlatform?.());
+  if (isNative) return 'capacitor';
+
+  // iOS browser / Safari — Web Speech API in iOS Safari is unreliable
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isIOS) return 'whisper';
+
+  // Firefox and browsers without Web Speech API
+  if (!browserSupportsSpeechRecognition) return 'whisper';
+
+  // Desktop Chrome/Edge/Opera and Android Chrome browser → fast!
+  return 'webSpeech';
+}
+
+// ─── Hook ───────────────────────────────────────────────────────────
+
 export function useVoice(options: UseVoiceOptions = {}) {
   const { language = 'en-US', onTranscript, onRecordingEnd, autoSendOnSilence = true } = options;
 
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceMode, setVoiceMode] = useState(false); // continuous voice conversation mode
-  const [useFallback, setUseFallback] = useState(false); // iOS/Firefox fallback
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [asrMode, setAsrMode] = useState<AsrMode>('whisper'); // determined after mount
 
-  // MediaRecorder fallback refs
+  // MediaRecorder (Whisper fallback) refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,27 +70,26 @@ export function useVoice(options: UseVoiceOptions = {}) {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
-  // Detect if we need fallback
+  // ─── Determine ASR mode after mount ────────────────────────────
+
   useEffect(() => {
-    // Capacitor WebView reports Web Speech API as available but it doesn't actually work
-    const isCapacitor = !!(window as any).Capacitor;
-    const isMobileBrowser = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    if (!browserSupportsSpeechRecognition || isCapacitor || isMobileBrowser) {
-      setUseFallback(true);
-    }
+    const mode = detectAsrMode(browserSupportsSpeechRecognition);
+    console.log('[Voice] ASR mode detected:', mode, '| Capacitor:', !!(window as any).Capacitor);
+    setAsrMode(mode);
   }, [browserSupportsSpeechRecognition]);
 
-  // ─── Web Speech API path ─────────────────────────────
+  // Convenience booleans
+  const useFallback = asrMode === 'whisper';
+  const useCapacitorNative = asrMode === 'capacitor';
 
-  // Track transcript changes during recording
+  // ─── Web Speech API path ────────────────────────────────────────
+
   useEffect(() => {
-    if (!isRecording || useFallback) return;
+    if (asrMode !== 'webSpeech' || !isRecording) return;
     if (transcript) {
       lastTranscriptRef.current = transcript;
       onTranscript?.(transcript);
 
-      // Reset silence timer (auto-send after 2s of silence)
       if (autoSendOnSilence && silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
       }
@@ -75,56 +101,139 @@ export function useVoice(options: UseVoiceOptions = {}) {
         }, 2000);
       }
     }
-  }, [transcript, isRecording, useFallback]);
+  }, [transcript, isRecording, asrMode]);
 
-  // When listening stops (Web Speech), finalize
   useEffect(() => {
-    if (!useFallback && !listening && isRecording && lastTranscriptRef.current) {
-      const finalText = lastTranscriptRef.current;
-      setIsRecording(false);
-      onRecordingEnd?.(finalText);
-      resetTranscript();
-      lastTranscriptRef.current = '';
-    }
-  }, [listening, isRecording, useFallback]);
+    if (asrMode !== 'webSpeech' || listening || !isRecording || !lastTranscriptRef.current) return;
+    const finalText = lastTranscriptRef.current;
+    setIsRecording(false);
+    onRecordingEnd?.(finalText);
+    resetTranscript();
+    lastTranscriptRef.current = '';
+  }, [listening, isRecording, asrMode]);
 
-  // ─── MediaRecorder fallback (iOS/Firefox) ────────────
+  // ─── Capacitor Native path (Android / iOS App) ────────────────
 
-  const startMediaRecorder = useCallback(async () => {
+  const startCapacitorRecording = useCallback(async () => {
     try {
-      // Check if getUserMedia is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.error('[Voice] getUserMedia not available. mediaDevices:', !!navigator.mediaDevices);
+      console.log('[Voice] Using Capacitor native speech recognition');
+      const { SpeechRecognition: CapSR } = await import('@capacitor-community/speech-recognition');
+
+      let permResult: any;
+      try {
+        permResult = await CapSR.requestPermissions();
+      } catch {
+        permResult = await (CapSR as any).requestPermission();
+      }
+      const granted = permResult?.speechRecognition === 'granted' || permResult?.status === 'granted';
+      if (!granted) {
+        console.warn('[Voice] Microphone permission denied');
         setIsRecording(false);
         return;
       }
 
-      console.log('[Voice] Requesting microphone access...');
+      await CapSR.removeAllListeners();
+
+      // Capture partial (and final) results as they arrive
+      await CapSR.addListener('partialResults' as any, (data: any) => {
+        const match = data?.matches?.[0] || '';
+        if (match) {
+          lastTranscriptRef.current = match;
+          onTranscript?.(match);
+          console.log('[Voice] Capacitor partialResult:', match);
+        }
+      });
+
+      // Handle auto-stop (silence timeout / Android ends recognition by itself)
+      // The plugin may fire 'listeningState' with status 'stopped'
+      try {
+        await (CapSR as any).addListener('listeningState', (data: any) => {
+          console.log('[Voice] Capacitor listeningState:', JSON.stringify(data));
+          const stopped = data?.status === 'stopped' || data?.status === 'done';
+          if (stopped) {
+            const text = lastTranscriptRef.current;
+            CapSR.removeAllListeners().catch(() => {});
+            if (text) {
+              onRecordingEnd?.(text);
+              lastTranscriptRef.current = '';
+            }
+            setIsRecording(false);
+          }
+        });
+      } catch { /* event may not exist in all plugin versions */ }
+
+      await CapSR.start({
+        language,
+        maxResults: 1,
+        partialResults: true,
+        popup: false,
+      } as any);
+
+    } catch (err: any) {
+      const errMsg = err?.message || '';
+      // "No match" means no speech was detected — NOT a plugin failure.
+      // Keep using native SDK for subsequent recordings.
+      if (errMsg === 'No match' || errMsg.includes('NO_SPEECH') || errMsg.includes('no match')) {
+        console.log('[Voice] No speech detected (normal if silent/emulator mic)');
+        setIsRecording(false);
+        return;
+      }
+      // Real plugin failure (e.g. "Method not implemented on web") → fall back to Whisper
+      console.error('[Voice] ❌ Capacitor speech recognition error:', errMsg, err);
+      console.warn('[Voice] Falling back to Whisper due to Capacitor error');
+      setAsrMode('whisper');
+      setIsRecording(false);
+    }
+  }, [language, onTranscript, onRecordingEnd]);
+
+  const stopCapacitorRecording = useCallback(async () => {
+    try {
+      const { SpeechRecognition: CapSR } = await import('@capacitor-community/speech-recognition');
+      await CapSR.stop();
+      // Wait 800ms for the plugin to fire its final partialResults event after stop()
+      // (200ms was too short — Android fires the event asynchronously)
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const result = lastTranscriptRef.current;
+      await CapSR.removeAllListeners();
+      if (result) {
+        onRecordingEnd?.(result);
+        lastTranscriptRef.current = '';
+      }
+      setIsRecording(false);
+    } catch (err) {
+      console.error('[Voice] ❌ Capacitor stop error:', err);
+      setIsRecording(false);
+    }
+  }, [onRecordingEnd]);
+
+  // ─── MediaRecorder / Whisper fallback (Firefox etc.) ─────────
+
+  const startMediaRecorder = useCallback(async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        console.error('[Voice] getUserMedia not available');
+        setIsRecording(false);
+        return;
+      }
+
+      console.log('[Voice] Using Whisper fallback (MediaRecorder)');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('[Voice] ✅ Got audio stream, tracks:', stream.getAudioTracks().length);
-      
-      // Determine best supported mime type
-      // Prefer mp4 over webm because some Whisper providers (e.g. lingyaai) don't support webm
+
       let mimeType = 'audio/mp4';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'audio/webm;codecs=opus';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
           mimeType = 'audio/wav';
-          if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = ''; // Let browser pick default
-          }
+          if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
         }
       }
-      console.log('[Voice] Using mimeType:', mimeType || 'browser default');
+      console.log('[Voice] mimeType:', mimeType || 'browser default');
 
       const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-          console.log('[Voice] Audio chunk:', event.data.size, 'bytes, total chunks:', audioChunksRef.current.length);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onerror = (event: any) => {
@@ -135,32 +244,28 @@ export function useVoice(options: UseVoiceOptions = {}) {
         console.log('[Voice] MediaRecorder stopped. Chunks:', audioChunksRef.current.length);
         stream.getTracks().forEach(t => t.stop());
         const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
-        console.log('[Voice] Audio blob size:', audioBlob.size, 'bytes, type:', audioBlob.type);
-        
+        console.log('[Voice] Audio blob:', audioBlob.size, 'bytes');
+
         if (audioBlob.size < 1000) {
           console.log('[Voice] Audio too short, ignoring');
           setIsRecording(false);
           return;
         }
-        // Send to backend for Whisper transcription
         try {
-          console.log('[Voice] Sending to Whisper for transcription...');
+          console.log('[Voice] Sending to Whisper...');
           const text = await transcribeAudio(audioBlob);
-          console.log('[Voice] ✅ Transcription result:', text);
-          if (text) {
-            onRecordingEnd?.(text);
-          }
+          console.log('[Voice] ✅ Whisper result:', text);
+          if (text) onRecordingEnd?.(text);
         } catch (err) {
-          console.error('[Voice] ❌ Transcription failed:', err);
+          console.error('[Voice] ❌ Whisper transcription failed:', err);
         }
         setIsRecording(false);
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(250); // collect in 250ms chunks
-      console.log('[Voice] ✅ MediaRecorder started, state:', mediaRecorder.state);
+      mediaRecorder.start(250);
     } catch (err: any) {
-      console.error('[Voice] ❌ Microphone access error:', err?.name, err?.message, err);
+      console.error('[Voice] ❌ Microphone access error:', err?.name, err?.message);
       setIsRecording(false);
     }
   }, [onRecordingEnd]);
@@ -171,7 +276,7 @@ export function useVoice(options: UseVoiceOptions = {}) {
     }
   }, []);
 
-  // ─── Backend Whisper transcription ───────────────────
+  // ─── Whisper API call ────────────────────────────────────────
 
   async function transcribeAudio(audioBlob: Blob): Promise<string> {
     const formData = new FormData();
@@ -189,31 +294,28 @@ export function useVoice(options: UseVoiceOptions = {}) {
       body: formData,
     });
 
-    if (!response.ok) {
-      throw new Error(`Transcription failed: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`Transcription failed: ${response.status}`);
     const result = await response.json();
     return result.text || '';
   }
 
-  // ─── Public API ──────────────────────────────────────
+  // ─── Public Controls ─────────────────────────────────────────
 
   const startRecording = useCallback(() => {
-    console.log('[Voice] startRecording called, useFallback:', useFallback);
+    console.log('[Voice] startRecording | asrMode:', asrMode);
     lastTranscriptRef.current = '';
     resetTranscript();
+    setIsRecording(true);
 
-    if (useFallback) {
-      console.log('[Voice] Using MediaRecorder fallback path');
-      setIsRecording(true);
-      startMediaRecorder();
-    } else {
-      console.log('[Voice] Using Web Speech API path');
-      setIsRecording(true);
+    if (asrMode === 'capacitor') {
+      startCapacitorRecording();
+    } else if (asrMode === 'webSpeech') {
+      console.log('[Voice] Using Web Speech API (fast path)');
       SpeechRecognition.startListening({ continuous: true, language });
+    } else {
+      startMediaRecorder();
     }
-  }, [useFallback, language, startMediaRecorder, resetTranscript]);
+  }, [asrMode, language, startCapacitorRecording, startMediaRecorder, resetTranscript]);
 
   const stopRecording = useCallback(() => {
     if (silenceTimerRef.current) {
@@ -221,11 +323,10 @@ export function useVoice(options: UseVoiceOptions = {}) {
       silenceTimerRef.current = null;
     }
 
-    if (useFallback) {
-      stopMediaRecorder();
-    } else {
+    if (asrMode === 'capacitor') {
+      stopCapacitorRecording();
+    } else if (asrMode === 'webSpeech') {
       SpeechRecognition.stopListening();
-      // Finalization happens in the listening effect above
       if (lastTranscriptRef.current) {
         const finalText = lastTranscriptRef.current;
         setIsRecording(false);
@@ -235,22 +336,20 @@ export function useVoice(options: UseVoiceOptions = {}) {
       } else {
         setIsRecording(false);
       }
+    } else {
+      stopMediaRecorder();
     }
-  }, [useFallback, stopMediaRecorder, onRecordingEnd, resetTranscript]);
+  }, [asrMode, stopCapacitorRecording, stopMediaRecorder, onRecordingEnd, resetTranscript]);
 
   const toggleRecording = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
+    if (isRecording) stopRecording();
+    else startRecording();
   }, [isRecording, startRecording, stopRecording]);
 
-  // ─── TTS (Text-to-Speech) ───────────────────────────
+  // ─── TTS (Text-to-Speech) ────────────────────────────────────
 
   const speak = useCallback((text: string) => {
     if (!('speechSynthesis' in window)) return;
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -258,7 +357,6 @@ export function useVoice(options: UseVoiceOptions = {}) {
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
-    // Try to pick a nicer voice
     const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(
       v => v.lang.startsWith(language.split('-')[0]) && v.name.includes('Google')
@@ -272,10 +370,7 @@ export function useVoice(options: UseVoiceOptions = {}) {
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {
       setIsSpeaking(false);
-      // In voice mode, auto-restart listening after TTS ends
-      if (voiceMode) {
-        setTimeout(() => startRecording(), 300);
-      }
+      if (voiceMode) setTimeout(() => startRecording(), 300);
     };
     utterance.onerror = () => setIsSpeaking(false);
 
@@ -289,11 +384,10 @@ export function useVoice(options: UseVoiceOptions = {}) {
     }
   }, []);
 
-  // ─── Voice Mode (continuous conversation) ────────────
+  // ─── Voice Mode ───────────────────────────────────────────────
 
   const toggleVoiceMode = useCallback(() => {
     if (voiceMode) {
-      // Exiting voice mode
       setVoiceMode(false);
       stopRecording();
       stopSpeaking();
@@ -303,7 +397,8 @@ export function useVoice(options: UseVoiceOptions = {}) {
     }
   }, [voiceMode, startRecording, stopRecording, stopSpeaking]);
 
-  // Cleanup on unmount
+  // ─── Cleanup ──────────────────────────────────────────────────
+
   useEffect(() => {
     return () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
@@ -315,8 +410,8 @@ export function useVoice(options: UseVoiceOptions = {}) {
   return {
     // Recording state
     isRecording,
-    transcript: useFallback ? '' : transcript,
-    listening: useFallback ? isRecording : listening,
+    transcript: asrMode === 'webSpeech' ? transcript : '',
+    listening: asrMode === 'webSpeech' ? listening : isRecording,
 
     // TTS state
     isSpeaking,
@@ -332,9 +427,11 @@ export function useVoice(options: UseVoiceOptions = {}) {
     stopRecording,
     toggleRecording,
 
-    // Capabilities
+    // Capabilities / debug
     hasSpeechRecognition: browserSupportsSpeechRecognition,
     hasSpeechSynthesis: typeof window !== 'undefined' && 'speechSynthesis' in window,
-    useFallback,
+    useFallback,          // kept for backwards compat
+    useCapacitorNative,   // true when running in Capacitor app
+    asrMode,              // 'capacitor' | 'webSpeech' | 'whisper'
   };
 }
