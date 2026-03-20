@@ -1,28 +1,50 @@
 import { useEffect } from 'react';
 import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 export const AppUrlListener = () => {
   useEffect(() => {
-    App.addListener('appUrlOpen', (event) => {
-      try {
-        const deepLinkUrl = new URL(event.url);
-        // Extract search params from deep link
-        if (
-          deepLinkUrl.search &&
-          deepLinkUrl.searchParams.has('privy_oauth_code') &&
-          deepLinkUrl.searchParams.has('privy_oauth_state') &&
-          deepLinkUrl.searchParams.has('privy_oauth_provider')
-        ) {
-          const currentUrl = new URL(window.location.href);
-          currentUrl.search = deepLinkUrl.search;
-          // Privy expects a real navigation so it can consume the OAuth params.
-          window.location.assign(currentUrl.toString());
-        }
-      } catch (error) {
-        console.error('Failed to parse deep link URL:', error);
+    if (!Capacitor.isNativePlatform()) return;
+
+    // Handle deep links received while app is running
+    const listener = App.addListener('appUrlOpen', (event) => {
+      console.log('[AppUrlListener] appUrlOpen fired:', event.url);
+      handleOAuthUrl(event.url);
+    });
+
+    // Cold start fallback: check if the app was launched with an OAuth URL
+    // Capacitor may have queued the URL before this listener was registered
+    App.getLaunchUrl().then((result) => {
+      if (result?.url) {
+        console.log('[AppUrlListener] getLaunchUrl:', result.url);
+        handleOAuthUrl(result.url);
       }
     });
+
+    return () => {
+      listener.then(l => l.remove());
+    };
   }, []);
 
   return null;
 };
+
+function handleOAuthUrl(url: string) {
+  try {
+    const deepLinkUrl = new URL(url);
+    if (
+      deepLinkUrl.search &&
+      deepLinkUrl.searchParams.has('privy_oauth_code') &&
+      deepLinkUrl.searchParams.has('privy_oauth_state') &&
+      deepLinkUrl.searchParams.has('privy_oauth_provider')
+    ) {
+      console.log('[AppUrlListener] OAuth params detected, navigating...');
+      const currentUrl = new URL(window.location.href);
+      currentUrl.search = deepLinkUrl.search;
+      // Privy expects a real navigation so it can consume the OAuth params.
+      window.location.assign(currentUrl.toString());
+    }
+  } catch (error) {
+    console.error('[AppUrlListener] Failed to parse deep link URL:', error);
+  }
+}
