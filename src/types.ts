@@ -4,11 +4,7 @@ export interface TreasuryStats {
   collateralRatio: number;
   treasuryRevenue: number;
   lastPoR: string;
-  reserveAllocation: {
-    tBills: number;
-    liquidity: number;
-    operations: number;
-  };
+  reserveAllocation: { tBills: number; liquidity: number; operations: number };
 }
 
 export interface MarketAsset {
@@ -45,62 +41,35 @@ export interface HistoryItem {
 }
 
 export interface TradeOrder {
-  id: string;
-  projectId: string;
-  projectTitle: string;
-  projectCoverImage: string;
-  projectIssuer: string;
-  projectIssuerLogo: string;
-  projectApy: number;
-  projectDurationDays: number;
-  seller: string;
-  listPrice: number;
-  originalPrice: number;
-  shares: number;
-  totalValue: number;
-  expectedReturn: number;
-  expectedYield: number;
-  listedAt: string;
-  status: 'Listed' | 'Sold';
-  buyer?: string;
-  soldAt?: string;
+  id: string; projectId: string; projectTitle: string; projectCoverImage: string;
+  projectIssuer: string; projectIssuerLogo: string; projectApy: number; projectDurationDays: number;
+  seller: string; listPrice: number; originalPrice: number; shares: number;
+  totalValue: number; expectedReturn: number; expectedYield: number; listedAt: string;
+  status: 'Listed' | 'Sold'; buyer?: string; soldAt?: string;
 }
 
 export interface RepaymentSchedule {
-  id: string;
-  projectId: string;
-  periodNumber: number;
-  dueDate: string;
-  principalDue: number;
-  interestDue: number;
-  totalDue: number;
-  paidAmount: number;
-  status: 'upcoming' | 'due' | 'paid' | 'overdue' | 'defaulted';
-  paidAt: string | null;
-  createdAt: string;
+  id: string; projectId: string; periodNumber: number; dueDate: string;
+  principalDue: number; interestDue: number; totalDue: number; paidAmount: number;
+  status: 'upcoming' | 'due' | 'paid' | 'overdue' | 'defaulted'; paidAt: string | null; createdAt: string;
 }
 
 export interface LiquidationSummary {
-  outstandingDebt: number;
-  totalCollateralValue: number;
-  totalRecoverable: number;
-  recoveryRate: number;
-  investorCount: number;
-  totalInvested: number;
+  outstandingDebt: number; totalCollateralValue: number; totalRecoverable: number;
+  recoveryRate: number; investorCount: number; totalInvested: number;
   waterfall: Array<{ tier: string; label: string; recoveryRate: number; recoverable: number }>;
   collaterals: Array<{ id: string; type: string; description: string; value: number; status: string }>;
 }
 
+// ─── V2 types ────────────────────────────────────────────────
+
+export type RoleType = 'human' | 'agent' | 'avatar';
+
 export enum Page {
-  LANDING = 'LANDING',
-  DASHBOARD = 'DASHBOARD',
-  SWAP = 'SWAP',
-  MARKET = 'MARKET',
-  PORTFOLIO = 'PORTFOLIO',
-  AGENT = 'AGENT',
-  CHAT = 'CHAT',
-  GROUPS = 'GROUPS',
+  SUPER_AGENT = 'SUPER_AGENT',
+  CHATS = 'CHATS',
+  INVEST = 'INVEST',
+  DISCOVER = 'DISCOVER',
   SETTINGS = 'SETTINGS',
-  TRADE = 'TRADE',
   API = 'API'
 }
