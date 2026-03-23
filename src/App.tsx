@@ -2,33 +2,34 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Page } from './types';
 import Market from './components/Market';
 import ApiLanding from './components/ApiLanding';
+import SuperAgentChat from './components/SuperAgentChat';
 
 /* ────────────────────────────────────────────────────────────
    Icons — richer, hand-crafted 18×18 with fills & details
    ──────────────────────────────────────────────────────────── */
 const sv = "w-[18px] h-[18px]";
 const I = {
-  Panel: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/></svg>,
-  Plus: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>,
-  Search: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M21 21l-4.35-4.35"/></svg>,
+  Panel: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 3v18" /></svg>,
+  Plus: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
+  Search: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M21 21l-4.35-4.35" /></svg>,
   /* SuperAgent — layered sparkle star */
-  Sparkles: () => <svg className={sv} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" fill="currentColor" fillOpacity={0.12} stroke="currentColor" strokeWidth={1.8}/><path d="M20 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" fill="currentColor" fillOpacity={0.2} stroke="currentColor" strokeWidth={1.4}/></svg>,
+  Sparkles: () => <svg className={sv} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" fill="currentColor" fillOpacity={0.12} stroke="currentColor" strokeWidth={1.8} /><path d="M20 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" fill="currentColor" fillOpacity={0.2} stroke="currentColor" strokeWidth={1.4} /></svg>,
   /* Discover — compass with needle */
-  Compass: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><circle cx="12" cy="12" r="9"/><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88" fill="currentColor" fillOpacity={0.15} stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round"/></svg>,
+  Compass: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><circle cx="12" cy="12" r="9" /><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88" fill="currentColor" fillOpacity={0.15} stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" /></svg>,
   /* Chat — clean speech bubble */
-  Chat: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" fill="currentColor" fillOpacity={0.06}/></svg>,
+  Chat: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" fill="currentColor" fillOpacity={0.06} /></svg>,
   /* Market — rising trend line */
-  Market: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" strokeWidth={1.6} fill="currentColor" fillOpacity={0.04}/><path d="M7 17l4-5 3 2.5L20 8" strokeWidth={2}/><circle cx="20" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>,
+  Market: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" strokeWidth={1.6} fill="currentColor" fillOpacity={0.04} /><path d="M7 17l4-5 3 2.5L20 8" strokeWidth={2} /><circle cx="20" cy="8" r="1.5" fill="currentColor" stroke="none" /></svg>,
   /* API — terminal prompt */
-  Code: () => <svg className={sv} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="3" stroke="currentColor" strokeWidth={1.6} fill="currentColor" fillOpacity={0.05}/><path d="M6 10l3 3-3 3" stroke="currentColor" strokeWidth={2}/><path d="M13 16h5" stroke="currentColor" strokeWidth={2}/></svg>,
-  Send: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>,
-  Dots: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>,
+  Code: () => <svg className={sv} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="3" stroke="currentColor" strokeWidth={1.6} fill="currentColor" fillOpacity={0.05} /><path d="M6 10l3 3-3 3" stroke="currentColor" strokeWidth={2} /><path d="M13 16h5" stroke="currentColor" strokeWidth={2} /></svg>,
+  Send: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>,
+  Dots: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>,
   /* Menu icons */
-  UserIcon: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>,
-  Settings: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z"/></svg>,
-  Moon: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
-  Sun: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>,
-  LogOut: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>,
+  UserIcon: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0112 0v1" /></svg>,
+  Settings: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z" /></svg>,
+  Moon: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>,
+  Sun: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>,
+  LogOut: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>,
 };
 
 /* Hover micro-animations + tooltip for collapsed sidebar */
@@ -63,13 +64,13 @@ const AnimStyles = () => (
    ──────────────────────────────────────────────────────────── */
 /* Action icon components */
 const ActionIcons = {
-  Invest: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
-  Risk: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
-  Trade: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
-  Research: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>,
-  Sentiment: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-  Portfolio: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>,
-  Trending: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+  Invest: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>,
+  Risk: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
+  Trade: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>,
+  Research: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>,
+  Sentiment: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
+  Portfolio: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>,
+  Trending: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>,
 };
 
 const QUICK_ACTIONS = [
@@ -144,11 +145,11 @@ const UserMenu: React.FC<{
   const widthClass = position === 'right' ? 'w-56' : 'w-full';
 
   const items: (null | { icon: React.FC; label: string; action: () => void; danger?: boolean })[] = [
-    { icon: I.UserIcon, label: 'Profile', action: () => {} },
-    { icon: I.Settings, label: 'Settings', action: () => {} },
+    { icon: I.UserIcon, label: 'Profile', action: () => { } },
+    { icon: I.Settings, label: 'Settings', action: () => { } },
     { icon: isDark ? I.Sun : I.Moon, label: isDark ? 'Light Mode' : 'Dark Mode', action: onToggleDark },
     null,
-    { icon: I.LogOut, label: 'Log out', action: () => {}, danger: true },
+    { icon: I.LogOut, label: 'Log out', action: () => { }, danger: true },
   ];
 
   /* Light vs dark menu styling */
@@ -180,9 +181,8 @@ const UserMenu: React.FC<{
           const Ic = item.icon;
           return (
             <button key={i} onClick={() => { item.action(); if (!item.label.includes('Mode')) onClose(); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2 text-[13px] transition-colors ${
-                item.danger ? dangerColor : itemColor
-              }`}>
+              className={`w-full flex items-center gap-3 px-3.5 py-2 text-[13px] transition-colors ${item.danger ? dangerColor : itemColor
+                }`}>
               <Ic />{item.label}
             </button>
           );
@@ -223,9 +223,8 @@ const Sidebar: React.FC<{
       <div className="flex flex-col gap-0.5 flex-1 w-full px-2">
         {navItems.map(({ key, icon: Icon, label, anim }) => (
           <button key={key} onClick={() => go(key)}
-            className={`rail-btn ${anim} relative w-full h-9 rounded-lg flex items-center justify-center transition-all ${
-              page === key ? activeBg : `${textSecondary} ${hoverBg}`
-            }`}>
+            className={`rail-btn ${anim} relative w-full h-9 rounded-lg flex items-center justify-center transition-all ${page === key ? activeBg : `${textSecondary} ${hoverBg}`
+              }`}>
             <div className="nav-icon-wrap"><Icon /></div>
             <span className="rail-tip">{label}</span>
           </button>
@@ -295,11 +294,10 @@ const SideLink: React.FC<{
   icon: React.FC; label: string; active?: boolean; badge?: number; anim?: string; onClick: () => void; isDark?: boolean;
 }> = ({ icon: Icon, label, active, badge, anim, onClick, isDark }) => (
   <button onClick={onClick}
-    className={`${anim || ''} w-full flex items-center gap-2.5 px-2 py-[7px] rounded-md text-[14px] transition-all ${
-      active
-        ? (isDark ? 'bg-white/10 text-white font-semibold' : 'bg-gray-100 text-gray-900 font-semibold')
-        : (isDark ? 'text-gray-400 hover:text-gray-100 hover:bg-white/8' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50')
-    }`}>
+    className={`${anim || ''} w-full flex items-center gap-2.5 px-2 py-[7px] rounded-md text-[14px] transition-all ${active
+      ? (isDark ? 'bg-white/10 text-white font-semibold' : 'bg-gray-100 text-gray-900 font-semibold')
+      : (isDark ? 'text-gray-400 hover:text-gray-100 hover:bg-white/8' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50')
+      }`}>
     <div className={`nav-icon-wrap ${active ? (isDark ? 'text-white' : 'text-gray-900') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}><Icon /></div>
     <span className="flex-1 text-left">{label}</span>
     {badge !== undefined && badge > 0 && (
@@ -314,15 +312,20 @@ const SideLink: React.FC<{
 
 /* ── SVG icons for input bar ── */
 const InputIcons = {
-  Attach: () => <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>,
-  Mic: () => <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
-  Image: () => <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
-  Chevron: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+  Attach: () => <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" /></svg>,
+  Mic: () => <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" /><path d="M19 10v2a7 7 0 01-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>,
+  Image: () => <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>,
+  Chevron: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>,
 };
 
 const SuperAgentHome: React.FC = () => {
   const [input, setInput] = useState('');
   const [model, setModel] = useState('GPT-4o');
+  const [chatMessage, setChatMessage] = useState<string | null>(null);
+
+  if (chatMessage) {
+    return <SuperAgentChat initialMessage={chatMessage} onBack={() => setChatMessage(null)} />;
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
@@ -341,6 +344,7 @@ const SuperAgentHome: React.FC = () => {
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && input.trim()) { e.preventDefault(); setChatMessage(input.trim()); } }}
               placeholder="Describe what you want to invest in, or ask about any asset..."
               rows={3}
               className="w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none"
@@ -362,9 +366,10 @@ const SuperAgentHome: React.FC = () => {
                 <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Voice input">
                   <InputIcons.Mic />
                 </button>
-                <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                  input.trim() ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                }`}>
+                <button
+                  onClick={() => { if (input.trim()) setChatMessage(input.trim()); }}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  }`}>
                   <I.Send />
                 </button>
               </div>
@@ -377,6 +382,7 @@ const SuperAgentHome: React.FC = () => {
               const Ic = a.icon;
               return (
                 <button key={a.id}
+                  onClick={() => setChatMessage(a.label)}
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all whitespace-nowrap">
                   <Ic /> {a.label}
                 </button>
@@ -409,9 +415,8 @@ const SuperAgentHome: React.FC = () => {
           {/* Rows */}
           {TRENDING_PROJECTS.map((p, idx) => (
             <div key={p.id}
-              className={`grid grid-cols-[minmax(0,2fr)_100px_100px_120px] gap-2 px-4 py-3 items-center hover:bg-gray-50/80 transition-colors cursor-pointer ${
-                idx < TRENDING_PROJECTS.length - 1 ? 'border-b border-gray-50' : ''
-              }`}>
+              className={`grid grid-cols-[minmax(0,2fr)_100px_100px_120px] gap-2 px-4 py-3 items-center hover:bg-gray-50/80 transition-colors cursor-pointer ${idx < TRENDING_PROJECTS.length - 1 ? 'border-b border-gray-50' : ''
+                }`}>
               {/* Project name + desc */}
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
@@ -444,32 +449,32 @@ const SuperAgentHome: React.FC = () => {
   );
 };
 
-const MOCK_GROUP_MEMBERS: Record<string, { agents: string[], team: {name:string,online:boolean}[], investors: {name:string,score:number,color:string}[] }> = {
-  g1: { agents: ['Loka Agent', 'Risk Analyzer'], team: [{name:'Alex Chen',online:true},{name:'Sarah Kim',online:false}], investors: [{name:'CryptoWhale88',score:850,color:'text-emerald-600'},{name:'DeFi_Maxoor',score:520,color:'text-blue-600'},{name:'YieldKing',score:1120,color:'text-amber-600'}] },
-  g2: { agents: ['Loka Agent'], team: [{name:'Marcus Rivera',online:true},{name:'Emily Zhang',online:true}], investors: [{name:'RWA_Bull',score:680,color:'text-emerald-600'},{name:'OnChainFred',score:390,color:'text-blue-600'}] },
-  g3: { agents: ['Loka Agent', 'Market Research'], team: [{name:'David Park',online:false}], investors: [{name:'AlphaTrader',score:720,color:'text-emerald-600'}] },
+const MOCK_GROUP_MEMBERS: Record<string, { agents: string[], team: { name: string, online: boolean }[], investors: { name: string, score: number, color: string }[] }> = {
+  g1: { agents: ['Loka Agent', 'Risk Analyzer'], team: [{ name: 'Alex Chen', online: true }, { name: 'Sarah Kim', online: false }], investors: [{ name: 'CryptoWhale88', score: 850, color: 'text-emerald-600' }, { name: 'DeFi_Maxoor', score: 520, color: 'text-blue-600' }, { name: 'YieldKing', score: 1120, color: 'text-amber-600' }] },
+  g2: { agents: ['Loka Agent'], team: [{ name: 'Marcus Rivera', online: true }, { name: 'Emily Zhang', online: true }], investors: [{ name: 'RWA_Bull', score: 680, color: 'text-emerald-600' }, { name: 'OnChainFred', score: 390, color: 'text-blue-600' }] },
+  g3: { agents: ['Loka Agent', 'Market Research'], team: [{ name: 'David Park', online: false }], investors: [{ name: 'AlphaTrader', score: 720, color: 'text-emerald-600' }] },
 };
 
-const MOCK_CHAT_MESSAGES: Record<string, {role:string,name:string,text:string,time:string,tag?:string}[]> = {
+const MOCK_CHAT_MESSAGES: Record<string, { role: string, name: string, text: string, time: string, tag?: string }[]> = {
   g1: [
-    { role:'agent', name:'Loka Agent', tag:'AI Agent', text:'✅ Milestone Update: Data center lease verified on-chain. Contract hash: 0x8f2a...3b4c. Compliance check passed.', time:'2:10 PM' },
-    { role:'user', name:'Alex Chen', tag:'Issuer', text:'Should we prioritize H100 or A100 GPUs for the first batch?', time:'2:31 PM' },
-    { role:'system', name:'Loka Agent', text:'Hardware shipment tracking is live. We\'re on schedule for the 60-day deployment plan.', time:'3:31 PM' },
-    { role:'user', name:'Alex Chen', tag:'Issuer', text:'Great! Let\'s update investors on the milestone.', time:'4:10 PM' },
+    { role: 'agent', name: 'Loka Agent', tag: 'AI Agent', text: '✅ Milestone Update: Data center lease verified on-chain. Contract hash: 0x8f2a...3b4c. Compliance check passed.', time: '2:10 PM' },
+    { role: 'user', name: 'Alex Chen', tag: 'Issuer', text: 'Should we prioritize H100 or A100 GPUs for the first batch?', time: '2:31 PM' },
+    { role: 'system', name: 'Loka Agent', text: 'Hardware shipment tracking is live. We\'re on schedule for the 60-day deployment plan.', time: '3:31 PM' },
+    { role: 'user', name: 'Alex Chen', tag: 'Issuer', text: 'Great! Let\'s update investors on the milestone.', time: '4:10 PM' },
   ],
   g2: [
-    { role:'agent', name:'Loka Agent', tag:'AI Agent', text:'New RWA project just listed: Shopify Merchant Cluster — $200k target, 8.9% APY. Due diligence report attached.', time:'9:00 AM' },
-    { role:'user', name:'Marcus Rivera', tag:'Issuer', text:'The receivables data has been verified by Stripe Connect. Coverage ratio is at 2.1x.', time:'10:30 AM' },
-    { role:'system', name:'Loka Agent', text:'Monthly repayment of $18,400 received. Distributed to 42 investors on-chain. ✅', time:'11:00 AM' },
+    { role: 'agent', name: 'Loka Agent', tag: 'AI Agent', text: 'New RWA project just listed: Shopify Merchant Cluster — $200k target, 8.9% APY. Due diligence report attached.', time: '9:00 AM' },
+    { role: 'user', name: 'Marcus Rivera', tag: 'Issuer', text: 'The receivables data has been verified by Stripe Connect. Coverage ratio is at 2.1x.', time: '10:30 AM' },
+    { role: 'system', name: 'Loka Agent', text: 'Monthly repayment of $18,400 received. Distributed to 42 investors on-chain. ✅', time: '11:00 AM' },
   ],
   g3: [
-    { role:'agent', name:'Loka Agent', tag:'AI Agent', text:'📊 Weekly Market Report: BTC dominance ↑ 2.3%, DeFi TVL ↑ 4.1%. AI sector outperforming by +12%.', time:'8:00 AM' },
-    { role:'user', name:'David Park', tag:'Research', text:'The on-chain metrics suggest a bullish accumulation pattern. Volume is confirming the move.', time:'9:15 AM' },
-    { role:'system', name:'Loka Agent', text:'New signal generated: Long ETH/USD at $2,840 — risk/reward 1:3.2. Confidence: 78%.', time:'10:00 AM' },
+    { role: 'agent', name: 'Loka Agent', tag: 'AI Agent', text: '📊 Weekly Market Report: BTC dominance ↑ 2.3%, DeFi TVL ↑ 4.1%. AI sector outperforming by +12%.', time: '8:00 AM' },
+    { role: 'user', name: 'David Park', tag: 'Research', text: 'The on-chain metrics suggest a bullish accumulation pattern. Volume is confirming the move.', time: '9:15 AM' },
+    { role: 'system', name: 'Loka Agent', text: 'New signal generated: Long ETH/USD at $2,840 — risk/reward 1:3.2. Confidence: 78%.', time: '10:00 AM' },
   ],
   c1: [
-    { role:'user', name:'Alex Chen', text:'Check out this DeFi project — 15.5% APY, 60-day term. Verified by Loka.', time:'10:00 AM' },
-    { role:'agent', name:'Loka Agent', tag:'AI Agent', text:'I\'ve analyzed the project. Strong cash flow coverage at 1.8x. Risk rating: A-. Would you like to invest?', time:'10:02 AM' },
+    { role: 'user', name: 'Alex Chen', text: 'Check out this DeFi project — 15.5% APY, 60-day term. Verified by Loka.', time: '10:00 AM' },
+    { role: 'agent', name: 'Loka Agent', tag: 'AI Agent', text: 'I\'ve analyzed the project. Strong cash flow coverage at 1.8x. Risk rating: A-. Would you like to invest?', time: '10:02 AM' },
   ],
 };
 
@@ -497,7 +502,7 @@ const ChatsPage: React.FC = () => {
 
   const filtered = filter === 'All' ? MOCK_MESSAGES
     : filter === 'People' ? MOCK_MESSAGES.filter(m => !m.isGroup)
-    : MOCK_MESSAGES.filter(m => m.isGroup);
+      : MOCK_MESSAGES.filter(m => m.isGroup);
 
   const sel = selected ? MOCK_MESSAGES.find(m => m.id === selected) : null;
   const msgs = selected ? (MOCK_CHAT_MESSAGES[selected] || []) : [];
@@ -551,12 +556,11 @@ const ChatsPage: React.FC = () => {
               {/* Toggle members sidebar */}
               {sel.isGroup && members && (
                 <button onClick={() => setShowMembers(v => !v)}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                    showMembers ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-700'
-                  }`} title="Members">
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${showMembers ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-700'
+                    }`} title="Members">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
                   </svg>
                 </button>
               )}
@@ -569,7 +573,7 @@ const ChatsPage: React.FC = () => {
                   {(msg.role === 'agent' || msg.role === 'user') && (
                     <div className="flex items-start gap-2.5">
                       <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600 shrink-0">
-                        {msg.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+                        {msg.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
                       <div className="max-w-[70%]">
                         <div className="flex items-center gap-1.5 mb-1">
@@ -625,7 +629,7 @@ const ChatsPage: React.FC = () => {
                 <div key={a} className="flex items-center gap-3 mb-3">
                   <div className="relative shrink-0">
                     <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-[12px] font-bold text-violet-600">{a[0]}</div>
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full"/>
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />
                   </div>
                   <div>
                     <p className="text-[12px] font-semibold text-gray-800">{a}</p>
@@ -638,7 +642,7 @@ const ChatsPage: React.FC = () => {
               <button onClick={() => setShowMarketplace(true)}
                 className="flex items-center gap-3 mb-4 w-full py-1 rounded-lg hover:bg-gray-50 transition-all group">
                 <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-200 group-hover:border-gray-400 flex items-center justify-center shrink-0 transition-colors">
-                  <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 5v14M5 12h14"/></svg>
+                  <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 5v14M5 12h14" /></svg>
                 </div>
                 <div className="text-left">
                   <p className="text-[12px] font-semibold text-gray-700">Add Agent</p>
@@ -652,7 +656,7 @@ const ChatsPage: React.FC = () => {
                 <div key={t.name} className="flex items-center gap-3 mb-3">
                   <div className="relative shrink-0">
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[12px] font-bold text-blue-600">{t.name[0]}</div>
-                    {t.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full"/>}
+                    {t.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />}
                   </div>
                   <div>
                     <p className="text-[12px] font-semibold text-gray-800">{t.name}</p>
@@ -688,21 +692,20 @@ const ChatsPage: React.FC = () => {
                       <p className="text-[13px] text-gray-400 mt-0.5">Add AI agents to enhance your group's capabilities</p>
                     </div>
                     <button onClick={() => setShowMarketplace(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M18 6L6 18M6 6l12 12" /></svg>
                     </button>
                   </div>
                   {/* Search */}
                   <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mt-4">
-                    <svg className="w-4 h-4 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <svg className="w-4 h-4 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
                     <input value={mktSearch} onChange={e => setMktSearch(e.target.value)} placeholder="Search agents..." className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400" />
                   </div>
                   {/* Categories */}
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     {MKT_CATS.map(c => (
                       <button key={c} onClick={() => setMktCat(c)}
-                        className={`px-3 py-1 rounded-full text-[12px] font-medium transition-all ${
-                          mktCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}>{c}</button>
+                        className={`px-3 py-1 rounded-full text-[12px] font-medium transition-all ${mktCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          }`}>{c}</button>
                     ))}
                   </div>
                 </div>
@@ -716,7 +719,7 @@ const ChatsPage: React.FC = () => {
                         <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{a.desc}</p>
                       </div>
                       <button className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all shrink-0">
-                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 5v14M5 12h14"/></svg>
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 5v14M5 12h14" /></svg>
                       </button>
                     </div>
                   ))}
@@ -793,11 +796,10 @@ const DiscoverPage: React.FC = () => {
           {tabs.map(t => (
             <button key={t}
               onClick={() => setActiveTab(t)}
-              className={`pb-2 text-[14px] font-medium transition-all border-b-2 -mb-px flex items-center gap-1.5 ${
-                activeTab === t
-                  ? 'border-gray-900 text-gray-900'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}>{t}</button>
+              className={`pb-2 text-[14px] font-medium transition-all border-b-2 -mb-px flex items-center gap-1.5 ${activeTab === t
+                ? 'border-gray-900 text-gray-900'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}>{t}</button>
           ))}
         </div>
 
@@ -833,23 +835,22 @@ const DiscoverPage: React.FC = () => {
               {AGENT_CATEGORIES.map(c => (
                 <button key={c}
                   onClick={() => setAgentCat(c)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${
-                    agentCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}>{c}</button>
+                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${agentCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}>{c}</button>
               ))}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {filteredAgents.map(a => {
                 // Map solid color to gradient pair
                 const gradMap: Record<string, string> = {
-                  'bg-blue-500':    'from-blue-500 to-indigo-500',
-                  'bg-red-500':     'from-red-500 to-rose-500',
+                  'bg-blue-500': 'from-blue-500 to-indigo-500',
+                  'bg-red-500': 'from-red-500 to-rose-500',
                   'bg-emerald-500': 'from-emerald-500 to-teal-500',
-                  'bg-amber-500':   'from-amber-400 to-orange-400',
-                  'bg-violet-500':  'from-violet-500 to-purple-500',
-                  'bg-cyan-500':    'from-cyan-500 to-sky-500',
-                  'bg-indigo-500':  'from-indigo-500 to-blue-600',
-                  'bg-pink-500':    'from-pink-500 to-rose-500',
+                  'bg-amber-500': 'from-amber-400 to-orange-400',
+                  'bg-violet-500': 'from-violet-500 to-purple-500',
+                  'bg-cyan-500': 'from-cyan-500 to-sky-500',
+                  'bg-indigo-500': 'from-indigo-500 to-blue-600',
+                  'bg-pink-500': 'from-pink-500 to-rose-500',
                 };
                 const grad = gradMap[a.color] ?? 'from-gray-400 to-gray-500';
                 return (
@@ -868,7 +869,7 @@ const DiscoverPage: React.FC = () => {
                     <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{a.desc}</p>
                     {/* Action — lightweight, not full-width black */}
                     <button className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition-colors group-hover:underline underline-offset-2">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                       Start a chat
                     </button>
                   </div>

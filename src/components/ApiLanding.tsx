@@ -244,11 +244,11 @@ const USE_CASES = [
 ];
 
 const ENDPOINTS = [
+  { method: 'POST', path: '/v1/onramp/deposit', desc: 'Initiate fiat deposit via card, bank, or Apple Pay' },
+  { method: 'POST', path: '/v1/offramp/withdraw', desc: 'Cash out to bank account globally' },
   { method: 'GET', path: '/v1/projects', desc: 'Browse available investment opportunities' },
   { method: 'POST', path: '/v1/projects/:id/invest', desc: 'Allocate capital to a project' },
   { method: 'DELETE', path: '/v1/projects/:id/revoke', desc: 'Withdraw investment before lock-in' },
-  { method: 'POST', path: '/v1/portfolio/mint', desc: 'Convert USD to AIUSD yield token' },
-  { method: 'POST', path: '/v1/portfolio/redeem', desc: 'Redeem AIUSD back to USD' },
   { method: 'GET', path: '/v1/portfolio/holdings', desc: 'View full portfolio & performance' },
   { method: 'GET', path: '/v1/credit/score', desc: 'AI risk score for any asset' },
   { method: 'POST', path: '/v1/chat/send', desc: 'Ask the AI investment advisor' },
@@ -419,17 +419,17 @@ const ApiLanding: React.FC = () => {
 
         <div className="relative z-10 w-full max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 text-center sm:text-left">
           <Reveal delay={100}>
-            <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95] text-black max-w-4xl mx-auto sm:mx-0">
-               The Infrastructure Behind<br />
-               AI‑Powered<br />
-               <span className="text-gray-400">Finance.</span>
+            <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-[6.5rem] font-black tracking-[-0.04em] leading-[0.9] text-black max-w-5xl mx-auto sm:mx-0">
+               Financial Infrastructure,<br />
+               Built for the AI Era.
              </h1>
           </Reveal>
           
           <Reveal delay={200}>
             <p className="text-base sm:text-lg md:text-xl text-gray-500 font-medium leading-relaxed max-w-2xl mt-6 sm:mt-8 mx-auto sm:mx-0">
-              Loka is the trusted platform that enables fintechs, funds, and AI agents
-              to launch compliant investment products with built-in risk management.
+              Loka provides the APIs and SDKs that enable any platform to embed
+              compliant deposits, withdrawals, and AI-powered risk management
+              — in minutes, not months.
             </p>
           </Reveal>
           
@@ -553,9 +553,9 @@ const ApiLanding: React.FC = () => {
                   <p className="text-gray-500 leading-relaxed text-sm">Get instant AI-generated risk reports, return probability analysis, and borrower credit profiles for any investment opportunity.</p>
                 </div>
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
-                  <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">02 / Yield</div>
-                  <h3 className="text-2xl font-black mb-3">AIUSD Yield Token</h3>
-                  <p className="text-gray-500 leading-relaxed text-sm">Convert your capital into AIUSD — a yield-generating token backed by real-world assets. Earn returns automatically while maintaining full liquidity.</p>
+                  <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">02 / Payments</div>
+                  <h3 className="text-2xl font-black mb-3">Fiat On/Off-Ramp</h3>
+                  <p className="text-gray-500 leading-relaxed text-sm">Enable users to deposit and withdraw funds globally — credit card, bank transfer, Apple Pay across 190+ countries, with transparent fees and instant settlement.</p>
                 </div>
               </div>
             </Reveal>
