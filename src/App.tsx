@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Page } from './types';
 import Market from './components/Market';
 import ApiLanding from './components/ApiLanding';
 import SuperAgentChat from './components/SuperAgentChat';
+import AuthModal from './components/AuthModal';
+import OAuthCallbackHandler from './components/OAuthCallbackHandler';
 
 /* ────────────────────────────────────────────────────────────
    Icons — richer, hand-crafted 18×18 with fills & details
@@ -127,8 +130,10 @@ const navItems = [
 /* ── User menu popup ── */
 const UserMenu: React.FC<{
   open: boolean; onClose: () => void; position?: 'above' | 'right';
-  isDark: boolean; onToggleDark: () => void;
-}> = ({ open, onClose, position = 'above', isDark, onToggleDark }) => {
+  isDark: boolean; onToggleDark: () => void; onLogout?: () => void;
+  userName?: string;
+  userInitial?: string;
+}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -149,7 +154,7 @@ const UserMenu: React.FC<{
     { icon: I.Settings, label: 'Settings', action: () => { } },
     { icon: isDark ? I.Sun : I.Moon, label: isDark ? 'Light Mode' : 'Dark Mode', action: onToggleDark },
     null,
-    { icon: I.LogOut, label: 'Log out', action: () => { }, danger: true },
+    { icon: I.LogOut, label: 'Log out', action: () => { if (onLogout) onLogout(); onClose(); }, danger: true },
   ];
 
   /* Light vs dark menu styling */
@@ -167,9 +172,9 @@ const UserMenu: React.FC<{
       {/* User header */}
       <div className={`px-3.5 py-2.5 border-b ${headerBorder}`}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white">U</div>
+          <div className={`w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white`}>{userInitial || 'U'}</div>
           <div>
-            <p className={`text-[13px] font-semibold ${nameColor}`}>User</p>
+            <p className={`text-[13px] font-semibold ${nameColor}`}>{userName || 'User'}</p>
             <p className={`text-[11px] ${subColor}`}>@user</p>
           </div>
         </div>
@@ -195,7 +200,9 @@ const UserMenu: React.FC<{
 const Sidebar: React.FC<{
   expanded: boolean; onToggle: () => void; page: Page; go: (p: Page) => void;
   isDark: boolean; onToggleDark: () => void;
-}> = ({ expanded, onToggle, page, go, isDark, onToggleDark }) => {
+  isLoggedIn: boolean; onLogin: () => void; onLogout: () => void;
+  userName?: string; userInitial?: string;
+}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   /* theme classes */
@@ -231,8 +238,8 @@ const Sidebar: React.FC<{
         ))}
       </div>
       <div className="relative">
-        <div onClick={() => setUserMenuOpen(!userMenuOpen)} className={`w-8 h-8 ${avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all`}>U</div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} />
+        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all`}>{userInitial || 'U'}</div>
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
       </div>
     </nav>
   );
@@ -278,12 +285,12 @@ const Sidebar: React.FC<{
 
       {/* User */}
       <div className="px-3 py-3 relative">
-        <div onClick={() => setUserMenuOpen(!userMenuOpen)} className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${hoverBg} transition-all cursor-pointer group/user`}>
-          <div className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold`}>U</div>
-          <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>User</span>
+        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${hoverBg} transition-all cursor-pointer group/user`}>
+          <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold`}>{userInitial || 'U'}</div>
+          <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
       </div>
     </aside>
   );
@@ -376,21 +383,23 @@ const SuperAgentHome: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex items-center justify-center gap-2">
-            {QUICK_ACTIONS.slice(0, 4).map(a => {
-              const Ic = a.icon;
-              return (
-                <button key={a.id}
-                  onClick={() => setChatMessage(a.label)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all whitespace-nowrap">
-                  <Ic /> {a.label}
-                </button>
-              );
-            })}
-            <button className="px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all">
-              More
-            </button>
+          {/* Quick Actions — horizontally scrollable on mobile */}
+          <div className="-mx-4 px-4 overflow-x-auto border-b border-transparent" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex items-center justify-start md:justify-center gap-2 min-w-max md:min-w-0 md:w-full">
+              {QUICK_ACTIONS.slice(0, 4).map(a => {
+                const Ic = a.icon;
+                return (
+                  <button key={a.id}
+                    onClick={() => setChatMessage(a.label)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all whitespace-nowrap shrink-0">
+                    <Ic /> {a.label}
+                  </button>
+                );
+              })}
+              <button className="px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all whitespace-nowrap shrink-0">
+                More
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -405,41 +414,41 @@ const SuperAgentHome: React.FC = () => {
         </div>
 
         <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-[minmax(0,2fr)_100px_100px_120px] gap-2 px-4 py-2.5 border-b border-gray-100 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
+          {/* Table header — hidden on mobile */}
+          <div className="hidden md:grid grid-cols-[minmax(0,2fr)_100px_100px_120px] gap-2 px-4 py-2.5 border-b border-gray-100 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
             <span>Project</span>
             <span className="text-right">MRR</span>
             <span className="text-right">MoM</span>
             <span className="text-right">Progress</span>
           </div>
-          {/* Rows */}
+          {/* Rows — table on desktop, stacked card on mobile */}
           {TRENDING_PROJECTS.map((p, idx) => (
             <div key={p.id}
-              className={`grid grid-cols-[minmax(0,2fr)_100px_100px_120px] gap-2 px-4 py-3 items-center hover:bg-gray-50/80 transition-colors cursor-pointer ${idx < TRENDING_PROJECTS.length - 1 ? 'border-b border-gray-50' : ''
+              className={`md:grid md:grid-cols-[minmax(0,2fr)_100px_100px_120px] md:gap-2 px-4 py-3 md:items-center hover:bg-gray-50/80 transition-colors cursor-pointer ${idx < TRENDING_PROJECTS.length - 1 ? 'border-b border-gray-50' : ''
                 }`}>
               {/* Project name + desc */}
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
                   {p.name.charAt(0)}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium text-gray-900 truncate">{p.name}</p>
                   <p className="text-[11px] text-gray-400 truncate">{p.desc}</p>
                 </div>
               </div>
-              {/* MRR */}
-              <span className="text-[13px] font-semibold text-gray-900 text-right">{p.mrr}</span>
-              {/* MoM Growth */}
-              <span className={`text-[13px] font-semibold text-right ${p.momUp ? 'text-emerald-600' : 'text-red-500'}`}>
-                {p.momUp ? '↑' : '↓'} {p.mom.replace(/[+-]/, '')}
-              </span>
-              {/* Progress bar */}
-              <div className="flex items-center gap-2 justify-end">
-                <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${p.pct >= 100 ? 'bg-emerald-500' : 'bg-gray-900'}`}
-                    style={{ width: `${Math.min(p.pct, 100)}%` }} />
+              {/* Stats row — inline on mobile, separate columns on desktop */}
+              <div className="flex items-center justify-between mt-2 md:mt-0 md:contents pl-10 md:pl-0">
+                <span className="text-[13px] font-semibold text-gray-900 md:text-right">{p.mrr}</span>
+                <span className={`text-[13px] font-semibold md:text-right ${p.momUp ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {p.momUp ? '↑' : '↓'} {p.mom.replace(/[+-]/, '')}
+                </span>
+                <div className="flex items-center gap-2 md:justify-end">
+                  <div className="w-12 md:w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${p.pct >= 100 ? 'bg-emerald-500' : 'bg-gray-900'}`}
+                      style={{ width: `${Math.min(p.pct, 100)}%` }} />
+                  </div>
+                  <span className="text-[11px] text-gray-500 w-8 text-right">{p.pct}%</span>
                 </div>
-                <span className="text-[11px] text-gray-500 w-8 text-right">{p.pct}%</span>
               </div>
             </div>
           ))}
@@ -511,7 +520,9 @@ const ChatsPage: React.FC = () => {
   return (
     <div className="flex-1 flex h-full overflow-hidden">
       {/* ── Left: conversation list ── */}
-      <div className="w-72 border-r border-gray-100 flex flex-col shrink-0 bg-white">
+      {/* Mobile: full-width when no chat selected, hidden when chat is open */}
+      {/* Desktop: always visible as 288px sidebar */}
+      <div className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-72 border-r border-gray-100 flex-col shrink-0 bg-white`}>
         <div className="flex items-center justify-between px-5 pt-5 pb-2">
           <h2 className="text-[15px] font-semibold text-gray-900">Chats</h2>
           <button className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all"><I.Plus /></button>
@@ -546,6 +557,10 @@ const ChatsPage: React.FC = () => {
           <div className="flex-1 flex flex-col min-w-0 bg-gray-50/30">
             {/* Header */}
             <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100 bg-white shrink-0">
+              {/* Back button — mobile only */}
+              <button onClick={() => setSelected(null)} className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-all shrink-0">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${sel.color || 'bg-gray-100 text-gray-600'}`}>{sel.avatar}</div>
               <div className="flex-1">
                 <p className="text-[14px] font-semibold text-gray-900">{sel.name}</p>
@@ -618,9 +633,9 @@ const ChatsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ── Right: members sidebar (groups only) ── */}
+          {/* ── Right: members sidebar (groups only, desktop only) ── */}
           {sel.isGroup && members && showMembers && (
-            <div className="w-60 border-l border-gray-100 bg-white flex flex-col shrink-0 overflow-y-auto px-5 py-5">
+            <div className="hidden md:flex w-60 border-l border-gray-100 bg-white flex-col shrink-0 overflow-y-auto px-5 py-5">
               <p className="text-[14px] font-semibold text-gray-900 mb-5">Members ({members.agents.length + members.team.length + members.investors.length})</p>
 
               {/* AI Agent */}
@@ -682,8 +697,8 @@ const ChatsPage: React.FC = () => {
 
           {/* ── Agent Marketplace Modal ── */}
           {showMarketplace && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowMarketplace(false)}>
-              <div className="bg-white rounded-2xl w-[640px] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowMarketplace(false)}>
+              <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:w-[640px] max-h-[85vh] md:max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
                 {/* Modal header */}
                 <div className="px-6 pt-6 pb-4 border-b border-gray-100">
                   <div className="flex items-start justify-between mb-1">
@@ -710,7 +725,7 @@ const ChatsPage: React.FC = () => {
                   </div>
                 </div>
                 {/* Agent list */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 grid grid-cols-2 gap-3">
+                <div className="flex-1 overflow-y-auto px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredMkt.map(a => (
                     <div key={a.name} className="border border-gray-100 rounded-xl p-4 hover:border-gray-200 hover:shadow-sm transition-all flex items-start gap-3">
                       <div className={`w-10 h-10 rounded-xl ${a.color} flex items-center justify-center text-white text-[14px] font-bold shrink-0`}>{a.name[0]}</div>
@@ -734,7 +749,7 @@ const ChatsPage: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-gray-50/50">
+        <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50/50">
           <p className="text-[14px] text-gray-400">Select a conversation</p>
         </div>
       )}
@@ -900,6 +915,17 @@ const App: React.FC = () => {
   const [page, setPage] = useState<Page>(Page.SUPER_AGENT);
   const [expanded, setExpanded] = useState(true);
   const [isDark, setIsDark] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const { ready, authenticated, user } = usePrivy();
+  const { logout } = useLogout({
+    onSuccess: () => setPage(Page.SUPER_AGENT),
+  });
+  const isLoggedIn = ready && authenticated;
+
+  // Derive user display info from Privy user object
+  const userName = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
+  const userInitial = userName.charAt(0).toUpperCase();
 
   const toggleDark = () => {
     setIsDark(prev => {
@@ -929,8 +955,12 @@ const App: React.FC = () => {
   return (
     <div className={`h-screen w-screen flex overflow-hidden ${appBg} selection:bg-gray-900 selection:text-white transition-colors duration-300`}>
       <AnimStyles />
+      <OAuthCallbackHandler />
+      {showAuthModal && <AuthModal onLogin={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />}
 
-      <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={setPage} isDark={isDark} onToggleDark={toggleDark} />
+      <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={setPage} isDark={isDark} onToggleDark={toggleDark}
+        isLoggedIn={isLoggedIn} onLogin={() => setShowAuthModal(true)} onLogout={logout}
+        userName={userName} userInitial={userInitial} />
 
       <main className={`flex-1 flex flex-col overflow-hidden h-full pb-14 md:pb-0 ${mainBg}`}>
         <div className="flex-1 overflow-y-auto flex flex-col md:m-0">
@@ -944,7 +974,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-2 py-1 z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-2 pt-1 z-50" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
         {navItems.map(({ key, icon: Icon, label }) => {
           const u = key === Page.CHATS ? MOCK_MESSAGES.reduce((s, m) => s + m.unread, 0) : 0;
           return (

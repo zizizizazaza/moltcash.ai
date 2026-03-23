@@ -186,9 +186,22 @@ const TxModal: React.FC = () => {
     if (!modalAction) return null;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleClose} />
-            <div className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-md mx-4 p-6 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 duration-300 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+            <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                style={{ animation: 'fadeIn 0.2s ease' }}
+                onClick={handleClose}
+            />
+            <div
+                className="relative bg-white rounded-t-[2rem] rounded-b-none sm:rounded-[2rem] shadow-2xl w-full sm:max-w-md sm:mx-4 px-6 pt-5 sm:p-6 overflow-y-auto"
+                style={{
+                    maxHeight: '92dvh',
+                    paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+                    animation: 'sheetUp 0.35s cubic-bezier(0.16,1,0.3,1)',
+                }}
+            >
+                {/* Mobile drag handle */}
+                <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden" />
                 <div className="flex justify-between items-center mb-5">
                     <h3 className="text-lg font-bold text-black">{modalAction === 'deposit' ? 'Deposit' : 'Withdraw'}</h3>
                     <button onClick={handleClose} className="text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 transition-colors p-2 rounded-full">
@@ -228,7 +241,7 @@ const TxModal: React.FC = () => {
                         {modalAction === 'deposit' && (
                             <div className="flex items-center justify-between px-1">
                                 <span className="text-[11px] text-gray-400 font-medium">≈ {formAmount ? (parseFloat(formAmount) * 0.997).toFixed(2) : '0.00'} USDC ↕</span>
-                                <div className="flex gap-1.5">
+                                <div className="flex gap-1.5 flex-wrap justify-end">
                                     {(formAsset === 'CNY' ? ['¥100', '¥500', '¥1000'] : ['$25', '$50', '$100', '$500']).map(amt => (
                                         <button key={amt} onClick={() => setFormAmount(amt.replace(/[^0-9]/g, ''))} className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-[10px] font-bold text-gray-500 hover:text-black transition-all">{amt}</button>
                                     ))}

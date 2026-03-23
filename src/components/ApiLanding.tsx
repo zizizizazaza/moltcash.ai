@@ -125,31 +125,31 @@ const CODE: Record<string, string> = {
 export default function App() {
   return (
     <LokaCashPrivyRoot apiKey="lk_live_xxxxxxxxxxxx">
-      <DeFiDashboard />
+      <Dashboard />
     </LokaCashPrivyRoot>
   );
 }
 
-// 2. On-Ramp: buy crypto with fiat
-function DeFiDashboard() {
+// 2. Deposit: add funds to account
+function Dashboard() {
   const deposit = useLokaCashDeposit();
   const withdraw = useLokaCashWithdraw();
   
   return (
     <div>
       <button 
-        onClick={() => deposit.open({ amount: '1000', asset: 'USDC' })}
+        onClick={() => deposit.open({ amount: '1000', asset: 'USD' })}
         disabled={deposit.isOpening}
       >
-        Buy USDC
+        Add Funds
       </button>
 
-      {/* 3. Off-Ramp: sell crypto to fiat via MoonPay */}
+      {/* 3. Withdraw: send funds to bank via MoonPay */}
       <button
-        onClick={() => withdraw.open({ crypto: 'eth', fiat: 'usd' })}
+        onClick={() => withdraw.open({ currency: 'usd', method: 'bank' })}
         disabled={withdraw.isOpening}
       >
-        Sell ETH → USD
+        Withdraw to Bank
       </button>
     </div>
   );
@@ -173,8 +173,8 @@ async function runAutonomousInvestment() {
   // 2. Instantly execute the investment programmatically
   const tx = await client.invest({
     projectId: topPick.id,
-    amountUsdc: 50000,
-    autoStake: true
+    amount: 50000,
+    autoCompound: true
   });
 
   console.log(\`✅ Invested! TX Hash: \${tx.hash}\`);
@@ -244,8 +244,8 @@ const USE_CASES = [
 ];
 
 const ENDPOINTS = [
-  { method: 'POST', path: '/v1/onramp/deposit', desc: 'Initiate fiat deposit via card, bank, or Apple Pay' },
-  { method: 'POST', path: '/v1/offramp/withdraw', desc: 'Cash out to bank account globally' },
+  { method: 'POST', path: '/v1/payments/deposit', desc: 'Initiate deposit via card, bank, or Apple Pay' },
+  { method: 'POST', path: '/v1/payments/withdraw', desc: 'Withdraw to bank account globally' },
   { method: 'GET', path: '/v1/projects', desc: 'Browse available investment opportunities' },
   { method: 'POST', path: '/v1/projects/:id/invest', desc: 'Allocate capital to a project' },
   { method: 'DELETE', path: '/v1/projects/:id/revoke', desc: 'Withdraw investment before lock-in' },
@@ -466,8 +466,8 @@ const ApiLanding: React.FC = () => {
         <div className="lg:w-1/2 p-5 sm:p-12 lg:p-16 xl:p-24 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white flex flex-col justify-center text-center sm:text-left">
           <Reveal>
             <div className="flex gap-2 mb-8 justify-center sm:justify-start">
-              <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">On-Ramp</span>
-              <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">Off-Ramp</span>
+              <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">Deposit</span>
+              <span className="text-[10px] font-bold px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200">Withdraw</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Instant Money Movement.</h2>
             <p className="text-base text-gray-600 leading-relaxed mb-10 max-w-md mx-auto sm:mx-0">
@@ -554,7 +554,7 @@ const ApiLanding: React.FC = () => {
                 </div>
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
                   <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">02 / Payments</div>
-                  <h3 className="text-2xl font-black mb-3">Fiat On/Off-Ramp</h3>
+                  <h3 className="text-2xl font-black mb-3">Instant Payments</h3>
                   <p className="text-gray-500 leading-relaxed text-sm">Enable users to deposit and withdraw funds globally — credit card, bank transfer, Apple Pay across 190+ countries, with transparent fees and instant settlement.</p>
                 </div>
               </div>
@@ -825,7 +825,7 @@ const ApiLanding: React.FC = () => {
                   Take Loka Cash<br />everywhere you go.
                 </h3>
                 <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md mx-auto md:mx-0">
-                  Trade, chat with AI, manage your portfolio, and execute on-chain transactions — all from your pocket.
+                  Trade, chat with AI, manage your portfolio, and execute smart transactions — all from your pocket.
                 </p>
                 <a href="/downloads/lokacash.apk" download
                   className="inline-flex items-center gap-3 px-8 py-4 text-sm font-bold bg-black text-white hover:bg-gray-900 transition-colors">
