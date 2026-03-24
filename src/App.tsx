@@ -654,6 +654,69 @@ const PollCard: React.FC<{ poll: PollData }> = ({ poll: initialPoll }) => {
   );
 };
 
+const AddMemberModal: React.FC<{
+  existingNames: string[];
+  onClose: () => void;
+  onConfirm: (names: string[]) => void;
+}> = ({ existingNames, onClose, onConfirm }) => {
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const available = DISCOVER_CONTACTS.filter(c => !existingNames.includes(c.name));
+
+  const toggle = (id: number) =>
+    setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const handleConfirm = () => {
+    const names = available.filter(c => picked.has(c.id)).map(c => c.name);
+    onConfirm(names);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4 flex flex-col max-h-[70vh]" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-[15px] font-bold text-gray-900">Add Member</h2>
+            {picked.size > 0 && <p className="text-[11px] text-gray-400">{picked.size} selected</p>}
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        {/* List */}
+        <div className="overflow-y-auto flex-1 py-2">
+          {available.length === 0 ? (
+            <p className="text-[13px] text-gray-400 text-center py-8">All friends are already in this group</p>
+          ) : available.map(c => {
+            const isSel = picked.has(c.id);
+            return (
+              <div key={c.id} onClick={() => toggle(c.id)}
+                className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
+                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">{c.initials}</div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-gray-800 truncate">{c.name}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{c.bio}</p>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${isSel ? 'bg-gray-900 border-gray-900' : 'border-gray-200'}`}>
+                  {isSel && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 flex gap-2 shrink-0">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
+          <button onClick={handleConfirm} disabled={picked.size === 0}
+            className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all ${picked.size > 0 ? 'bg-gray-900 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+            {picked.size > 0 ? `Add (${picked.size})` : 'Add'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ChatsPage: React.FC = () => {
   const [filter, setFilter] = useState<'All' | 'People' | 'Groups'>('All');
   const [selected, setSelected] = useState<string | null>(null);
@@ -1084,28 +1147,11 @@ const ChatsPage: React.FC = () => {
 
               {/* Add Member modal */}
               {showAddMember && members && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddMember(false)}>
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                      <h2 className="text-[15px] font-bold text-gray-900">Add Member</h2>
-                      <button onClick={() => setShowAddMember(false)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
-                    </div>
-                    <div className="max-h-72 overflow-y-auto py-2">
-                      {DISCOVER_CONTACTS.filter(c => !members.members.find(m => m.name === c.name)).map(c => (
-                        <button key={c.id} onClick={() => { addMember(c.name); setShowAddMember(false); }}
-                          className="flex items-center gap-3 w-full px-5 py-2.5 hover:bg-gray-50 transition-colors text-left">
-                          <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">{c.initials}</div>
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-semibold text-gray-800 truncate">{c.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{c.bio}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <AddMemberModal
+                  existingNames={members.members.map(m => m.name)}
+                  onClose={() => setShowAddMember(false)}
+                  onConfirm={(names) => { names.forEach(addMember); setShowAddMember(false); }}
+                />
               )}
 
               {/* Dissolve confirmation */}
