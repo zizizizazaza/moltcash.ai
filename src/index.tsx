@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { PrivyProvider } from '@privy-io/react-auth';
 import { Capacitor } from '@capacitor/core';
 import { AppUrlListener } from './components/AppUrlListener';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -36,7 +37,9 @@ root.render(
       }}
     >
       <ErrorBoundary>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </ErrorBoundary>
     </PrivyProvider>
   </React.StrictMode>

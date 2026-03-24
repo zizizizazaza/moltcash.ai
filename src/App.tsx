@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Page } from './types';
 import Market from './components/Market';
@@ -1931,15 +1932,28 @@ const SettingsPage: React.FC = () => (
 /* ════════════════════════════════════════════════════════════
    APP
    ════════════════════════════════════════════════════════════ */
+const PAGE_PATHS: Record<string, string> = {
+  [Page.SUPER_AGENT]: '/',
+  [Page.CHATS]: '/chat',
+  [Page.CONTACTS]: '/contacts',
+  [Page.DISCOVER]: '/discover',
+  [Page.INVEST]: '/market',
+  [Page.API]: '/api',
+  [Page.SETTINGS]: '/settings',
+};
+
 const App: React.FC = () => {
-  const [page, setPage] = useState<Page>(Page.SUPER_AGENT);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const page = (Object.keys(PAGE_PATHS).find(k => location.pathname === PAGE_PATHS[k] || (PAGE_PATHS[k] !== '/' && location.pathname.startsWith(PAGE_PATHS[k] + '/'))) as Page) || Page.SUPER_AGENT;
+  const go = (p: Page) => navigate(PAGE_PATHS[p] || '/');
   const [expanded, setExpanded] = useState(true);
   const [isDark, setIsDark] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const { ready, authenticated, user } = usePrivy();
   const { logout } = useLogout({
-    onSuccess: () => setPage(Page.SUPER_AGENT),
+    onSuccess: () => navigate('/'),
   });
   const isLoggedIn = ready && authenticated;
 
@@ -1978,19 +1992,22 @@ const App: React.FC = () => {
       <OAuthCallbackHandler />
       {showAuthModal && <AuthModal onLogin={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />}
 
-      <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={setPage} isDark={isDark} onToggleDark={toggleDark}
+      <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={go} isDark={isDark} onToggleDark={toggleDark}
         isLoggedIn={isLoggedIn} onLogin={() => setShowAuthModal(true)} onLogout={logout}
         userName={userName} userInitial={userInitial} />
 
-      <main className={`flex-1 flex flex-col overflow-hidden h-full pb-14 md:pb-0 ${mainBg}`}>
+      <main className={`flex-1 flex flex-col overflow-hidden h-full pt-[max(env(safe-area-inset-top),32px)] md:pt-0 pb-14 md:pb-0 ${mainBg}`}>
         <div className="flex-1 overflow-y-auto flex flex-col md:m-0">
-          {page === Page.SUPER_AGENT && <SuperAgentHome />}
-          {page === Page.CHATS && <ChatsPage />}
-          {page === Page.CONTACTS && <ContactsPage />}
-          {page === Page.INVEST && <Market />}
-          {page === Page.DISCOVER && <DiscoverPage />}
-          {page === Page.SETTINGS && <SettingsPage />}
-          {page === Page.API && <ApiLanding />}
+          <Routes>
+            <Route path="/" element={<SuperAgentHome />} />
+            <Route path="/chat" element={<ChatsPage />} />
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/market/*" element={<Market />} />
+            <Route path="/discover" element={<DiscoverPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/api" element={<ApiLanding />} />
+            <Route path="*" element={<SuperAgentHome />} />
+          </Routes>
         </div>
       </main>
 
@@ -1999,7 +2016,7 @@ const App: React.FC = () => {
         {navItems.map(({ key, icon: Icon, label }) => {
           const u = key === Page.CHATS ? MOCK_MESSAGES.reduce((s, m) => s + m.unread, 0) : 0;
           return (
-            <button key={key} onClick={() => setPage(key)}
+            <button key={key} onClick={() => go(key)}
               className={`relative flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-all ${page === key ? 'text-gray-900' : 'text-gray-400'}`}>
               <Icon />
               <span className="text-[9px] font-medium">{label}</span>

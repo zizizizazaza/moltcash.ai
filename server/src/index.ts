@@ -5,6 +5,7 @@ import { setupSocket } from './socket/index.js';
 import prisma from './db.js';
 import { startScheduler, stopScheduler } from './services/scheduler.service.js';
 import { startPriceService, stopPriceService } from './services/price.service.js';
+import { startTrustMRRService, stopTrustMRRService } from './services/trustmrr.service.js';
 
 const server = createServer(app);
 
@@ -19,6 +20,7 @@ async function main() {
     // Start background jobs
     startScheduler();
     startPriceService();
+    await startTrustMRRService();
 
     server.listen(config.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.port}`);
@@ -40,6 +42,7 @@ async function shutdown(signal: string) {
 
   stopScheduler();
   stopPriceService();
+  stopTrustMRRService();
 
   // Stop accepting new connections, give 10s for in-flight requests
   const forceTimeout = setTimeout(() => {
