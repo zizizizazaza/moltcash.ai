@@ -154,53 +154,6 @@ function Dashboard() {
     </div>
   );
 }`,
-  'Node.js': `const { LokaClient } = require("@lokacash/node-sdk");
-
-// Initialize the Loka Enterprise Client
-const client = new LokaClient("lk_live_xxxxxxxxxxxx");
-
-async function runAutonomousInvestment() {
-  // 1. Ask the AI Risk Engine for AAA-rated opportunities
-  const recommendations = await client.ai.getOpportunities({
-    minApy: 12.5,
-    riskLevel: "Low",
-    assetClass: "Real Estate Cash Flows"
-  });
-
-  const topPick = recommendations[0];
-  console.log(\`🤖 AI selected: \${topPick.name} (Score: \${topPick.aiRating})\`);
-
-  // 2. Instantly execute the investment programmatically
-  const tx = await client.invest({
-    projectId: topPick.id,
-    amount: 50000,
-    autoCompound: true
-  });
-
-  console.log(\`✅ Invested! TX Hash: \${tx.hash}\`);
-}
-
-runAutonomousInvestment();`,
-  'Python': `from loka.agent import LokaAgentSDK
-
-sdk = LokaAgentSDK("lk_live_xxxxxxxxxxxx")
-
-# Give your autonomous AI Agent a financial brain
-def fetch_and_analyze_market():
-    print("🧠 Scanning real-world asset yields...")
-    
-    # Direct access to the Loka Oracle Network
-    market_data = sdk.market.get_live_yields(sector="SME_Loans")
-    
-    for asset in market_data:
-        # Utilize DeepSeek V3 integration for deep risk profiling
-        risk_report = sdk.ai.generate_risk_report(asset.id)
-        
-        if risk_report.safety_score > 90:
-            print(f"🔥 Prime Asset Found: {asset.name} yielding {asset.apy}%")
-            # Agent can now trigger smart contract interactions
-            
-fetch_and_analyze_market()`,
   'Risk Assessment': `// Evaluate transaction risk via Loka's consensus engine
 const response = await fetch('https://api.loka.cash/api/v1/risk/evaluate', {
   method: 'POST',
@@ -235,12 +188,12 @@ if (result.decision === 'challenge') {
 };
 
 const USE_CASES = [
+  { id: 'superagent', label: 'SuperAgent', desc: 'Ask anything about investments in natural language. Our multi-agent AI council — Risk Assessor, Market Analyst, Web Search, and Trading Strategist — collaborates in real-time to deliver institutional-grade analysis with full transparency via D3 knowledge graphs.', metric: '4 AI Agents' },
+  { id: 'chats', label: 'Social Investing', desc: 'Join project-specific group chats where AI agents, project issuers, and fellow investors collaborate. Get real-time milestone updates, risk alerts, and community-driven due diligence — all in one conversation.', metric: 'Real-Time Collaboration' },
+  { id: 'invest', label: 'Smart Invest', desc: 'From AI analysis to one-click execution. Browse curated real-world asset opportunities with AI risk scores, invest with compliant deposit rails, and track returns — the full investment lifecycle in one platform.', metric: 'End-to-End' },
+  { id: 'agent', label: 'AI Agent API', desc: 'Connect our API to your AI models. Let them screen real-world asset yields, run multi-agent risk analysis, and allocate capital automatically based on predefined strategies.', metric: 'Fully Automated' },
   { id: 'fintech', label: 'FinTechs', desc: 'Add new financial capabilities as your roadmap evolves. Embed deposit, withdrawal, and yield products with infrastructure designed for speed, compliance, and scale.', metric: '+40% Conversion' },
-  { id: 'agent', label: 'AI Agents', desc: 'Connect our API to your AI models. Let them screen real-world asset yields, run risk analysis, and allocate capital automatically based on predefined strategies.', metric: 'Fully Automated' },
   { id: 'fund', label: 'Fund Managers', desc: 'Real-time portfolio feeds, automated rebalancing triggers, and instant settlement notifications. Build algorithmic strategies on top of structured product data.', metric: '<50ms Latency' },
-  { id: 'bank', label: 'Banks & Institutions', desc: 'Digital money infrastructure banks can trust. Integrate compliant on/off-ramp, custody, and yield-bearing products into your existing banking stack.', metric: 'Enterprise Ready' },
-  { id: 'payment', label: 'Payment Platforms', desc: 'Real-time global payments and settlement, built into your existing stack. Enable cross-border transfers with automatic FX conversion.', metric: '190+ Countries' },
-  { id: 'gaming', label: 'Gaming Platforms', desc: 'Move player funds quickly and compliantly across borders and around the clock. Enable in-game purchases and tournament payouts seamlessly.', metric: '24/7 Settlement' },
 ];
 
 const ENDPOINTS = [
@@ -265,6 +218,7 @@ const PARTNERS = ['Coinbase', 'Base', 'Privy', 'DeepSeek', 'Onramper'];
 
 // ─── Nav Links ─────────────────────────────────
 const NAV_LINKS = [
+  { label: 'Platform', href: '#platform' },
   { label: 'SDK', href: '#sdk' },
   { label: 'API', href: '#api' },
   { label: 'Risk', href: '#risk' },
@@ -365,8 +319,7 @@ const RiskDecisionCard: React.FC<{ title: string; desc: string; borderHover: str
 
 // ─── Main ───────────────────────────────────────
 const ApiLanding: React.FC = () => {
-  const [activeLang, setActiveLang] = useState('React');
-  const [activeCase, setActiveCase] = useState('fintech');
+  const [activeCase, setActiveCase] = useState('superagent');
   const [scrolled, setScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -420,16 +373,15 @@ const ApiLanding: React.FC = () => {
         <div className="relative z-10 w-full max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 text-center sm:text-left">
           <Reveal delay={100}>
             <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-[6.5rem] font-black tracking-[-0.04em] leading-[0.9] text-black max-w-5xl mx-auto sm:mx-0">
-               Financial Infrastructure,<br />
-               Built for the AI Era.
+               From AI Insight<br />
+               to Investment Action.
              </h1>
           </Reveal>
           
           <Reveal delay={200}>
             <p className="text-base sm:text-lg md:text-xl text-gray-500 font-medium leading-relaxed max-w-2xl mt-6 sm:mt-8 mx-auto sm:mx-0">
-              Loka provides the APIs and SDKs that enable any platform to embed
-              compliant deposits, withdrawals, and AI-powered risk management
-              — in minutes, not months.
+              Loka combines multi-agent AI analysis, social investing, and
+              compliant payment rails into one platform — ask, discuss, invest.
             </p>
           </Reveal>
           
@@ -457,6 +409,103 @@ const ApiLanding: React.FC = () => {
               <span key={p} className="text-sm sm:text-base font-black text-gray-400 hover:text-black transition-colors cursor-default">{p}</span>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── 1.5 Product Platform — Three-Layer Funnel ── */}
+      <section id="platform" className="bg-white border-b border-gray-200">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-12 sm:py-20 lg:py-32">
+          <Reveal>
+            <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-20">
+              <div className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 border border-gray-300 mb-8">
+                Product Platform
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black tracking-tight mb-6 leading-tight">
+                Ask. Discuss. Invest.<br />
+                <span className="text-gray-400">One Unified Experience.</span>
+              </h2>
+              <p className="text-gray-500 text-base sm:text-lg leading-relaxed">
+                Loka transforms investing from isolated decisions into a collaborative, AI-augmented workflow — three layers working together seamlessly.
+              </p>
+            </div>
+          </Reveal>
+
+          {/* Funnel Steps */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-gray-200 border border-gray-200">
+            <Reveal delay={100}>
+              <div className="bg-white p-6 sm:p-10 h-full flex flex-col">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-black text-white text-[11px] font-black flex items-center justify-center">1</div>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">SuperAgent</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black mb-3">AI-Powered Analysis</h3>
+                <p className="text-sm text-gray-500 leading-relaxed mb-6 flex-1">
+                  Ask anything in natural language. Four specialized AI agents — Risk Assessor, Market Analyst, Web Search, and Trading Strategist — collaborate through a multi-round consensus protocol to deliver institutional-grade insights.
+                </p>
+                <div className="space-y-2">
+                  {['Multi-agent council with D3 knowledge graph', 'Real-time streaming analysis', 'Transparent reasoning \u0026 confidence scoring'].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="w-1 h-1 bg-black rounded-full mt-2 shrink-0" />
+                      <span className="text-[11px] text-gray-600">{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+            <Reveal delay={200}>
+              <div className="bg-white p-6 sm:p-10 h-full flex flex-col">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-black text-white text-[11px] font-black flex items-center justify-center">2</div>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chats</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black mb-3">Social Due Diligence</h3>
+                <p className="text-sm text-gray-500 leading-relaxed mb-6 flex-1">
+                  Each investment opportunity has a dedicated group chat. AI agents share milestone updates, issuers answer questions, and investors discuss risks together — crowdsourced intelligence meets AI precision.
+                </p>
+                <div className="space-y-2">
+                  {['Project groups with AI agent members', 'Real-time milestone \u0026 risk alerts', 'Community-driven investment signals'].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="w-1 h-1 bg-black rounded-full mt-2 shrink-0" />
+                      <span className="text-[11px] text-gray-600">{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+            <Reveal delay={300}>
+              <div className="bg-white p-6 sm:p-10 h-full flex flex-col">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-black text-white text-[11px] font-black flex items-center justify-center">3</div>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Invest</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black mb-3">One-Click Execution</h3>
+                <p className="text-sm text-gray-500 leading-relaxed mb-6 flex-1">
+                  From analysis to action in seconds. Deposit via Coinbase, Onramper, or Apple Pay, invest in curated real-world assets with AI risk scores, and withdraw returns directly to your bank via MoonPay.
+                </p>
+                <div className="space-y-2">
+                  {['50+ deposit methods across 190+ countries', 'AI risk scoring on every opportunity', 'Direct bank withdrawal via MoonPay'].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="w-1 h-1 bg-black rounded-full mt-2 shrink-0" />
+                      <span className="text-[11px] text-gray-600">{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Funnel Flow Arrow */}
+          <Reveal delay={400}>
+            <div className="flex items-center justify-center gap-4 mt-8 sm:mt-12">
+              <div className="flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <span className="px-3 py-1.5 bg-black text-white">Ask</span>
+                <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7"/></svg>
+                <span className="px-3 py-1.5 border border-gray-300">Discuss</span>
+                <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7"/></svg>
+                <span className="px-3 py-1.5 border border-gray-300">Invest</span>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -519,18 +568,14 @@ const ApiLanding: React.FC = () => {
         {/* Right: Code Block */}
         <div className="lg:w-1/2 bg-[#0a0a0b] flex flex-col text-white">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-            <div className="flex gap-2">
-              {(['React', 'Node.js', 'Python'] as const).map(lang => (
-                <button key={lang} onClick={() => setActiveLang(lang)}
-                  className={`px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${activeLang === lang ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>
-                  {lang}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1.5 rounded text-[11px] font-bold bg-white text-black">React SDK</span>
+              <span className="text-[10px] font-bold text-gray-500">@lokacash/fiat</span>
             </div>
-            <CopyBtn code={CODE[activeLang]} />
+            <CopyBtn code={CODE['React']} />
           </div>
           <div className="p-6 overflow-x-auto flex-1 overflow-y-auto">
-            <CodeBlock code={CODE[activeLang]} />
+            <CodeBlock code={CODE['React']} />
           </div>
         </div>
       </section>
@@ -539,8 +584,8 @@ const ApiLanding: React.FC = () => {
       <section id="api" className="bg-white border-b border-gray-200">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-12 sm:py-20 lg:py-32">
           <Reveal>
-            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">A Regulated Gateway to Modern Finance.</h2>
-            <p className="text-base sm:text-lg text-gray-500 mb-10 sm:mb-16 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">AI risk analysis, yield-generating products, real-time notifications, and programmable investment strategies — all accessible through simple API calls.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">Everything You Need to Build Smart Finance.</h2>
+            <p className="text-base sm:text-lg text-gray-500 mb-10 sm:mb-16 max-w-2xl text-center sm:text-left mx-auto sm:mx-0">Multi-agent AI analysis, social investing tools, compliant payment rails, and real-time notifications — all accessible through simple API calls.</p>
           </Reveal>
 
           {/* Minimal Grid instead of Cards */}
@@ -549,8 +594,8 @@ const ApiLanding: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 border-b border-gray-200">
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
                   <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">01 / Analysis</div>
-                  <h3 className="text-2xl font-black mb-3">AI Risk Assessment</h3>
-                  <p className="text-gray-500 leading-relaxed text-sm">Get instant AI-generated risk reports, return probability analysis, and borrower credit profiles for any investment opportunity.</p>
+                  <h3 className="text-2xl font-black mb-3">Multi-Agent AI Council</h3>
+                  <p className="text-gray-500 leading-relaxed text-sm">Four AI agents collaborate in real-time: Risk Assessor, Market Analyst, Web Search, and Trading Strategist. Get consensus-backed insights with transparent reasoning and confidence scores.</p>
                 </div>
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
                   <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">02 / Payments</div>
@@ -563,8 +608,8 @@ const ApiLanding: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 border-b border-gray-200">
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
                   <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">03 / Alerts</div>
-                  <h3 className="text-2xl font-black mb-3">Real-Time Notifications</h3>
-                  <p className="text-gray-500 leading-relaxed text-sm">Get instant alerts when investments hit targets, returns are distributed, or market conditions change. Never miss an opportunity.</p>
+                  <h3 className="text-2xl font-black mb-3">Social Investment Channels</h3>
+                  <p className="text-gray-500 leading-relaxed text-sm">Dedicated project group chats with AI agents, issuers, and fellow investors. Milestone tracking, risk alerts, and community-driven due diligence in one conversation.</p>
                 </div>
                 <div className="p-8 sm:p-12 hover:bg-gray-50 transition-colors group">
                   <div className="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest group-hover:text-black transition-colors">04 / Execution</div>
@@ -745,12 +790,12 @@ const ApiLanding: React.FC = () => {
               <div className="bg-[#0a0a0b] border border-gray-800 flex flex-col text-white">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                   <span className="text-[11px] font-bold text-white tracking-widest uppercase">
-                    {activeCase === 'fintech' ? 'fintech.ts' : activeCase === 'agent' ? 'agent.py' : 'quant.ts'}
+                    {activeCase === 'superagent' || activeCase === 'chats' || activeCase === 'invest' ? 'deposit-sdk.tsx' : 'risk-engine.ts'}
                   </span>
-                  <CopyBtn code={activeCase === 'fintech' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
+                  <CopyBtn code={activeCase === 'superagent' || activeCase === 'chats' || activeCase === 'invest' ? CODE['React'] : CODE['Risk Assessment']} />
                 </div>
                 <div className="p-6 overflow-x-auto overflow-y-auto max-h-[500px]">
-                  <CodeBlock code={activeCase === 'fintech' ? CODE['React'] : activeCase === 'agent' ? CODE['Python'] : CODE['Node.js']} />
+                  <CodeBlock code={activeCase === 'superagent' || activeCase === 'chats' || activeCase === 'invest' ? CODE['React'] : CODE['Risk Assessment']} />
                 </div>
               </div>
             </Reveal>
@@ -865,7 +910,7 @@ const ApiLanding: React.FC = () => {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-12 xl:px-24 py-16 sm:py-32 text-center">
           <Reveal>
             <h2 className="text-3xl sm:text-4xl md:text-6xl font-black text-black tracking-tight mb-6">Start Building on Loka.</h2>
-             <p className="text-base sm:text-xl text-gray-500 mb-8 sm:mb-12 max-w-xl mx-auto font-medium">Integrate AI-powered financial infrastructure into your product. Get started in minutes.</p>
+             <p className="text-base sm:text-xl text-gray-500 mb-8 sm:mb-12 max-w-xl mx-auto font-medium">Integrate multi-agent AI, social investing, and compliant payment infrastructure into your product. Get started in minutes.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button className="w-full sm:w-auto px-10 py-4 bg-black text-white text-sm font-bold hover:bg-gray-900 transition-colors">
                 Start Building for Free
