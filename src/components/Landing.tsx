@@ -362,7 +362,7 @@ const Landing: React.FC = () => {
                     <div className="p-10 md:p-16 rounded-[3rem] border shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden backdrop-blur-3xl text-center group hover:-translate-y-1 transition-transform duration-700" style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderColor: 'rgba(255,255,255,0.5)' }}>
                         <div className="absolute -top-6 -left-2 text-[12rem] text-transparent bg-clip-text bg-gradient-to-br from-gray-300/50 to-transparent font-serif leading-none italic select-none pointer-events-none">"</div>
                         <p className="text-xl md:text-3xl font-serif italic text-gray-800 leading-relaxed relative z-10 px-4 md:px-10">
-                            Capture sovereign yields completely on-chain. Transform rigid, real-world cash flows into highly programmable, liquid capital loops.
+                            Capture secure yields completely on-platform. Transform rigid, real-world cash flows into highly programmable, liquid capital loops.
                         </p>
                         <div className="mt-10 flex items-center justify-center gap-4">
                             <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1 max-w-[100px]"></div>
@@ -403,7 +403,7 @@ const Landing: React.FC = () => {
                                 icon: <Icons.User />,
                                 iconColor: '#BAFF29',
                                 title: 'Programmable Reputation',
-                                desc: 'Dynamic deterministic credit scoring establishes behavioral identity on-chain. Progress from anonymous multi-sig wallets to trusted, measurable institutional agent relationships.',
+                                desc: 'Dynamic deterministic credit scoring establishes behavioral identity on-platform. Progress from anonymous accounts to trusted, measurable institutional agent relationships.',
                             },
                             {
                                 icon: <Icons.Swap />,
@@ -482,8 +482,8 @@ const Landing: React.FC = () => {
                                 <div className="md:w-5/12 ml-16 md:ml-0 md:pl-12 w-[calc(100%-4rem)]">
                                     <div className="p-6 rounded-3xl border shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(0,0,0,0.06)' }}>
                                         <h4 className="text-[10px] font-bold text-gray-400 tracking-widest mb-4">Programmable Assets</h4>
-                                        <p className="text-sm font-semibold text-gray-800 mb-2">Native Yield & RWA Discounting</p>
-                                        <p className="text-xs text-gray-500 leading-relaxed">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal tokens.</p>
+                                        <p className="text-sm font-semibold text-gray-800 mb-2">Native Yield & Asset Discounting</p>
+                                        <p className="text-xs text-gray-500 leading-relaxed">Convert historically illiquid verifiable business incomes like SaaS API usage or decentralized Compute nodes into instantly tradeable Yield and Principal assets.</p>
                                     </div>
                                 </div>
                             </div>
@@ -510,7 +510,7 @@ const Landing: React.FC = () => {
                                         Take Loka Cash<br />everywhere you go.
                                     </h3>
                                     <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md">
-                                        Trade, chat with AI, manage your portfolio, and execute on-chain transactions — all from your pocket. Scan the QR code or tap the button below.
+                                        Trade, chat with AI, manage your portfolio, and execute secure transactions — all from your pocket. Scan the QR code or tap the button below.
                                     </p>
 
                                     <div className="flex flex-col sm:flex-row items-center gap-3">

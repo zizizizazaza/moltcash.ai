@@ -257,11 +257,361 @@ const mapApiProject = (p: any): MarketAsset => {
   };
 };
 
+/* ── Potential Project Detail (TrustMRR-style) ── */
+interface PotProject {
+  name: string; cat: string; mapped_cat: string; tagColor: string; views: string; saves: number;
+  desc: string; rev: string; revGrow: string; waitlist: string; tags: string[];
+  logo: string; color: string; cover: string; label: string;
+  allTimeRev?: string; mrr?: string; founder?: string; founderFollowers?: string;
+  founded?: string; country?: string; profitMargin?: string;
+  techStack?: { frontend: string[]; backend: string[] };
+  pricing?: string;
+  monthlyData?: { month: string; amount: number }[];
+}
+
+const POT_PROJECTS: PotProject[] = [
+  { name: 'POST BRIDGE', cat: 'Social Media', mapped_cat: 'Media', tagColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', views: '13.2k', saves: 18, desc: 'Post your content to multiple social media platforms at the same time, all-in-one minimal effort.', rev: '$29k', revGrow: '↑ 62%', waitlist: '1,200', tags: ['High MRR', 'Y Combinator'], logo: 'PB', color: 'from-emerald-400 to-emerald-600', cover: 'from-emerald-900/10 to-transparent', label: 'Trending', allTimeRev: '$251,527', mrr: '$31,942', founder: 'Jack Friks', founderFollowers: '113.2k', founded: 'September 2024', country: 'Canada', profitMargin: '92%', techStack: { frontend: ['Next.js', 'React', 'Tailwind'], backend: ['Supabase', 'Stripe', 'Vercel'] }, pricing: 'Freemium · $9-29/mo', monthlyData: [{ month: 'Sep', amount: 3200 }, { month: 'Oct', amount: 7400 }, { month: 'Nov', amount: 11200 }, { month: 'Dec', amount: 17600 }, { month: 'Jan', amount: 22400 }, { month: 'Feb', amount: 28901 }] },
+  { name: 'Vibbbbes', cat: 'Developer Tools', mapped_cat: 'Tools', tagColor: 'text-blue-700 bg-blue-50 border-blue-100', views: '3.5k', saves: 10, desc: 'Instant Design Systems with Vibbbbes WEB | MCP | CLI | SKILLS', rev: '$5.7k', revGrow: '↑ 20%', waitlist: '850', tags: ['Repeat Founder', 'Solo Developer'], logo: 'Vb', color: 'from-blue-400 to-blue-600', cover: 'from-blue-900/10 to-transparent', label: '', allTimeRev: '$42,800', mrr: '$5,700', founder: 'Liam Chen', founderFollowers: '8.2k', founded: 'March 2024', country: 'USA', profitMargin: '85%', techStack: { frontend: ['React', 'Figma Plugin'], backend: ['Node.js', 'Stripe'] }, pricing: '$19/mo', monthlyData: [{ month: 'Sep', amount: 2800 }, { month: 'Oct', amount: 3500 }, { month: 'Nov', amount: 4100 }, { month: 'Dec', amount: 4800 }, { month: 'Jan', amount: 5200 }, { month: 'Feb', amount: 5700 }] },
+  { name: 'ExporTiktok', cat: 'Content Creation', mapped_cat: 'Content', tagColor: 'text-rose-700 bg-rose-50 border-rose-100', views: '3.5k', saves: 3, desc: 'Export comments from any TikTok video with a single paste-and-click action.', rev: '$3k', revGrow: '↑ 361%', waitlist: '5,020', tags: ['Profitable', 'B2C'], logo: 'Ex', color: 'from-rose-400 to-rose-600', cover: 'from-rose-900/10 to-transparent', label: 'New this week', allTimeRev: '$18,600', mrr: '$3,000', founder: 'Sophie Martin', founderFollowers: '5.0k', founded: 'January 2025', country: 'France', profitMargin: '95%', techStack: { frontend: ['Vue.js', 'Chrome Extension'], backend: ['Python', 'Stripe'] }, pricing: '$4.99/mo', monthlyData: [{ month: 'Sep', amount: 200 }, { month: 'Oct', amount: 650 }, { month: 'Nov', amount: 1100 }, { month: 'Dec', amount: 1800 }, { month: 'Jan', amount: 2400 }, { month: 'Feb', amount: 3000 }] },
+  { name: 'Virlo', cat: 'SaaS', mapped_cat: 'SaaS', tagColor: 'text-violet-700 bg-violet-50 border-violet-100', views: '991', saves: 0, desc: 'Track, manage, leverage short-form data for your creators.', rev: '$17k', revGrow: '↑ 8%', waitlist: '200', tags: ['Enterprise', 'Bootstrapped'], logo: 'Vr', color: 'from-violet-400 to-violet-600', cover: 'from-violet-900/10 to-transparent', label: '', allTimeRev: '$156,000', mrr: '$17,000', founder: 'Chris Reed', founderFollowers: '3.1k', founded: 'June 2023', country: 'UK', profitMargin: '78%', techStack: { frontend: ['React', 'TypeScript'], backend: ['AWS', 'PostgreSQL', 'Stripe'] }, pricing: '$49-199/mo', monthlyData: [{ month: 'Sep', amount: 12000 }, { month: 'Oct', amount: 13500 }, { month: 'Nov', amount: 14200 }, { month: 'Dec', amount: 15000 }, { month: 'Jan', amount: 16200 }, { month: 'Feb', amount: 17000 }] },
+  { name: 'AppAlchemy', cat: 'Artificial Intelligence', mapped_cat: 'AI', tagColor: 'text-amber-700 bg-amber-50 border-amber-100', views: '2.2k', saves: 7, desc: 'AI-powered design tool generates polished mobile app UIs in minutes based on text prompts.', rev: 'Pre-revenue', revGrow: '', waitlist: '12,050', tags: ['AI Tool', 'B2B', 'Rising Star'], logo: 'AA', color: 'from-orange-400 to-amber-600', cover: 'from-orange-900/10 to-transparent', label: 'Waitlist Open', allTimeRev: '$0', mrr: '$0', founder: 'Aria Patel', founderFollowers: '22.5k', founded: 'November 2024', country: 'India', profitMargin: '-', techStack: { frontend: ['Flutter', 'React Native'], backend: ['GPT-4', 'Firebase', 'GCP'] }, pricing: 'Coming soon', monthlyData: [] },
+  { name: 'Cattus AI', cat: 'Artificial Intelligence', mapped_cat: 'AI', tagColor: 'text-cyan-700 bg-cyan-50 border-cyan-100', views: '2.8k', saves: 2, desc: 'The product is a platform that brings together multiple AI models for writers.', rev: '$1.8k', revGrow: '↑ 48%', waitlist: '4,500', tags: ['Hardware & AI', 'Patent Pending'], logo: 'CA', color: 'from-cyan-400 to-blue-500', cover: 'from-cyan-900/10 to-transparent', label: '', allTimeRev: '$12,400', mrr: '$1,800', founder: 'Tom Wilson', founderFollowers: '6.7k', founded: 'August 2024', country: 'USA', profitMargin: '80%', techStack: { frontend: ['Next.js', 'Tailwind'], backend: ['OpenAI', 'Anthropic', 'Supabase'] }, pricing: '$12/mo', monthlyData: [{ month: 'Sep', amount: 600 }, { month: 'Oct', amount: 800 }, { month: 'Nov', amount: 1000 }, { month: 'Dec', amount: 1200 }, { month: 'Jan', amount: 1500 }, { month: 'Feb', amount: 1800 }] },
+];
+
+const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => void }> = ({ project, onClose }) => {
+  const [activeTab, setActiveTab] = useState<'STORY' | 'FINANCIALS'>('STORY');
+  const maxAmount = Math.max(...(project.monthlyData || []).map(d => d.amount), 1);
+
+  return (
+    <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full bg-white">
+      {/* Back Navigation — matches AssetDetail */}
+      <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group mb-6 sm:mb-8">
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        Market
+      </button>
+
+      {/* Header Section — matches AssetDetail */}
+      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:items-start justify-between mb-6">
+        <div className="flex gap-3 sm:gap-6 items-start">
+          <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-2xl sm:text-3xl md:text-4xl shadow-md shrink-0 border border-gray-100`}>{project.logo}</div>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-black tracking-tight mb-2 sm:mb-3 truncate sm:whitespace-normal" title={project.name}>{project.name}</h1>
+            <p className="text-[12px] sm:text-[14px] text-gray-500 font-medium leading-relaxed max-w-2xl line-clamp-2 sm:line-clamp-none" title={project.desc}>
+              {project.desc}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 sm:gap-3 shrink-0">
+          <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-gray-200 text-black rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 hover:border-black transition-all shadow-sm h-fit">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+            <span className="hidden sm:inline">Share</span>
+          </button>
+          <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-black text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] h-fit">
+            Visit
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+          </button>
+        </div>
+      </div>
+
+
+
+      {/* Primary Metrics Grid (4 Cards) — matches AssetDetail */}
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
+          <div className="flex items-center gap-1.5 mb-2 sm:mb-3">
+            <p className="text-[10px] sm:text-[11px] font-bold text-gray-400">All-time Revenue</p>
+          </div>
+          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate">{project.allTimeRev || '-'}</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate">Profit margin: {project.profitMargin || '-'}</p>
+        </div>
+
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
+          <div className="flex items-center gap-1.5 mb-2 sm:mb-3">
+            <p className="text-[10px] sm:text-[11px] font-bold text-gray-400">MRR (verified)</p>
+            <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate">{project.mrr || '-'}</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate">Stripe API</p>
+        </div>
+
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
+          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Issuer</p>
+          <div className="flex items-center gap-2">
+            <div className={`w-6 h-6 bg-gradient-to-br ${project.color} rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0`}>{(project.founder || '?')[0]}</div>
+            <p className="text-xs sm:text-sm font-bold text-black truncate" title={project.founder}>{project.founder}</p>
+            <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
+          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Growth</p>
+          <p className="text-lg sm:text-2xl font-black text-[#00E676]">{project.revGrow || 'N/A'}</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-1">Founded {project.founded}</p>
+        </div>
+      </div>
+
+      {/* Navigation Tabs — DS Type B Underline */}
+      <div className="flex items-center gap-6 border-b border-gray-100 mt-8 sm:mt-10 mb-6 overflow-x-auto">
+        {[
+          { id: 'STORY', label: 'Background' },
+          { id: 'FINANCIALS', label: 'Financial Health' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap -mb-px ${activeTab === tab.id
+              ? 'border-gray-900 text-gray-900'
+              : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="py-6">
+        {/* ── Background Tab ── */}
+        {activeTab === 'STORY' && (
+          <div className="space-y-12 animate-fadeIn">
+            {/* 1. Issuer Profile */}
+            <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 pb-6 border-b border-gray-100/50">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-xl sm:text-2xl shrink-0 border border-gray-100 shadow-sm`}>{project.logo}</div>
+                <div className="min-w-0">
+                  <h4 className="text-base sm:text-xl font-black tracking-tight text-black flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <span className="truncate max-w-[150px] sm:max-w-none" title={project.founder}>{project.founder}</span>
+                    <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white italic shadow-sm">✓</div>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 leading-none ml-1 flex items-center gap-1 text-gray-500">
+                      {project.founderFollowers} followers
+                    </span>
+                  </h4>
+                  <p className="text-[11px] sm:text-[12px] text-gray-400 font-medium truncate">{project.country} • Founded {project.founded}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                {[
+                  { label: 'Twitter', icon: '🐦' },
+                  { label: 'LinkedIn', icon: '🔗' },
+                  { label: 'GitHub', icon: '💻' }
+                ].map(social => (
+                  <div key={social.label} className="px-2.5 py-1.5 sm:px-3 bg-white hover:bg-gray-50 transition-colors rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1 sm:gap-1.5 text-gray-600 border border-gray-100 shadow-sm cursor-pointer lg:px-4 lg:py-2">
+                    <span>{social.icon}</span>
+                    {social.label}
+                    <span className="text-[#00E676] text-[10px] ml-1">✓</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* 2. Leadership & Backing */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-4">
+                <h3 className="text-base font-bold text-black">Leadership & Backing</h3>
+                <div className="h-px flex-1 bg-gray-100" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-start gap-4 p-5 bg-white border border-gray-100 rounded-3xl shadow-sm hover:border-black/5 transition-all">
+                  <div className={`w-12 h-12 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-bold text-white text-lg shrink-0`}>{(project.founder || '?')[0]}</div>
+                  <div>
+                    <p className="text-[12px] font-black text-black">{project.founder}</p>
+                    <p className="text-[10px] font-bold text-gray-400 tracking-tighter mb-1">Founder & CEO</p>
+                    <p className="text-[9px] text-blue-500 font-bold tracking-widest mb-2">{project.founderFollowers} followers on 𝕏</p>
+                    <p className="text-[11px] text-gray-500 font-light leading-relaxed">Serial entrepreneur. Building tools for modern creators and communities.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4 p-5 bg-white border border-gray-100 rounded-3xl shadow-sm hover:border-black/5 transition-all">
+                  <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center font-serif italic text-xl text-gray-400 shrink-0">C</div>
+                  <div>
+                    <p className="text-[12px] font-black text-black">Core Team</p>
+                    <p className="text-[10px] font-bold text-gray-400 tracking-tighter mb-1">Engineering & Product</p>
+                    <p className="text-[9px] text-blue-500 font-bold tracking-widest mb-2">Full-stack team</p>
+                    <p className="text-[11px] text-gray-500 font-light leading-relaxed">Experienced in scaling SaaS products. Expertise in {project.techStack?.frontend[0] || 'modern web'} and {project.techStack?.backend[0] || 'cloud infrastructure'}.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 3. Business Narrative */}
+            <section className="space-y-6">
+              <h3 className="text-base font-bold text-black">Business Narrative</h3>
+              <div className="space-y-6">
+                <p className="text-sm text-gray-500 leading-relaxed font-medium">{project.desc}</p>
+                <div className="p-6 bg-gray-50/50 rounded-2xl border border-gray-100">
+                  <h4 className="text-[11px] font-bold text-gray-400 mb-2">Primary Value Proposition</h4>
+                  <p className="text-sm text-black font-medium leading-relaxed">"{project.desc} Currently serving {project.waitlist} active users with {project.profitMargin} profit margin."</p>
+                </div>
+              </div>
+            </section>
+
+            {/* 4. Enterprise Insights */}
+            <section className="space-y-6 pt-6">
+              <div className="flex items-center gap-4">
+                <h3 className="text-base font-bold text-black">Enterprise Insights</h3>
+                <div className="h-px flex-1 bg-gray-100" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Pricing Model</p>
+                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.pricing || 'Details not available'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Target Audience</p>
+                    <p className="text-sm font-medium text-gray-700 leading-relaxed">Entrepreneurs, Creators, SMBs, Marketing Teams</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Category</p>
+                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.cat}</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Region</p>
+                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.country} · Founded {project.founded}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 5. Startup Insights + Tech Stack */}
+            <section className="pt-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <h3 className="text-base font-bold text-black">Technical Overview</h3>
+                <div className="h-px flex-1 bg-gray-100" />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all">
+                  <h3 className="text-[13px] font-bold text-black mb-4">Startup Insights</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Category', value: project.cat },
+                      { label: 'Pricing', value: project.pricing || '-' },
+                      { label: 'Profit Margin', value: project.profitMargin || '-' },
+                      { label: 'Page Views (30d)', value: project.views },
+                      { label: 'Saves', value: String(project.saves) },
+                    ].map(row => (
+                      <div key={row.label} className="flex items-center justify-between">
+                        <span className="text-[12px] text-gray-500">{row.label}</span>
+                        <span className="text-[12px] font-semibold text-gray-900">{row.value}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2">
+                      <span className="text-[11px] text-gray-400">Tags</span>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {project.tags.map(t => (
+                          <span key={t} className="text-[9px] font-bold text-gray-600 bg-gray-50 border border-gray-200 px-2 py-1 rounded">{t.toUpperCase()}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all">
+                  <h3 className="text-[13px] font-bold text-black mb-4">Tech Stack</h3>
+                  {project.techStack ? (
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-2">Frontend</p>
+                        <div className="flex flex-wrap gap-2">
+                          {project.techStack.frontend.map(t => (
+                            <span key={t} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-2">Backend</p>
+                        <div className="flex flex-wrap gap-2">
+                          {project.techStack.backend.map(t => (
+                            <span key={t} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : <p className="text-[12px] text-gray-400">Not available</p>}
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ── Financial Health Tab ── */}
+        {activeTab === 'FINANCIALS' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Revenue Bar Chart */}
+            {(project.monthlyData || []).length > 0 && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-6 sm:p-8 hover:shadow-md transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                  <div>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-3xl font-black text-black tracking-tight">{project.rev}</span>
+                      {project.revGrow && <span className="text-xs font-bold text-[#00E676] bg-emerald-50 px-2 py-0.5 rounded">{project.revGrow} vs. prev period</span>}
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">{project.profitMargin} profit margin</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-bold text-gray-800 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">Last 6 months</span>
+                  </div>
+                </div>
+
+                {/* Bar Chart */}
+                <div className="flex items-end gap-3 sm:gap-4 h-48 sm:h-56 px-1">
+                  {(project.monthlyData || []).map((d, i) => {
+                    const pct = (d.amount / maxAmount) * 100;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group/bar">
+                        <span className="text-[10px] font-black text-gray-500 opacity-0 group-hover/bar:opacity-100 transition-opacity">${(d.amount / 1000).toFixed(1)}k</span>
+                        <div
+                          className="w-full rounded-t-lg bg-gradient-to-t from-emerald-400 to-emerald-300 group-hover/bar:from-emerald-500 group-hover/bar:to-emerald-400 transition-all duration-300 cursor-pointer relative"
+                          style={{ height: `${Math.max(pct, 3)}%` }}
+                        >
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none">
+                            ${d.amount.toLocaleString()}
+                          </div>
+                        </div>
+                        <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">{d.month}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    <span className="text-[11px] font-semibold text-gray-500">Revenue verified via <strong className="text-gray-900">Stripe API</strong></span>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400">ID: {project.name.toLowerCase().replace(/\s+/g, '-')}-001</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Market: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<MarketAsset | null>(null);
-  const [activeTab, setActiveTab] = useState<'fundraising' | 'earlybird' | 'people'>('fundraising');
+  const [selectedProject, setSelectedProject] = useState<PotProject | null>(null);
+  const [activeTab, setActiveTab] = useState<'fundraising' | 'earlybird'>('fundraising');
   const [assets, setAssets] = useState<MarketAsset[]>(MOCK_ASSETS);
-  const [peopleTag, setPeopleTag] = useState<string>('All');
 
   // Fundraising filters
   const [filterStatus, setFilterStatus] = useState<string>('All');
@@ -346,6 +696,10 @@ const Market: React.FC = () => {
     return () => window.removeEventListener('loka-open-asset', handleOpenAsset);
   }, [assets]);
 
+  if (selectedProject) {
+    return <PotentialProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />;
+  }
+
   if (selectedAsset) {
     return (
       <AssetDetail
@@ -360,14 +714,13 @@ const Market: React.FC = () => {
     <div className="space-y-6 animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full bg-white min-h-full">
       {/* 1. Header — left-aligned like Playground */}
       <section className="mb-6">
-        <h1 className="text-[22px] font-semibold text-gray-900 mb-4">Invest</h1>
+        <h1 className="text-[22px] font-semibold text-gray-900 mb-4">Market</h1>
 
         {/* Top-Level Tabs + Apply — DS Type B Underline */}
         <div className="flex items-center gap-6 border-b border-gray-100">
           {[
             { key: 'fundraising' as const, label: 'Fundraising' },
             { key: 'earlybird' as const, label: 'Potential Projects' },
-            { key: 'people' as const, label: 'People' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -626,15 +979,8 @@ const Market: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { name: 'POST BRIDGE', cat: 'Social Media', mapped_cat: 'Media', tagColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', views: '13.2k', saves: 18, desc: 'Post your content to multiple social media platforms at the same time, all-in-one minimal effort.', rev: '$29k', revGrow: '↑ 62%', waitlist: '1,200', tags: ['High MRR', 'Y Combinator'], logo: 'PB', color: 'from-emerald-400 to-emerald-600', cover: 'from-emerald-900/10 to-transparent', label: 'Trending' },
-              { name: 'Vibbbbes', cat: 'Developer Tools', mapped_cat: 'Tools', tagColor: 'text-blue-700 bg-blue-50 border-blue-100', views: '3.5k', saves: 10, desc: 'Instant Design Systems with Vibbbbes WEB | MCP | CLI | SKILLS', rev: '$5.7k', revGrow: '↑ 20%', waitlist: '850', tags: ['Repeat Founder', 'Solo Developer'], logo: 'Vb', color: 'from-blue-400 to-blue-600', cover: 'from-blue-900/10 to-transparent', label: '' },
-              { name: 'ExporTiktok', cat: 'Content Creation', mapped_cat: 'Content', tagColor: 'text-rose-700 bg-rose-50 border-rose-100', views: '3.5k', saves: 3, desc: 'Export comments from any TikTok video with a single paste-and-click action...', rev: '$3k', revGrow: '↑ 361%', waitlist: '5,020', tags: ['Profitable', 'B2C'], logo: 'Ex', color: 'from-rose-400 to-rose-600', cover: 'from-rose-900/10 to-transparent', label: 'New this week' },
-              { name: 'Virlo', cat: 'SaaS', mapped_cat: 'SaaS', tagColor: 'text-violet-700 bg-violet-50 border-violet-100', views: '991', saves: 0, desc: 'Track, manage, leverage short-form data for your creators.', rev: '$17k', revGrow: '↑ 8%', waitlist: '200', tags: ['Enterprise', 'Bootstrapped'], logo: 'Vr', color: 'from-violet-400 to-violet-600', cover: 'from-violet-900/10 to-transparent', label: '' },
-              { name: 'AppAlchemy', cat: 'Artificial Intelligence', mapped_cat: 'AI', tagColor: 'text-amber-700 bg-amber-50 border-amber-100', views: '2.2k', saves: 7, desc: 'AI-powered design tool generates polished mobile app UIs in minutes based on text prompts.', rev: 'Pre-revenue', revGrow: '', waitlist: '12,050', tags: ['AI Tool', 'B2B', 'Rising Star'], logo: 'AA', color: 'from-orange-400 to-amber-600', cover: 'from-orange-900/10 to-transparent', label: 'Waitlist Open' },
-              { name: 'Cattus AI', cat: 'Artificial Intelligence', mapped_cat: 'AI', tagColor: 'text-cyan-700 bg-cyan-50 border-cyan-100', views: '2.8k', saves: 2, desc: 'The product is a platform that brings together multiple AI models for writers.', rev: '$1.8k', revGrow: '↑ 48%', waitlist: '4,500', tags: ['Hardware & AI', 'Patent Pending'], logo: 'CA', color: 'from-cyan-400 to-blue-500', cover: 'from-cyan-900/10 to-transparent', label: '' },
-            ].filter(p => potCat === 'All' || p.mapped_cat === potCat).map((project, i) => (
-              <div key={i} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all flex flex-col group cursor-pointer relative">
+            {POT_PROJECTS.filter(p => potCat === 'All' || p.mapped_cat === potCat).map((project, i) => (
+              <div key={i} onClick={() => setSelectedProject(project)} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all flex flex-col group cursor-pointer relative">
                 {/* Top Cover Section */}
                 <div className={`h-24 bg-gradient-to-br ${project.cover} bg-gray-50 relative p-4 flex items-start justify-between`}>
                   {/* Optional Top Label */}
@@ -704,85 +1050,7 @@ const Market: React.FC = () => {
         </>
       )}
 
-      {/* ── Tab: People ── */}
-      {activeTab === 'people' && (
-        <div className="space-y-6">
-          <div className="flex justify-center">
-            <div className="flex bg-white p-1 rounded-full border border-gray-100 shadow-sm overflow-x-auto max-w-full">
-              {['All', 'Top Investors', 'Founders', 'Rising Stars', 'Active Contributors'].map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setPeopleTag(tag)}
-                  className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all whitespace-nowrap ${peopleTag === tag ? 'bg-black text-white shadow-md' : 'text-gray-500 hover:text-black hover:bg-gray-50'
-                    }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {[
-              { name: 'Alex Chen', role: 'Founder', org: 'ComputeDAO', score: 1200, tag: 'Founders', investments: 0, raises: 3, avatar: 'A', color: 'from-violet-500  to-purple-700', followers: '12.5k' },
-              { name: 'Sarah Kim', role: 'Investor', org: 'Independent', score: 980, tag: 'Top Investors', investments: 12, raises: 0, avatar: 'S', color: 'from-indigo-600  to-blue-700', followers: '450' },
-              { name: 'Marcus Johnson', role: 'Investor', org: 'Alpha Capital', score: 1450, tag: 'Top Investors', investments: 28, raises: 0, avatar: 'M', color: 'from-emerald-500 to-teal-700', followers: '2.1k' },
-              { name: 'Lisa Wang', role: 'Founder', org: 'Rezi Inc.', score: 890, tag: 'Founders', investments: 0, raises: 2, avatar: 'L', color: 'from-rose-500 to-pink-600', followers: '18.2k' },
-              { name: 'David Park', role: 'Investor', org: 'DePhi Ventures', score: 720, tag: 'Rising Stars', investments: 5, raises: 0, avatar: 'D', color: 'from-amber-600 to-orange-600', followers: '8,900' },
-              { name: 'Emma Torres', role: 'Contributor', org: 'Loka DAO', score: 650, tag: 'Active Contributors', investments: 3, raises: 0, avatar: 'E', color: 'from-sky-500 to-blue-500', followers: '1,200' },
-              { name: 'James Liu', role: 'Founder', org: 'Deeptrue Corp.', score: 760, tag: 'Founders', investments: 1, raises: 1, avatar: 'J', color: 'from-cyan-600 to-blue-700', followers: '34.5k' },
-              { name: 'Rachel Green', role: 'Investor', org: 'Onchain Insights', score: 1100, tag: 'Top Investors', investments: 19, raises: 0, avatar: 'R', color: 'from-fuchsia-600 to-purple-600', followers: '5,020' },
-              { name: 'Sam Altman', role: 'Founder', org: 'OpenAI', score: 9990, tag: 'Founders', investments: 42, raises: 5, avatar: 'S', color: 'from-gray-700 to-gray-900', followers: '3.2M' },
-              { name: 'Brian Armstrong', role: 'Founder', org: 'Coinbase', score: 8500, tag: 'Founders', investments: 30, raises: 2, avatar: 'B', color: 'from-blue-600 to-blue-800', followers: '1.2M' },
-            ]
-              .filter(p => peopleTag === 'All' || p.tag === peopleTag)
-              .map((person, i) => (
-                <div key={i} className="group cursor-pointer flex flex-col h-full rounded-[20px] overflow-hidden bg-white hover:shadow-xl transition-all duration-500 border border-gray-100 hover:border-gray-200">
-                  {/* Large Profile Image Area */}
-                  <div className={`aspect-square w-full bg-gradient-to-br ${person.color} relative flex items-center justify-center overflow-hidden`}>
-                     <span className="text-white/30 font-black text-8xl transition-transform duration-700 group-hover:scale-110 drop-shadow-lg">{person.avatar}</span>
-                     
-                     {/* Top Left X (Twitter) Followers */}
-                     <a href="#" onClick={(e) => e.stopPropagation()} className="absolute top-3 left-3 bg-white/95 backdrop-blur shadow-sm text-gray-900 text-[10px] font-bold px-2 py-1 rounded-lg z-10 flex items-center gap-1.5 border border-white/20 hover:scale-105 hover:bg-white transition-all cursor-pointer">
-                       <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                       {person.followers}
-                     </a>
 
-                     {/* Top Right Add Friend */}
-                     <button onClick={(e) => e.stopPropagation()} className="absolute top-3 right-3 w-8 h-8 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors z-10 border border-white/10">
-                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                     </button>
-                     
-                     {/* Gradient overlay at bottom for subtle contrast */}
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="p-4 flex-1 flex flex-col">
-                    <h3 className="text-base font-bold text-gray-900 leading-tight mb-1.5 group-hover:text-blue-600 transition-colors">{person.name}</h3>
-                    <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-3 line-clamp-3">
-                      {person.role === 'Founder' || person.role === 'Contributor' ? `${person.role} @ ${person.org}. ` : `${person.role}. `}
-                      {person.tag === 'Top Investors' ? `Specializes in high yield assets. ` : ''}
-                      {person.investments > 0 || person.raises > 0 ? `Portfolio includes ${person.investments} investments. ` : ''}
-                      Active ({person.score.toLocaleString()} pts).
-                    </p>
-                    
-                    {/* Link footer */}
-                    <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
-                      <a href="#" onClick={(e) => e.preventDefault()} className="text-[11px] font-semibold text-gray-400 hover:text-blue-600 transition-all">
-                        {person.name.split(' ')[0].toLowerCase() + (person.name.split(' ')[1] ? person.name.split(' ')[1].toLowerCase() : '')}.com
-                      </a>
-                      <div className="flex items-center gap-2.5 text-gray-400">
-                        <button className="hover:text-[#0A66C2] hover:scale-110 transition-all">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1184,7 +1452,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[
                   { name: 'Alex Chen', role: 'Chief Executive Officer', extra: 'Ex-AWS Principal Architect', bio: '10+ years scaling global cloud infrastructure.' },
-                  { name: 'Sarah Li', role: 'Chief Technology Officer', extra: 'Ex-Ethereum Foundation', bio: 'Expert in secure protocol & smart contract auditing.' }
+                  { name: 'Sarah Li', role: 'Chief Technology Officer', extra: 'Ex-Stripe Engineering', bio: 'Expert in secure protocol & automated auditing.' }
                 ].map((member, i) => (
                   <div key={i} className="flex items-start gap-4 p-5 bg-white border border-gray-100 rounded-3xl shadow-sm hover:border-black/5 transition-all">
                     <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center font-serif italic text-xl text-gray-400">
@@ -1336,7 +1604,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                     <div className="text-xl" style={{ marginTop: '2px' }}>↩️</div>
                     <div>
                       <h4 className="text-[11px] font-black  tracking-widest text-black mb-1">If Campaign Fails</h4>
-                      <p className="text-[10px] text-gray-500 leading-relaxed font-medium">Should the soft cap be missed before deadline, smart contracts auto-refund 100% of participants' capital safety.</p>
+                      <p className="text-[10px] text-gray-500 leading-relaxed font-medium">Should the soft cap be missed before deadline, automateds auto-refund 100% of participants' capital safety.</p>
                     </div>
                   </div>
                 </div>
@@ -1348,7 +1616,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
               <h3 className="text-base font-bold text-black">Fund Flow & Asset Structure</h3>
               <div className="p-4 sm:p-10 bg-gray-50 rounded-2xl sm:rounded-[32px] border border-gray-100 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-4 sm:gap-y-8 text-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4">
-                  <div className="px-2 py-0.5 bg-white/80 backdrop-blur rounded text-[9px] font-bold text-gray-400 border border-gray-100">Immutable Smart Contract</div>
+                  <div className="px-2 py-0.5 bg-white/80 backdrop-blur rounded text-[9px] font-bold text-gray-400 border border-gray-100">Escrow Agreement</div>
                 </div>
                 {[
                   'Investors', 'Loka SPV', 'Borrower', 'Purchase H100', 'Revenue Gen', 'Stripe Escrow', 'Auto-Repay'
@@ -1396,7 +1664,7 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
                     icon: '🤖',
                     title: 'Smart Escrow',
                     badge: 'Code Enforced',
-                    plainEnglish: 'Revenue is intercepted by SDK and flows directly into on-chain contracts. It is tamper-proof and automatically distributed at maturity.'
+                    plainEnglish: 'Revenue is intercepted by SDK and flows directly into secure escrow. It is tamper-proof and automatically distributed at maturity.'
                   }
                 ].map((item, i) => (
                   <div key={i} className="group relative bg-white border border-gray-100 p-4 sm:p-6 rounded-2xl sm:rounded-[32px] hover:border-black transition-all duration-300 shadow-sm overflow-hidden h-40 sm:h-48 flex flex-col justify-between">

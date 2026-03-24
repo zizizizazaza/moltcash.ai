@@ -146,7 +146,7 @@ const TxModal: React.FC = () => {
             return;
         }
 
-        // Crypto (Web3) withdraw
+        // Bank Transfer
         if (modalAction === 'withdraw' && formAsset === 'USDC') {
             const amount = parseFloat(formAmount);
             if (!Number.isFinite(amount) || amount <= 0) {
@@ -214,7 +214,7 @@ const TxModal: React.FC = () => {
                         🏦 Fiat (Bank/Card)
                     </button>
                     <button onClick={() => setFormAsset('USDC')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${formAsset === 'USDC' ? 'bg-white shadow-sm text-black border border-gray-100' : 'text-gray-500 hover:text-black border border-transparent'}`}>
-                        ⛓️ Crypto (Web3)
+                        ⛓️ Bank Transfer
                     </button>
                 </div>
 
@@ -400,7 +400,7 @@ const TxModal: React.FC = () => {
                                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
                                     <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
                                         Only send <span className="font-bold">USDC on Base</span> to this address.<br />
-                                        Sending other tokens may result in loss of funds.
+                                        Sending other assets may result in loss of funds.
                                     </p>
                                 </div>
 
@@ -421,7 +421,7 @@ const TxModal: React.FC = () => {
                         </div>
                         <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
                             <p className="text-[11px] font-semibold text-gray-400">Destination Wallet</p>
-                            <input type="text" placeholder="Enter Web3 wallet address (0x...)" value={destinationAddress} onChange={(e) => setDestinationAddress(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-xs outline-none focus:border-black transition-colors font-mono" />
+                            <input type="text" placeholder="Enter Bank Account Number" value={destinationAddress} onChange={(e) => setDestinationAddress(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-xs outline-none focus:border-black transition-colors font-mono" />
                             <div className="flex items-center gap-2 pt-1">
                                 <div className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center"><span className="text-white text-[8px] font-bold">⟠</span></div>
                                 <span className="text-[11px] font-bold text-gray-500">Base Network</span>

@@ -6,11 +6,11 @@ import { FarmItem, TaskItem } from '../types';
 export const FARM_DATA: FarmItem[] = [
     // Quests
     {
-        id: 'f1', type: 'quest', title: 'zkSync DeFi Explorer',
-        description: 'Complete a full DeFi loop on zkSync Era: swap, provide liquidity, and bridge assets.',
+        id: 'f1', type: 'quest', title: 'zkSync Fintech Explorer',
+        description: 'Complete a full Fintech loop on zkSync Era: swap, provide liquidity, and bridge assets.',
         source: 'Galxe', chain: 'zkSync Era', reward: '500 XP + OAT', rewardType: 'fixed',
         estimatedGas: '$0.12', difficulty: 'Easy', timeEstimate: '~5min',
-        tags: ['DeFi', 'zkSync'], isHot: true, participantCount: 2840, deadline: '2026-03-20',
+        tags: ['Fintech', 'zkSync'], isHot: true, participantCount: 2840, deadline: '2026-03-20',
         steps: [
             { action: 'Swap $10 USDC → ETH', protocol: 'SyncSwap', gas: '$0.03' },
             { action: 'Add LP (ETH/USDC)', protocol: 'Mute.io', gas: '$0.04' },
@@ -19,7 +19,7 @@ export const FARM_DATA: FarmItem[] = [
     },
     {
         id: 'f2', type: 'quest', title: 'Base Social Verification',
-        description: 'Verify your social accounts and complete on-chain interactions on Base.',
+        description: 'Verify your social accounts and complete verified interactions on platform.',
         source: 'Layer3', chain: 'Base', reward: '1000 Points', rewardType: 'fixed',
         estimatedGas: '$0.08', difficulty: 'Easy', timeEstimate: '~3min',
         tags: ['Social', 'Base'], participantCount: 5120,
@@ -46,7 +46,7 @@ export const FARM_DATA: FarmItem[] = [
         description: 'Complete weekly quests on Arbitrum: GMX trading, Radiant lending, Camelot DEX.',
         source: 'Galxe', chain: 'Arbitrum', reward: '800 XP + OAT', rewardType: 'fixed',
         estimatedGas: '$0.20', difficulty: 'Medium', timeEstimate: '~15min',
-        tags: ['DeFi', 'Arbitrum'], isHot: true, participantCount: 8900, deadline: '2026-03-18',
+        tags: ['Fintech', 'Arbitrum'], isHot: true, participantCount: 8900, deadline: '2026-03-18',
         steps: [
             { action: 'Open GMX position', protocol: 'GMX', gas: '$0.06' },
             { action: 'Lend USDC on Radiant', protocol: 'Radiant', gas: '$0.05' },
@@ -55,11 +55,11 @@ export const FARM_DATA: FarmItem[] = [
         ]
     },
     {
-        id: 'f5', type: 'quest', title: 'Linea DeFi Voyage',
+        id: 'f5', type: 'quest', title: 'Linea Fintech Voyage',
         description: 'Explore Linea ecosystem: swap, lend, and bridge across protocols.',
         source: 'Layer3', chain: 'Linea', reward: '600 LXP', rewardType: 'fixed',
         estimatedGas: '$0.10', difficulty: 'Easy', timeEstimate: '~6min',
-        tags: ['DeFi', 'Linea'], participantCount: 3200,
+        tags: ['Fintech', 'Linea'], participantCount: 3200,
         steps: [
             { action: 'Bridge to Linea', protocol: 'Linea Bridge', gas: '$0.04' },
             { action: 'Swap on SyncSwap', protocol: 'SyncSwap', gas: '$0.03' },
@@ -74,8 +74,8 @@ export const FARM_DATA: FarmItem[] = [
         estimatedGas: 'Free', timeEstimate: '~2min/day',
         tags: ['Testnet', 'L1'], isHot: true, participantCount: 45000,
         steps: [
-            { action: 'Claim testnet tokens', protocol: 'Faucet', gas: 'Free' },
-            { action: 'Swap test tokens', protocol: 'Monad DEX', gas: 'Free' },
+            { action: 'Claim platform credits', protocol: 'Faucet', gas: 'Free' },
+            { action: 'Swap platform credits', protocol: 'Currency Exchange', gas: 'Free' },
             { action: 'Mint test NFT', protocol: 'Monad NFT', gas: 'Free' },
         ]
     },
@@ -142,22 +142,22 @@ export const FARM_DATA: FarmItem[] = [
 
 export const TASK_DATA: TaskItem[] = [
     {
-        id: 't1', title: 'Smart Contract Security Audit',
-        description: 'Audit an ERC-20 token contract for vulnerabilities. Provide detailed report with fix recommendations.',
+        id: 't1', title: 'Financial Security Audit',
+        description: 'Audit a financial data API for vulnerabilities. Provide detailed report with fix recommendations.',
         platform: 'MOLTCASH', category: 'platform', reward: '$500 USDC', difficulty: 'Hard', timeEstimate: '3d',
         tags: ['Solidity', 'Security'], status: 'open', rating: 4.9, executionCount: 5, applicants: 3,
     },
     {
         id: 't2', title: 'Build Discord Alert Bot',
-        description: 'Create a bot that monitors on-chain whale movements and sends Discord alerts. Node.js preferred.',
+        description: 'Create a bot that monitors large institutional movements and sends Discord alerts. Node.js preferred.',
         platform: 'MOLTCASH', category: 'platform', reward: '$200 USDC', difficulty: 'Medium', timeEstimate: '2d',
         tags: ['Node.js', 'Discord', 'API'], status: 'open', rating: 4.7, executionCount: 9, applicants: 7,
     },
     {
         id: 't3', title: 'Translate Whitepaper EN→CN',
-        description: 'Translate a 20-page DeFi protocol whitepaper. Must preserve technical accuracy and readability.',
+        description: 'Translate a 20-page Fintech protocol whitepaper. Must preserve technical accuracy and readability.',
         platform: 'MOLTCASH', category: 'platform', reward: '$80 USDC', difficulty: 'Easy', timeEstimate: '1d',
-        tags: ['Translation', 'DeFi'], status: 'open', rating: 4.4, executionCount: 16, applicants: 12,
+        tags: ['Translation', 'Fintech'], status: 'open', rating: 4.4, executionCount: 16, applicants: 12,
     },
     {
         id: 't4', title: 'Data Labeling for ML Model',

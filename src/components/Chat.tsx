@@ -46,7 +46,7 @@ function parseTradeAction(content: string): { text: string; action: TradeAction 
 }
 
 const cashFlowAssets = [
-    { title: 'Draftly - 3D Web Builder', category: 'AI/Web3', image: '/covers/draftly.png', desc: 'Build 3D websites 10× faster. $6,172/mo verified revenue. MRR $3,165. 100 active subscriptions. 85% profit margin.', progress: 78, apy: '16%', term: '240 Days', backers: 6 },
+    { title: 'Draftly - 3D Web Builder', category: 'AI/SaaS', image: '/covers/draftly.png', desc: 'Build 3D websites 10× faster. $6,172/mo verified revenue. MRR $3,165. 100 active subscriptions. 85% profit margin.', progress: 78, apy: '16%', term: '240 Days', backers: 6 },
     { title: 'POST BRIDGE - Social Media', category: 'AI/Marketing', image: '/covers/postbridge.png', desc: 'Multi-platform social media publishing. $28,901/mo verified Stripe revenue. MRR $30,958. +65% MoM. 1,503 active subscriptions.', progress: 65, apy: '18.2%', term: '270 Days', backers: 8 },
     { title: 'Deeptrue - AI Translation', category: 'AI/Language', image: '/covers/deeptrue.png', desc: 'Real-time AI meeting translation. $2,022/mo verified Stripe revenue. MRR $2,001. +19% MoM. 61 subscriptions. 30+ languages.', progress: 38, apy: '20.5%', term: '120 Days', backers: 4 },
     { title: 'PxlSafe - Video Editor Tools', category: 'AI/Creator', image: '/covers/pxlsafe.png', desc: 'AI plugin suite for video editors. $6,300/mo total revenue. MRR $4,500 from 90+ subscribers. 1,600+ customers. 90% profit margin.', progress: 16, apy: '14.8%', term: '365 Days', backers: 5 },
@@ -411,7 +411,7 @@ const Chat: React.FC = () => {
                             title: 'Leadership & Verification',
                             items: [
                                 { name: isShopify ? 'Alex Chen' : 'Dr. Victor Wang', role: 'CEO / Founders', bio: isShopify ? 'Ex-AWS Principal Architect, 10+ years scaling cloud infra.' : 'Ex-NVIDIA Senior Researcher, Ph.D in Parallel Computing.' },
-                                { name: 'Sarah Li', role: 'CTO', bio: 'Ex-Ethereum Foundation, expert in secure protocol auditing.' }
+                                { name: 'Sarah Li', role: 'CTO', bio: 'Ex-Stripe Engineering, expert in secure protocol auditing.' }
                             ]
                         },
                         {
@@ -421,7 +421,7 @@ const Chat: React.FC = () => {
                                     label: 'Fund Flow: Auto-Repayment Mechanism',
                                     text: isShopify
                                         ? 'Investors → Loka SPV → Merchant → Revenue Gen → Stripe Escrow → Auto-Repay (Principal + Interest).'
-                                        : 'Investors → ComputeDAO SPV → Hardware Acquisition → Compute Revenue → Smart Contract Escrow → Bi-weekly Distributions.'
+                                        : 'Investors → ComputeDAO SPV → Hardware Acquisition → Compute Revenue → Secure Escrow → Bi-weekly Distributions.'
                                 },
                                 {
                                     label: 'Key Rights & Protections',
@@ -453,7 +453,7 @@ const Chat: React.FC = () => {
                 asset: assetName,
                 content: assetName === 'AIUSD'
                     ? "Here is the latest data for AIUSD. Our protocol maintains a stable yield through cross-chain delta-neutral strategies, currently delivering a solid and sustainable APY."
-                    : "I've analyzed the current market for you. Here are the most popular Cash Flow (RWA) assets available for investment right now. These projects represent high-quality AI infrastructure and enterprise revenue streams.",
+                    : "I've analyzed the current market for you. Here are the most popular Cash Flow assets available for investment right now. These projects represent high-quality AI infrastructure and enterprise revenue streams.",
                 data: assetName === 'AIUSD' ? {
                     apy: '12.4%',
                     tvl: '$42.5M',
@@ -813,7 +813,7 @@ const Chat: React.FC = () => {
                                                         <div className="space-y-8">
                                                             <div className="flex items-center gap-4"><h3 className="text-base font-black text-black">Leadership & Backing</h3><div className="h-px flex-1 bg-gray-50" /></div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                {[{ name: 'Alex Chen', role: 'Chief Executive Officer', badge: 'Ex-AWS Principal Architect', bio: '10+ years scaling global cloud infrastructure. Led GPU cluster deployments for Fortune 500 AI divisions.' }, { name: 'Sarah Li', role: 'Chief Technology Officer', badge: 'Ex-Ethereum Foundation', bio: 'Expert in secure protocol & smart contract auditing. Specializes in DePIN hardware attestation layers.' }].map((person, i) => (
+                                                                {[{ name: 'Alex Chen', role: 'Chief Executive Officer', badge: 'Ex-AWS Principal Architect', bio: '10+ years scaling global cloud infrastructure. Led GPU cluster deployments for Fortune 500 AI divisions.' }, { name: 'Sarah Li', role: 'Chief Technology Officer', badge: 'Ex-Stripe Engineering', bio: 'Expert in secure protocol & system architecture. Specializes in DePIN hardware attestation layers.' }].map((person, i) => (
                                                                     <div key={i} className="bg-white border border-gray-100 rounded-[2.5rem] p-8 flex items-start gap-6 shadow-sm hover:shadow-md transition-all">
                                                                         <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center font-serif text-2xl text-gray-300 shrink-0">{person.name[0]}</div>
                                                                         <div className="space-y-1">
@@ -924,14 +924,14 @@ const Chat: React.FC = () => {
                                                                 </div>
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6 border-t border-gray-100">
                                                                     <div className="flex gap-4 p-5 bg-green-50/50 rounded-2xl border border-green-100/50"><div className="text-xl" style={{ marginTop: '2px' }}>💸</div><div><h4 className="text-[11px] font-black tracking-widest text-black mb-1">If Campaign Succeeds</h4><p className="text-[10px] text-gray-500 leading-relaxed font-medium">Funds are locked. Guaranteed payout rules execute to distribute principal and yield direct to wallet.</p></div></div>
-                                                                    <div className="flex gap-4 p-5 bg-red-50/40 rounded-2xl border border-red-100/50"><div className="text-xl" style={{ marginTop: '2px' }}>↩️</div><div><h4 className="text-[11px] font-black tracking-widest text-black mb-1">If Campaign Fails</h4><p className="text-[10px] text-gray-500 leading-relaxed font-medium">Should the soft cap be missed before deadline, smart contracts auto-refund 100% of participants' capital safety.</p></div></div>
+                                                                    <div className="flex gap-4 p-5 bg-red-50/40 rounded-2xl border border-red-100/50"><div className="text-xl" style={{ marginTop: '2px' }}>↩️</div><div><h4 className="text-[11px] font-black tracking-widest text-black mb-1">If Campaign Fails</h4><p className="text-[10px] text-gray-500 leading-relaxed font-medium">Should the soft cap be missed before deadline, automated systems auto-refund 100% of participants' capital safety.</p></div></div>
                                                                 </div>
                                                             </div>
                                                         </section>
                                                         <section className="space-y-8">
                                                             <h3 className="text-base font-bold text-black">Fund Flow & Asset Structure</h3>
                                                             <div className="p-10 bg-gray-50 rounded-[32px] border border-gray-100 flex flex-wrap items-center justify-center gap-x-4 gap-y-8 text-center relative overflow-hidden">
-                                                                <div className="absolute top-0 right-0 p-4"><div className="px-2 py-0.5 bg-white/80 backdrop-blur rounded text-[9px] font-bold text-gray-400 border border-gray-100">Immutable Smart Contract</div></div>
+                                                                <div className="absolute top-0 right-0 p-4"><div className="px-2 py-0.5 bg-white/80 backdrop-blur rounded text-[9px] font-bold text-gray-400 border border-gray-100">Guaranteed Escrow</div></div>
                                                                 {['Investors', 'Loka SPV', 'Borrower', 'Purchase H100', 'Revenue Gen', 'Stripe Escrow', 'Auto-Repay'].map((step, i) => (
                                                                     <React.Fragment key={i}>
                                                                         <div className="relative group"><div className={`px-4 py-3 rounded-2xl border shadow-sm transition-all duration-500 flex items-center justify-center min-w-[100px] ${i === 6 ? 'bg-black text-white border-black' : 'bg-white text-black border-gray-100 group-hover:border-black'}`}><p className="text-[9px] font-black tracking-widest">{step}</p></div><div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap font-bold text-gray-300 italic">Step 0{i + 1}</div></div>
@@ -943,7 +943,7 @@ const Chat: React.FC = () => {
                                                         <section className="space-y-6">
                                                             <h3 className="text-base font-bold text-black">Key Rights & Protections</h3>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                {[{ icon: '🥇', title: 'Seniority', badge: 'Senior Secured', plainEnglish: 'In the event of liquidation, you are paid back first—before the company\'s shareholders.' }, { icon: '🛡️', title: 'Structure', badge: 'Bankruptcy Remote', plainEnglish: 'Assets are held in a secure, independent SPV. Even if the parent company fails, your investment remains out of reach for their creditors.' }, { icon: '🧱', title: 'Collateral Ratio', badge: '120%-150%', plainEnglish: 'Every $100 lent is backed by up to $150 in expected revenue. Even if earnings drop by 30%, your principal remains secure.' }, { icon: '🤖', title: 'Smart Escrow', badge: 'Code Enforced', plainEnglish: 'Revenue is intercepted by SDK and flows directly into on-chain contracts. It is tamper-proof and automatically distributed at maturity.' }].map((item, i) => (
+                                                                {[{ icon: '🥇', title: 'Seniority', badge: 'Senior Secured', plainEnglish: 'In the event of liquidation, you are paid back first—before the company\'s shareholders.' }, { icon: '🛡️', title: 'Structure', badge: 'Bankruptcy Remote', plainEnglish: 'Assets are held in a secure, independent SPV. Even if the parent company fails, your investment remains out of reach for their creditors.' }, { icon: '🧱', title: 'Collateral Ratio', badge: '120%-150%', plainEnglish: 'Every $100 lent is backed by up to $150 in expected revenue. Even if earnings drop by 30%, your principal remains secure.' }, { icon: '🤖', title: 'Smart Escrow', badge: 'Code Enforced', plainEnglish: 'Revenue is intercepted by SDK and flows directly into secure escrow. It is tamper-proof and automatically distributed at maturity.' }].map((item, i) => (
                                                                     <div key={i} className="group relative bg-white border border-gray-100 p-6 rounded-[32px] hover:border-black transition-all duration-300 shadow-sm overflow-hidden h-48 flex flex-col justify-between">
                                                                         <div className="space-y-3"><div className="text-2xl">{item.icon}</div><div><p className="text-[11px] font-bold text-gray-400 tracking-tight">{item.title}</p><p className="text-sm font-black text-black leading-tight mt-1">{item.badge}</p></div></div>
                                                                         <div className="flex items-center gap-1.5 pt-2 border-t border-gray-50"><div className="w-1.5 h-1.5 rounded-full bg-[#00E676]" /><span className="text-[9px] font-bold text-gray-400 tracking-widest">Active Protection</span></div>

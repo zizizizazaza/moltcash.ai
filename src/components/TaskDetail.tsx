@@ -113,7 +113,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ task, onBack }) => {
                                 Execute via Claw
                             </button>
                             <p className="text-center text-[9px] font-bold text-gray-500 tracking-wide">
-                                Secured via smart contract escrow
+                                Secured via escrow agreement
                             </p>
                         </div>
                     </div>

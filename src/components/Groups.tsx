@@ -96,20 +96,20 @@ const mockGroups: GroupChat[] = [
         members: [
             { id: 'u1', name: 'Alex Chen', role: 'issuer', avatar: '🧑‍💼', online: true },
             { id: 'u2', name: 'Sarah Kim', role: 'issuer', avatar: '👩‍💻', online: false },
-            { id: 'u3', name: '0x71C...8e29', role: 'investor', avatar: '💎', online: true, creditScore: 850 },
-            { id: 'u4', name: '0xA3F...2d1a', role: 'investor', avatar: '🦊', online: true, creditScore: 520 },
-            { id: 'u5', name: '0xB8E...9c3f', role: 'investor', avatar: '🐳', online: false, creditScore: 1120 },
-            { id: 'u6', name: '0x5D2...7e4b', role: 'investor', avatar: '🎯', online: false, creditScore: 380 },
+            { id: 'u3', name: 'Inv-71C8', role: 'investor', avatar: '💎', online: true, creditScore: 850 },
+            { id: 'u4', name: 'Inv-A3F2', role: 'investor', avatar: '🦊', online: true, creditScore: 520 },
+            { id: 'u5', name: 'Inv-B8E9', role: 'investor', avatar: '🐳', online: false, creditScore: 1120 },
+            { id: 'u6', name: 'Inv-5D27', role: 'investor', avatar: '🎯', online: false, creditScore: 380 },
             { id: 'agent1', name: 'Loka Agent', role: 'agent', avatar: '🤖', online: true },
         ],
         messages: [
             { id: 'm1', senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '🎉 Group created! ComputeDAO - GPU Expansion has been fully funded. All stakeholders are now connected.', timestamp: new Date(Date.now() - 86400000 * 2) },
             { id: 'm2', senderId: 'u1', senderName: 'Alex Chen', role: 'issuer', content: 'Thank you everyone for your support! We are excited to begin the GPU cluster expansion. First batch of H100s arrives next week.', timestamp: new Date(Date.now() - 86400000 * 2 + 3600000) },
-            { id: 'm3', senderId: 'u3', senderName: '0x71C...8e29', role: 'investor', content: 'Great to hear! What\'s the expected timeline for the first revenue payout?', timestamp: new Date(Date.now() - 86400000) },
+            { id: 'm3', senderId: 'u3', senderName: 'Inv-71C8', role: 'investor', content: 'Great to hear! What\'s the expected timeline for the first revenue payout?', timestamp: new Date(Date.now() - 86400000) },
             { id: 'm4', senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '📊 Based on the project terms: first interest distribution is scheduled for Day 30. Current projected APY remains at 15.5%. I\'ll send automated updates as milestones are reached.', timestamp: new Date(Date.now() - 86400000 + 600000) },
             { id: 'm5', senderId: 'u2', senderName: 'Sarah Kim', role: 'issuer', content: 'We\'ve secured the data center lease. Infrastructure setup begins Monday. Will share photos of the rack installation.', timestamp: new Date(Date.now() - 3600000 * 5) },
-            { id: 'm6', senderId: 'u4', senderName: '0xA3F...2d1a', role: 'investor', content: 'Looking forward to it! Transparency is key 🔑', timestamp: new Date(Date.now() - 3600000 * 3) },
-            { id: 'm7', senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '✅ Milestone Update: Data center lease verified on-chain. Contract hash: 0x8f2a...3b4c. Compliance check passed.', timestamp: new Date(Date.now() - 3600000 * 2) },
+            { id: 'm6', senderId: 'u4', senderName: 'Inv-A3F2', role: 'investor', content: 'Looking forward to it! Transparency is key 🔑', timestamp: new Date(Date.now() - 3600000 * 3) },
+            { id: 'm7', senderId: 'agent1', senderName: 'Loka Agent', role: 'agent', content: '✅ Milestone Update: Data center lease verified externally. Doc ID: 8F2A-3B4C. Compliance check passed.', timestamp: new Date(Date.now() - 3600000 * 2) },
             {
                 id: 'm_poll1', senderId: 'u1', senderName: 'Alex Chen', role: 'issuer', content: '', timestamp: new Date(Date.now() - 3600000),
                 poll: {
@@ -138,15 +138,15 @@ const mockGroups: GroupChat[] = [
         lastActivity: '1 hour ago',
         members: [
             { id: 'u10', name: 'Mike Johnson', role: 'issuer', avatar: '👨‍💼', online: true },
-            { id: 'u11', name: '0x71C...8e29', role: 'investor', avatar: '💎', online: true, creditScore: 850 },
-            { id: 'u12', name: '0xC4D...5f2e', role: 'investor', avatar: '🌟', online: false, creditScore: 210 },
-            { id: 'u13', name: '0xE7F...8a1b', role: 'investor', avatar: '🔮', online: false, creditScore: 670 },
+            { id: 'u11', name: 'Inv-71C8', role: 'investor', avatar: '💎', online: true, creditScore: 850 },
+            { id: 'u12', name: 'Inv-C4D5', role: 'investor', avatar: '🌟', online: false, creditScore: 210 },
+            { id: 'u13', name: 'Inv-E7F8', role: 'investor', avatar: '🔮', online: false, creditScore: 670 },
             { id: 'agent2', name: 'Loka Agent', role: 'agent', avatar: '🤖', online: true },
         ],
         messages: [
             { id: 'sm1', senderId: 'agent2', senderName: 'Loka Agent', role: 'agent', content: '🎉 Group created! Shopify Merchant Cluster X has reached 93% funding and is now active.', timestamp: new Date(Date.now() - 86400000 * 5) },
             { id: 'sm2', senderId: 'u10', senderName: 'Mike Johnson', role: 'issuer', content: 'Welcome everyone! We\'re processing our first batch of receivables this week.', timestamp: new Date(Date.now() - 86400000 * 4) },
-            { id: 'sm3', senderId: 'u11', senderName: '0x71C...8e29', role: 'investor', content: 'What\'s the average receivable cycle time?', timestamp: new Date(Date.now() - 86400000 * 3) },
+            { id: 'sm3', senderId: 'u11', senderName: 'Inv-71C8', role: 'investor', content: 'What\'s the average receivable cycle time?', timestamp: new Date(Date.now() - 86400000 * 3) },
             { id: 'sm4', senderId: 'u10', senderName: 'Mike Johnson', role: 'issuer', content: 'Typically 15-30 days for Shopify merchants. We factor at a 2-3% discount.', timestamp: new Date(Date.now() - 86400000 * 3 + 1800000) },
             { id: 'sm5', senderId: 'agent2', senderName: 'Loka Agent', role: 'agent', content: '📈 Weekly Report: $23,400 in receivables processed. Default rate: 0%. On track for projected 8.9% APY.', timestamp: new Date(Date.now() - 3600000) },
         ]
@@ -179,19 +179,19 @@ const AGENT_CATEGORIES = [
     { key: 'investment', label: 'Investment Analysis', icon: '📊' },
     { key: 'operations', label: 'Operations', icon: '⚙️' },
     { key: 'compliance', label: 'Compliance & Legal', icon: '📜' },
-    { key: 'defi', label: 'DeFi & On-chain', icon: '🔗' },
+    { key: 'treasury', label: 'Treasury & Banking', icon: '🔗' },
     { key: 'social', label: 'Social & Community', icon: '💬' },
 ];
 
 const AVAILABLE_AGENTS: AvailableAgent[] = [
     // Risk Management
-    { id: 'risk_assessment', name: 'Risk Assessor', description: 'Real-time credit scoring & borrower risk analysis using on-chain data', category: 'risk', icon: '🛡️', color: 'from-red-400 to-orange-500' },
+    { id: 'risk_assessment', name: 'Risk Assessor', description: 'Real-time credit scoring & borrower risk analysis using financial data', category: 'risk', icon: '🛡️', color: 'from-red-400 to-orange-500' },
     { id: 'portfolio_risk', name: 'Portfolio Risk Monitor', description: 'Monitors concentration risk, liquidation thresholds & VaR metrics', category: 'risk', icon: '📉', color: 'from-amber-400 to-red-500' },
     { id: 'fraud_detector', name: 'Fraud Detector', description: 'ML-powered anomaly detection across transactions and wallet activities', category: 'risk', icon: '🔍', color: 'from-rose-400 to-pink-600' },
     // Investment Analysis
-    { id: 'yield_optimizer', name: 'Yield Optimizer', description: 'Identifies optimal yield strategies across DeFi protocols', category: 'investment', icon: '💎', color: 'from-blue-400 to-indigo-500' },
-    { id: 'market_analyst', name: 'Market Analyst', description: 'Token price prediction, sentiment analysis & market trend reporting', category: 'investment', icon: '📈', color: 'from-green-400 to-emerald-500' },
-    { id: 'fundamental_analyst', name: 'Fundamental Analyst', description: 'Deep-dive analysis on project financials, team & tokenomics', category: 'investment', icon: '🧮', color: 'from-cyan-400 to-blue-500' },
+    { id: 'yield_optimizer', name: 'Revenue Optimizer', description: 'Identifies optimal yield strategies across banking channels', category: 'investment', icon: '💎', color: 'from-blue-400 to-indigo-500' },
+    { id: 'market_analyst', name: 'Market Analyst', description: 'Asset price prediction, sentiment analysis & market trend reporting', category: 'investment', icon: '📈', color: 'from-green-400 to-emerald-500' },
+    { id: 'fundamental_analyst', name: 'Fundamental Analyst', description: 'Deep-dive analysis on project financials, team & unit economics', category: 'investment', icon: '🧮', color: 'from-cyan-400 to-blue-500' },
     { id: 'arb_scanner', name: 'Arbitrage Scanner', description: 'Scans cross-chain and cross-DEX arbitrage opportunities in real-time', category: 'investment', icon: '⚡', color: 'from-yellow-400 to-amber-500' },
     // Operations
     { id: 'treasury_manager', name: 'Treasury Manager', description: 'Automated treasury rebalancing, cash flow forecasting & reporting', category: 'operations', icon: '🏦', color: 'from-violet-400 to-purple-500' },
@@ -200,11 +200,11 @@ const AVAILABLE_AGENTS: AvailableAgent[] = [
     // Compliance & Legal
     { id: 'kyc_verifier', name: 'KYC/AML Verifier', description: 'Automated identity verification and anti-money laundering checks', category: 'compliance', icon: '✅', color: 'from-emerald-400 to-green-500' },
     { id: 'regulatory_monitor', name: 'Regulatory Monitor', description: 'Monitors regulatory changes across jurisdictions impacting your assets', category: 'compliance', icon: '⚖️', color: 'from-slate-400 to-gray-600' },
-    { id: 'contract_auditor', name: 'Smart Contract Auditor', description: 'Continuous smart contract monitoring for vulnerabilities & exploits', category: 'compliance', icon: '🔐', color: 'from-orange-400 to-red-500' },
-    // DeFi & On-chain
-    { id: 'liquidity_monitor', name: 'Liquidity Monitor', description: 'Tracks pool liquidity, impermanent loss & LP position health', category: 'defi', icon: '🌊', color: 'from-sky-400 to-blue-500' },
-    { id: 'gas_optimizer', name: 'Gas Optimizer', description: 'Optimizes transaction timing and gas costs across EVM chains', category: 'defi', icon: '⛽', color: 'from-lime-400 to-green-500' },
-    { id: 'bridge_monitor', name: 'Bridge Monitor', description: 'Monitors cross-chain bridge health, delays & security incidents', category: 'defi', icon: '🌉', color: 'from-purple-400 to-pink-500' },
+    { id: 'contract_auditor', name: 'Legal Document Auditor', description: 'Continuous legal contract monitoring for vulnerabilities & exploits', category: 'compliance', icon: '🔐', color: 'from-orange-400 to-red-500' },
+    // Treasury & Banking
+    { id: 'liquidity_monitor', name: 'Cash Flow Monitor', description: 'Tracks account liquidity, forex loss & total position health', category: 'treasury', icon: '🌊', color: 'from-sky-400 to-blue-500' },
+    { id: 'gas_optimizer', name: 'Cost Optimizer', description: 'Optimizes transaction timing and network costs across payment networks', category: 'treasury', icon: '⛽', color: 'from-lime-400 to-green-500' },
+    { id: 'bridge_monitor', name: 'Payment Gateway Monitor', description: 'Monitors cross-border payment gateway, delays & security incidents', category: 'treasury', icon: '🌉', color: 'from-purple-400 to-pink-500' },
     // Social & Community
     { id: 'sentiment_analyzer', name: 'Sentiment Analyzer', description: 'Tracks social media sentiment across Twitter, Discord & Telegram', category: 'social', icon: '💬', color: 'from-pink-400 to-rose-500' },
     { id: 'governance_assistant', name: 'Governance Assistant', description: 'Summarizes proposals, tracks voting results & alerts on key votes', category: 'social', icon: '🗳️', color: 'from-fuchsia-400 to-purple-500' },
@@ -360,7 +360,7 @@ const Groups: React.FC = () => {
         const newMsg: GroupMessage = {
             id: `user_${Date.now()}`,
             senderId: currentUserId,
-            senderName: '0x71C...8e29',
+            senderName: 'Inv-71C8',
             role: 'investor',
             content,
             timestamp: new Date(),
@@ -412,7 +412,7 @@ const Groups: React.FC = () => {
         const pollMsg: GroupMessage = {
             id: `poll_${Date.now()}`,
             senderId: currentUserId,
-            senderName: '0x71C...8e29',
+            senderName: 'Inv-71C8',
             role: 'investor',
             content: '',
             timestamp: new Date(),
@@ -470,19 +470,19 @@ const Groups: React.FC = () => {
                 return [{ senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier', role: 'agent', content: '📄 **Business License received.** Proceeding with Ultimate Beneficial Owner (UBO) check.\n\nPlease declare all shareholders holding >25% and provide passport/ID scans for KYC verification.' }];
             }
             if (lower.includes('kyc') || lower.includes('护照') || lower.includes('passport') || lower.includes('shareholder') || lower.includes('id')) {
-                return [{ senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier', role: 'agent', content: '✅ **KYC & UBO Check Passed.** Third-party manual review completed. Minting **"Verified Issuer" SBT** to your wallet. You now have permission to create asset pools and initiate fundraising.\n\nLet\'s move to Step 2: **Project Details**.\nPlease provide your project name, description, website, and target financing parameters: Target Amount (e.g., $100,000 USDC), Minimum Start Amount (e.g. $50,000), Duration (7-90 days), and APY rate/Repayment cycle.' }];
+                return [{ senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier', role: 'agent', content: '✅ **KYC & UBO Check Passed.** Third-party manual review completed. Issuing **"Verified Issuer" Certificate** to your account. You now have permission to create asset pools and initiate fundraising.\n\nLet\'s move to Step 2: **Project Details**.\nPlease provide your project name, description, website, and target financing parameters: Target Amount (e.g., $100,000 USD), Minimum Start Amount (e.g. $50,000), Duration (7-90 days), and APY rate/Repayment cycle.' }];
             }
-            if (lower.includes('amount') || lower.includes('100,000') || lower.includes('usdc') || lower.includes('项目') || lower.includes('target') || lower.includes('apy')) {
-                return [{ senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '📊 Project parameters logged. \n\nNext, we need to perform a **Revenue Review**. Please connect your Web2 (Stripe/PayPal/Shopify/AWS) or Web3 (Gnosis Safe/On-chain wallet) revenue accounts to provide the last 6 months of cash flow history.' }];
+            if (lower.includes('amount') || lower.includes('100,000') || lower.includes('usdc') || lower.includes('usd') || lower.includes('项目') || lower.includes('target') || lower.includes('apy')) {
+                return [{ senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '📊 Project parameters logged. \n\nNext, we need to perform a **Revenue Review**. Please connect your payment processors (Stripe/PayPal/Shopify/AWS) or bank accounts to provide the last 6 months of cash flow history.' }];
             }
-            if (lower.includes('connect') || lower.includes('stripe') || lower.includes('paypal') || lower.includes('web3') || lower.includes('连接')) {
+            if (lower.includes('connect') || lower.includes('stripe') || lower.includes('paypal') || lower.includes('bank') || lower.includes(.bank.) || lower.includes('连接')) {
                 return [
-                    { senderId: 'contract_auditor', senderName: 'Contract Auditor', role: 'agent', content: '🔗 Revenue API securely connected. Web2 Partner API linked and Cash Flow Takeover agreement drafted. Validating 6-month cash flow...' },
-                    { senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '✅ Verification successful! Healthy cash flow detected.\n\nFinally, let\'s configure the **Collateral** (10-30% required). Please provide your on-chain assets or account receivables contract as collateral.' }
+                    { senderId: 'contract_auditor', senderName: 'Contract Auditor', role: 'agent', content: '🔗 Revenue API securely connected. Partner API linked and Cash Flow Takeover agreement drafted. Validating 6-month cash flow...' },
+                    { senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '✅ Verification successful! Healthy cash flow detected.\n\nFinally, let\'s configure the **Collateral** (10-30% required). Please provide your physical assets or account receivables contract as collateral.' }
                 ];
             }
             if (lower.includes('collateral') || lower.includes('confirm') || lower.includes('确认') || lower.includes('抵押') || lower.includes('asset')) {
-                return [{ senderId: 'agent_onboard', senderName: 'Loka Launcher', role: 'agent', content: '🎉 **Project Application Complete!** \n\nCollateral locked. The smart contract has been deployed and the cash flow takeover agreement is active. Your project is now listed in the Market and available for investors. Good luck! 🚀' }];
+                return [{ senderId: 'agent_onboard', senderName: 'Loka Launcher', role: 'agent', content: '🎉 **Project Application Complete!** \n\nCollateral locked. The escrow agreement has been finalized and the cash flow takeover agreement is active. Your project is now listed in the Market and available for investors. Good luck! 🚀' }];
             }
             return [{ senderId: 'agent_onboard', senderName: 'Loka Launcher', role: 'agent', content: 'I am here to help you apply. Please follow the steps: Upload License -> KYC -> Project Details -> Revenue Connect -> Collateral. What would you like to do next?' }];
         }
@@ -526,14 +526,14 @@ const Groups: React.FC = () => {
     const PHASE1_STEPS = [
         { title: 'Legal Entity Certification', desc: 'Fill in company info & upload business license and address proof.', icon: '📄', agent: 'KYC/AML Verifier' },
         { title: 'KYC Identity Verification', desc: 'Complete KYC verification for key shareholders and legal representative.', icon: '🪪', agent: 'KYC/AML Verifier' },
-        { title: 'Review & Mint Issuer SBT', desc: 'Third-party review, then mint your Verified Issuer credential on-chain.', icon: '🔗', agent: 'KYC/AML Verifier' },
+        { title: 'Review & Verify Issuer Identity', desc: 'Third-party review, then issue your Verified Issuer credential.', icon: '🔗', agent: 'KYC/AML Verifier' },
     ];
 
     // Phase 2: Project Application (3 steps)
     const PHASE2_STEPS = [
         { title: 'Project Details & Financing Terms', desc: 'Fill in project info, set target amount, duration, APY and repayment cycle.', icon: '📋', agent: 'Risk Assessor' },
-        { title: 'Revenue Account Verification', desc: 'Connect Web2/Web3 revenue accounts and provide 6-month cash flow history.', icon: '💳', agent: 'Contract Auditor' },
-        { title: 'Collateral & Cash Flow Takeover', desc: 'Provide 10-30% collateral value and configure smart contract revenue takeover.', icon: '🔐', agent: 'Contract Auditor' },
+        { title: 'Revenue Account Verification', desc: 'Connect payment accounts and provide 6-month cash flow history.', icon: '💳', agent: 'Contract Auditor' },
+        { title: 'Collateral & Cash Flow Takeover', desc: 'Provide 10-30% collateral value and configure automated revenue takeover.', icon: '🔐', agent: 'Contract Auditor' },
     ];
 
     const currentPhase = applicationStep < PHASE1_STEPS.length ? 1 : 2;
@@ -600,10 +600,10 @@ const Groups: React.FC = () => {
 
         // Other steps: prompt messages
         const stepPrompts: Record<number, string> = {
-            2: '🔗 **Step 3: Review & Mint Issuer SBT**\n\nYour documents are being reviewed by our third-party compliance partner.\n\nOnce approved, we will mint a **"Verified Issuer" Soul-Bound Token (SBT)** to your connected wallet. This SBT grants you permission to:\n• Create asset pools\n• Initiate fundraising campaigns\n• Withdraw funds\n\n⏳ Please wait for verification to complete...',
-            3: '📋 **Step 4: Project Details & Financing Terms**\n\nPlease provide your project information:\n\n• **Project Name** & **Description**\n• **Links**: GitHub, Twitter/X, LinkedIn, Official Website\n• **Project Vision** & **Founder Info** (name, photo)\n\nThen set your financing parameters:\n• 💰 **Target Amount**: e.g. $100,000 (USDC)\n• 📊 **Minimum Start Amount**: e.g. $50,000\n• ⏱ **Duration**: 7–90 days (e.g. 60 days)\n• 📈 **Promised APY**: xx%\n• 🔄 **Repayment Cycle**: 1–12 months (monthly)',
-            4: '💳 **Step 5: Revenue Account Verification**\n\nPlease connect your revenue accounts and provide **6 months** of transaction history:\n\n**Web2 Accounts** (connect via API):\n• Stripe, PayPal, Shopify, or AWS\n\n**Web3 Accounts**:\n• On-chain receiving address\n• Gnosis Safe multisig wallet\n\nClick the button below to securely connect your accounts, or paste your wallet address in the chat.',
-            5: '🔐 **Step 6: Collateral & Cash Flow Takeover**\n\nFinal step! Please configure:\n\n• **Collateral** (10–30% of target amount):\n  - On-chain assets (tokens, NFTs)\n  - Off-chain receivables contracts\n\n• **Cash Flow Takeover Setup**:\n  - Web2: Connect via Stripe Connect or PayPal Partner API\n  - Web3: Set your protocol\'s receiving address to the Loka smart contract\n\nOnce configured, your project will be reviewed and listed on the Market! 🚀',
+            2: '🔗 **Step 3: Review & Verify Issuer Identity**\n\nYour documents are being reviewed by our third-party compliance partner.\n\nOnce approved, we will issue a **"Verified Issuer" Certificate** to your connected account. This Certificate grants you permission to:\n• Create asset pools\n• Initiate fundraising campaigns\n• Withdraw funds\n\n⏳ Please wait for verification to complete...',
+            3: '📋 **Step 4: Project Details & Financing Terms**\n\nPlease provide your project information:\n\n• **Project Name** & **Description**\n• **Links**: GitHub, Twitter/X, LinkedIn, Official Website\n• **Project Vision** & **Founder Info** (name, photo)\n\nThen set your financing parameters:\n• 💰 **Target Amount**: e.g. $100,000 (USD)\n• 📊 **Minimum Start Amount**: e.g. $50,000\n• ⏱ **Duration**: 7–90 days (e.g. 60 days)\n• 📈 **Promised APY**: xx%\n• 🔄 **Repayment Cycle**: 1–12 months (monthly)',
+            4: '💳 **Step 5: Revenue Account Verification**\n\nPlease connect your revenue accounts and provide **6 months** of transaction history:\n\n**Payment Processors** (connect via API):\n• Stripe, PayPal, Shopify, or AWS\n\n**Bank Accounts**:\n• Corporate bank account\n• Designated receiver account\n\nClick the button below to securely connect your accounts, or paste your banking details in the chat.',
+            5: '🔐 **Step 6: Collateral & Cash Flow Takeover**\n\nFinal step! Please configure:\n\n• **Collateral** (10–30% of target amount):\n  - Physical assets (real estate, equipment)\n  - Off-chain receivables contracts\n\n• **Cash Flow Takeover Setup**:\n  - Connect via Stripe Connect or PayPal Partner API\n  - Set your payment provider\'s receiving account to the Loka escrow account\n\nOnce configured, your project will be reviewed and listed on the Market! 🚀',
         };
 
         const replyMsg: GroupMessage = {

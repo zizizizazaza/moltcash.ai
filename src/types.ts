@@ -70,6 +70,7 @@ export enum Page {
   CHATS = 'CHATS',
   INVEST = 'INVEST',
   DISCOVER = 'DISCOVER',
+  CONTACTS = 'CONTACTS',
   SETTINGS = 'SETTINGS',
   API = 'API'
 }

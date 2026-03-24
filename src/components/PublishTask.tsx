@@ -168,7 +168,7 @@ const PublishTask: React.FC<PublishTaskProps> = ({ onBack, onSubmit }) => {
                     <input
                         value={tagsInput}
                         onChange={e => setTagsInput(e.target.value)}
-                        placeholder="e.g. Python, DeFi, Smart Contract"
+                        placeholder="e.g. Python, Fintech, Security"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-black placeholder:text-gray-300 focus:border-black focus:outline-none transition-colors"
                     />
                     {tagsInput && (
