@@ -1,5 +1,5 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Icons, COLORS } from '../constants';
 import { MarketAsset, RepaymentSchedule } from '../types';
@@ -262,24 +262,40 @@ interface PotProject {
   name: string; cat: string; mapped_cat: string; tagColor: string; views: string; saves: number;
   desc: string; rev: string; revGrow: string; waitlist: string; tags: string[];
   logo: string; color: string; cover: string; label: string;
+  iconUrl?: string; founderAvatarUrl?: string; websiteUrl?: string; slug?: string;
+  xFollowerCount?: number;
   allTimeRev?: string; mrr?: string; founder?: string; founderFollowers?: string;
   founded?: string; country?: string; profitMargin?: string;
-  techStack?: { frontend: string[]; backend: string[] };
+  techStack?: string[]; targetAudience?: string; paymentProvider?: string; activeSubscriptions?: number;
   pricing?: string;
   monthlyData?: { month: string; amount: number }[];
 }
 
-const POT_PROJECTS: PotProject[] = [
-  { name: 'POST BRIDGE', cat: 'Social Media', mapped_cat: 'Media', tagColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', views: '51.3k', saves: 18, desc: 'Post your content to multiple social media platforms at the same time, all-in one place.', rev: '$31.7k', revGrow: '↑ 69%', waitlist: '1,504', tags: ['Ranked #178', 'Stripe Verified'], logo: 'PB', color: 'from-emerald-400 to-emerald-600', cover: 'from-emerald-900/10 to-transparent', label: 'Trending', allTimeRev: '$251,527', mrr: '$31,942', founder: 'Jack Friks', founderFollowers: '113.2k', founded: 'September 2024', country: 'Canada', profitMargin: '92%', techStack: { frontend: ['Next.js', 'React', 'Tailwind'], backend: ['Supabase', 'Stripe', 'Vercel'] }, pricing: 'Freemium · $9-29/mo', monthlyData: [{ month: 'Oct', amount: 7400 }, { month: 'Nov', amount: 11200 }, { month: 'Dec', amount: 17600 }, { month: 'Jan', amount: 22400 }, { month: 'Feb', amount: 28900 }, { month: 'Mar', amount: 31700 }] },
-  { name: 'Virlo', cat: 'B2B SaaS', mapped_cat: 'SaaS', tagColor: 'text-violet-700 bg-violet-50 border-violet-100', views: '20.7k', saves: 12, desc: 'Track, manage, leverage short-form data.', rev: '$18k', revGrow: '↑ 15%', waitlist: '683', tags: ['Ranked #180', 'Stripe Verified'], logo: 'Vr', color: 'from-violet-400 to-violet-600', cover: 'from-violet-900/10 to-transparent', label: '', allTimeRev: '$156,000', mrr: '$38,957', founder: 'Nicolas Mauro', founderFollowers: '1.3k', founded: 'June 2024', country: 'United States', profitMargin: '65%', techStack: { frontend: ['React', 'TypeScript'], backend: ['AWS', 'PostgreSQL', 'Stripe'] }, pricing: '$49-199/mo', monthlyData: [{ month: 'Oct', amount: 13500 }, { month: 'Nov', amount: 14200 }, { month: 'Dec', amount: 15000 }, { month: 'Jan', amount: 16200 }, { month: 'Feb', amount: 17000 }, { month: 'Mar', amount: 18000 }] },
-  { name: 'Cattus AI', cat: 'Artificial Intelligence', mapped_cat: 'AI', tagColor: 'text-cyan-700 bg-cyan-50 border-cyan-100', views: '2.8k', saves: 2, desc: 'A platform that brings together multiple AI models into a single interface.', rev: '$2.3k', revGrow: '↑ 619%', waitlist: '106', tags: ['Ranked #1079', 'Stripe Verified'], logo: 'CA', color: 'from-cyan-400 to-blue-500', cover: 'from-cyan-900/10 to-transparent', label: 'New', allTimeRev: '$12,400', mrr: '$1,276', founder: 'Le Dev ULTIME', founderFollowers: '6.7k', founded: 'January 2025', country: 'France', profitMargin: '54%', techStack: { frontend: ['Next.js', 'Tailwind'], backend: ['OpenAI', 'Anthropic', 'Stripe'] }, pricing: '$12/mo', monthlyData: [{ month: 'Oct', amount: 0 }, { month: 'Nov', amount: 120 }, { month: 'Dec', amount: 350 }, { month: 'Jan', amount: 680 }, { month: 'Feb', amount: 1500 }, { month: 'Mar', amount: 2300 }] },
-  { name: 'ExporTiktok', cat: 'Content Creation', mapped_cat: 'Content', tagColor: 'text-rose-700 bg-rose-50 border-rose-100', views: '1.2k', saves: 3, desc: 'Export comments from any TikTok video with a single paste-and-click action.', rev: '$36', revGrow: '', waitlist: '50', tags: ['Early Stage', 'Stripe Verified'], logo: 'Ex', color: 'from-rose-400 to-rose-600', cover: 'from-rose-900/10 to-transparent', label: '', allTimeRev: '$36', mrr: '$20', founder: 'Sophie Martin', founderFollowers: '500', founded: 'January 2025', country: 'France', profitMargin: '100%', techStack: { frontend: ['Vue.js', 'Chrome Extension'], backend: ['Python', 'Stripe'] }, pricing: '$4.99/mo', monthlyData: [{ month: 'Jan', amount: 5 }, { month: 'Feb', amount: 12 }, { month: 'Mar', amount: 36 }] },
-  { name: 'AppAlchemy', cat: 'Artificial Intelligence', mapped_cat: 'AI', tagColor: 'text-amber-700 bg-amber-50 border-amber-100', views: '2.2k', saves: 7, desc: 'AI-powered design tool generates polished mobile app UIs in minutes based on text prompts.', rev: 'Pre-revenue', revGrow: '', waitlist: '12,050', tags: ['AI Tool', 'Pre-revenue'], logo: 'AA', color: 'from-orange-400 to-amber-600', cover: 'from-orange-900/10 to-transparent', label: 'Waitlist Open', allTimeRev: '$0', mrr: '$0', founder: 'Aria Patel', founderFollowers: '22.5k', founded: 'November 2024', country: 'India', profitMargin: '-', techStack: { frontend: ['Flutter', 'React Native'], backend: ['GPT-4', 'Firebase', 'GCP'] }, pricing: 'Coming soon', monthlyData: [] },
-  { name: 'Vibbbbes', cat: 'Developer Tools', mapped_cat: 'Tools', tagColor: 'text-blue-700 bg-blue-50 border-blue-100', views: '3.5k', saves: 10, desc: 'Instant Design Systems with Vibbbbes WEB | MCP | CLI | SKILLS', rev: '$5.7k', revGrow: '↑ 20%', waitlist: '850', tags: ['Developer Tool', 'Stripe Verified'], logo: 'Vb', color: 'from-blue-400 to-blue-600', cover: 'from-blue-900/10 to-transparent', label: '', allTimeRev: '$42,800', mrr: '$5,700', founder: 'Liam Chen', founderFollowers: '8.2k', founded: 'March 2024', country: 'USA', profitMargin: '85%', techStack: { frontend: ['React', 'Figma Plugin'], backend: ['Node.js', 'Stripe'] }, pricing: '$19/mo', monthlyData: [{ month: 'Oct', amount: 3500 }, { month: 'Nov', amount: 4100 }, { month: 'Dec', amount: 4800 }, { month: 'Jan', amount: 5200 }, { month: 'Feb', amount: 5500 }, { month: 'Mar', amount: 5700 }] },
-];
 
-const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => void }> = ({ project, onClose }) => {
+const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => void }> = ({ project: initialProject, onClose }) => {
+  const [project, setProject] = useState<PotProject>(initialProject);
   const [activeTab, setActiveTab] = useState<'STORY' | 'FINANCIALS'>('STORY');
+
+  useEffect(() => {
+    setProject(initialProject);
+    if (initialProject.slug) {
+      fetch(`/api/trustmrr/startups/${initialProject.slug}`)
+        .then(res => res.json())
+        .then(res => {
+          if (res.data) {
+            setProject(prev => ({
+              ...prev,
+              xFollowerCount: res.data.xFollowerCount || prev.xFollowerCount,
+              targetAudience: res.data.targetAudience || prev.targetAudience,
+              paymentProvider: res.data.paymentProvider || prev.paymentProvider,
+              techStack: res.data.techStack || prev.techStack,
+              activeSubscriptions: res.data.activeSubscriptions != null ? res.data.activeSubscriptions : prev.activeSubscriptions
+            }));
+          }
+        })
+        .catch(err => console.error('Failed to fetch project detail:', err));
+    }
+  }, [initialProject]);
   const maxAmount = Math.max(...(project.monthlyData || []).map(d => d.amount), 1);
 
   return (
@@ -293,7 +309,13 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
       {/* Header Section — matches AssetDetail */}
       <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:items-start justify-between mb-6">
         <div className="flex gap-3 sm:gap-6 items-start">
-          <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-2xl sm:text-3xl md:text-4xl shadow-md shrink-0 border border-gray-100`}>{project.logo}</div>
+          {project.iconUrl ? (
+            <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shadow-md shrink-0 border border-gray-100 bg-white flex items-center justify-center">
+              <img src={project.iconUrl} alt={project.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            </div>
+          ) : (
+            <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-2xl sm:text-3xl md:text-4xl shadow-md shrink-0 border border-gray-100`}>{project.logo}</div>
+          )}
           <div className="min-w-0">
             <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-black tracking-tight mb-2 sm:mb-3 truncate sm:whitespace-normal" title={project.name}>{project.name}</h1>
             <p className="text-[12px] sm:text-[14px] text-gray-500 font-medium leading-relaxed max-w-2xl line-clamp-2 sm:line-clamp-none" title={project.desc}>
@@ -303,14 +325,20 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
         </div>
 
         <div className="flex gap-2 sm:gap-3 shrink-0">
-          <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-gray-200 text-black rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 hover:border-black transition-all shadow-sm h-fit">
+          <button onClick={() => {
+            const url = project.slug ? `${window.location.origin}/market/startup/${project.slug}` : window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+              const btn = document.getElementById('share-toast');
+              if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Share'; }, 1500); }
+            });
+          }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-gray-200 text-black rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 hover:border-black transition-all shadow-sm h-fit">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-            <span className="hidden sm:inline">Share</span>
+            <span id="share-toast" className="hidden sm:inline">Share</span>
           </button>
-          <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-black text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] h-fit">
+          <a href={project.websiteUrl || '#'} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-black text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] h-fit ${!project.websiteUrl ? 'opacity-50 pointer-events-none' : ''}`}>
             Visit
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-          </button>
+          </a>
         </div>
       </div>
 
@@ -331,22 +359,28 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
             <p className="text-[10px] sm:text-[11px] font-bold text-gray-400">MRR (verified)</p>
             <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate">{project.mrr || '-'}</p>
+          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate">{project.mrr && project.mrr !== '$0' ? project.mrr : '—'}</p>
           <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate">Stripe API</p>
         </div>
 
         <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
-          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Issuer</p>
+          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Founder</p>
           <div className="flex items-center gap-2">
-            <div className={`w-6 h-6 bg-gradient-to-br ${project.color} rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0`}>{(project.founder || '?')[0]}</div>
-            <p className="text-xs sm:text-sm font-bold text-black truncate" title={project.founder}>{project.founder}</p>
+            {project.founderAvatarUrl ? (
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-gray-200 shrink-0"><img src={project.founderAvatarUrl} alt={project.founder || ''} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /></div>
+            ) : (
+              <div className={`w-6 h-6 bg-gradient-to-br ${project.color} rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0`}>{(project.founder || '?')[0]}</div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-bold text-black truncate" title={project.founder}>{project.founder}</p>
+            </div>
             <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
           </div>
         </div>
 
         <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
-          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Growth</p>
-          <p className="text-lg sm:text-2xl font-black text-[#00E676]">{project.revGrow || 'N/A'}</p>
+          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Growth (30D)</p>
+          <p className={`text-lg sm:text-2xl font-black ${project.revGrow ? 'text-[#00E676]' : 'text-gray-300'}`}>{project.revGrow || '—'}</p>
           <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-1">Founded {project.founded}</p>
         </div>
       </div>
@@ -377,72 +411,49 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
             {/* 1. Issuer Profile */}
             <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 pb-6 border-b border-gray-100/50">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-xl sm:text-2xl shrink-0 border border-gray-100 shadow-sm`}>{project.logo}</div>
+                {project.founderAvatarUrl ? (
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-white flex items-center justify-center">
+                    <img src={project.founderAvatarUrl} alt={project.founder || ''} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  </div>
+                ) : project.iconUrl ? (
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-white flex items-center justify-center">
+                    <img src={project.iconUrl} alt={project.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  </div>
+                ) : (
+                  <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-xl sm:text-2xl shrink-0 border border-gray-100 shadow-sm`}>{project.logo}</div>
+                )}
                 <div className="min-w-0">
                   <h4 className="text-base sm:text-xl font-black tracking-tight text-black flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <span className="truncate max-w-[150px] sm:max-w-none" title={project.founder}>{project.founder}</span>
                     <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white italic shadow-sm">✓</div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 leading-none ml-1 flex items-center gap-1 text-gray-500">
-                      {project.founderFollowers} followers
-                    </span>
+                    {project.founderFollowers && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 leading-none ml-1 flex items-center gap-1 text-gray-500">
+                        {project.founderFollowers}
+                      </span>
+                    )}
                   </h4>
-                  <p className="text-[11px] sm:text-[12px] text-gray-400 font-medium truncate">{project.country} • Founded {project.founded}</p>
+                  <p className="text-[11px] sm:text-[12px] text-gray-400 font-medium truncate">
+                    {project.country} • Founded {project.founded}
+                    {project.xFollowerCount != null && project.xFollowerCount > 0 && (
+                      <span className="ml-1.5 before:content-['•'] before:mr-1.5 before:text-gray-300">
+                        {project.xFollowerCount >= 1000 ? `${(project.xFollowerCount / 1000).toFixed(1)}k` : project.xFollowerCount} followers on 𝕏
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                {[
-                  { label: 'Twitter', icon: '🐦' },
-                  { label: 'LinkedIn', icon: '🔗' },
-                  { label: 'GitHub', icon: '💻' }
-                ].map(social => (
-                  <div key={social.label} className="px-2.5 py-1.5 sm:px-3 bg-white hover:bg-gray-50 transition-colors rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1 sm:gap-1.5 text-gray-600 border border-gray-100 shadow-sm cursor-pointer lg:px-4 lg:py-2">
-                    <span>{social.icon}</span>
-                    {social.label}
-                    <span className="text-[#00E676] text-[10px] ml-1">✓</span>
-                  </div>
-                ))}
+                {project.founderFollowers && (
+                  <a href={`https://x.com/${project.founderFollowers.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2 sm:px-5 sm:py-2.5 bg-black hover:bg-gray-800 transition-colors rounded-xl text-[12px] sm:text-[13px] font-bold flex items-center gap-2 text-white shadow-sm cursor-pointer">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                    <span>{project.founderFollowers}</span>
+                    <svg className="w-3.5 h-3.5 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  </a>
+                )}
               </div>
             </section>
 
-            {/* 2. Leadership & Backing */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-4">
-                <h3 className="text-base font-bold text-black">Leadership & Backing</h3>
-                <div className="h-px flex-1 bg-gray-100" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-start gap-4 p-5 bg-white border border-gray-100 rounded-3xl shadow-sm hover:border-black/5 transition-all">
-                  <div className={`w-12 h-12 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-bold text-white text-lg shrink-0`}>{(project.founder || '?')[0]}</div>
-                  <div>
-                    <p className="text-[12px] font-black text-black">{project.founder}</p>
-                    <p className="text-[10px] font-bold text-gray-400 tracking-tighter mb-1">Founder & CEO</p>
-                    <p className="text-[9px] text-blue-500 font-bold tracking-widest mb-2">{project.founderFollowers} followers on 𝕏</p>
-                    <p className="text-[11px] text-gray-500 font-light leading-relaxed">Serial entrepreneur. Building tools for modern creators and communities.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4 p-5 bg-white border border-gray-100 rounded-3xl shadow-sm hover:border-black/5 transition-all">
-                  <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center font-serif italic text-xl text-gray-400 shrink-0">C</div>
-                  <div>
-                    <p className="text-[12px] font-black text-black">Core Team</p>
-                    <p className="text-[10px] font-bold text-gray-400 tracking-tighter mb-1">Engineering & Product</p>
-                    <p className="text-[9px] text-blue-500 font-bold tracking-widest mb-2">Full-stack team</p>
-                    <p className="text-[11px] text-gray-500 font-light leading-relaxed">Experienced in scaling SaaS products. Expertise in {project.techStack?.frontend[0] || 'modern web'} and {project.techStack?.backend[0] || 'cloud infrastructure'}.</p>
-                  </div>
-                </div>
-              </div>
-            </section>
 
-            {/* 3. Business Narrative */}
-            <section className="space-y-6">
-              <h3 className="text-base font-bold text-black">Business Narrative</h3>
-              <div className="space-y-6">
-                <p className="text-sm text-gray-500 leading-relaxed font-medium">{project.desc}</p>
-                <div className="p-6 bg-gray-50/50 rounded-2xl border border-gray-100">
-                  <h4 className="text-[11px] font-bold text-gray-400 mb-2">Primary Value Proposition</h4>
-                  <p className="text-sm text-black font-medium leading-relaxed">"{project.desc} Currently serving {project.waitlist} active users with {project.profitMargin} profit margin."</p>
-                </div>
-              </div>
-            </section>
 
             {/* 4. Enterprise Insights */}
             <section className="space-y-6 pt-6">
@@ -456,8 +467,8 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                     <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Pricing Model</p>
-                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.pricing || 'Details not available'}</p>
+                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Active Subscriptions</p>
+                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.activeSubscriptions != null ? project.activeSubscriptions.toLocaleString() : 'Not available'}</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -466,7 +477,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                   </div>
                   <div className="space-y-2">
                     <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Target Audience</p>
-                    <p className="text-sm font-medium text-gray-700 leading-relaxed">Entrepreneurs, Creators, SMBs, Marketing Teams</p>
+                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.targetAudience || 'Not available'}</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -502,7 +513,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                   <div className="space-y-3">
                     {[
                       { label: 'Category', value: project.cat },
-                      { label: 'Pricing', value: project.pricing || '-' },
+                      { label: 'Payment Provider', value: project.paymentProvider ? project.paymentProvider.charAt(0).toUpperCase() + project.paymentProvider.slice(1) : '-' },
                       { label: 'Profit Margin', value: project.profitMargin || '-' },
                       { label: 'Page Views (30d)', value: project.views },
                       { label: 'Saves', value: String(project.saves) },
@@ -525,24 +536,11 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
 
                 <div className="p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all">
                   <h3 className="text-[13px] font-bold text-black mb-4">Tech Stack</h3>
-                  {project.techStack ? (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-2">Frontend</p>
-                        <div className="flex flex-wrap gap-2">
-                          {project.techStack.frontend.map(t => (
-                            <span key={t} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">{t}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-2">Backend</p>
-                        <div className="flex flex-wrap gap-2">
-                          {project.techStack.backend.map(t => (
-                            <span key={t} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">{t}</span>
-                          ))}
-                        </div>
-                      </div>
+                  {project.techStack && project.techStack.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {project.techStack.map(t => (
+                        <span key={t} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">{t}</span>
+                      ))}
                     </div>
                   ) : <p className="text-[12px] text-gray-400">Not available</p>}
                 </div>
@@ -608,8 +606,9 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
 };
 
 const Market: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [selectedAsset, setSelectedAsset] = useState<MarketAsset | null>(null);
-  const [selectedProject, setSelectedProject] = useState<PotProject | null>(null);
   const [activeTab, setActiveTab] = useState<'fundraising' | 'earlybird'>('fundraising');
   const [assets, setAssets] = useState<MarketAsset[]>(MOCK_ASSETS);
 
@@ -628,7 +627,12 @@ const Market: React.FC = () => {
   const [potMrrMax, setPotMrrMax] = useState<string>('');
   const [potUsersMin, setPotUsersMin] = useState<string>('');
   const [potUsersMax, setPotUsersMax] = useState<string>('');
-  const [potSort, setPotSort] = useState<string>('Best deals');
+  const [potSort, setPotSort] = useState<string>('revenue');
+  const [potPeriod, setPotPeriod] = useState<string>('30d');
+
+  // TrustMRR live data
+  const [trustmrrStartups, setTrustmrrStartups] = useState<any[]>([]);
+  const [trustmrrLoading, setTrustmrrLoading] = useState(false);
 
   const refreshAssets = () => {
     api.getProjects().then(data => {
@@ -640,6 +644,11 @@ const Market: React.FC = () => {
 
   useEffect(() => {
     refreshAssets();
+    // Fetch TrustMRR startups
+    setTrustmrrLoading(true);
+    api.getTrustMRRStartups().then(res => {
+      setTrustmrrStartups(res.data || []);
+    }).catch(() => { }).finally(() => setTrustmrrLoading(false));
   }, []);
 
   const activeFilterCount = useMemo(() => {
@@ -696,8 +705,40 @@ const Market: React.FC = () => {
     return () => window.removeEventListener('loka-open-asset', handleOpenAsset);
   }, [assets]);
 
-  if (selectedProject) {
-    return <PotentialProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />;
+  // Handle URL-based detail view logic
+  const isDeepLink = location.pathname.startsWith('/market/startup/');
+  const deepLinkSlug = isDeepLink ? location.pathname.split('/market/startup/')[1] : null;
+  const passedProject = location.state?.project as PotProject | undefined;
+
+  // Helper for formatting numbers
+  const formatUsd = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`;
+  const formatNum = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(1)}k` : `${v}`;
+
+  // Render detail view if the URL is active
+  if (isDeepLink && deepLinkSlug) {
+    if (passedProject) {
+      return <PotentialProjectDetail project={passedProject} onClose={() => navigate('/market')} />;
+    } else {
+      // Find and map if deep linked directly without state
+      const s = trustmrrStartups.find(x => x.slug === deepLinkSlug);
+      if (s) {
+        const cat = s.category || 'SaaS';
+        const v = getVisual(cat); // Assuming getVisual can handle category strings
+        const logo = s.icon ? '' : s.name.substring(0, 2).toUpperCase();
+        const mappedProject: PotProject = {
+          name: s.name, cat: cat, mapped_cat: cat, tagColor: 'text-gray-700 bg-gray-50 border-gray-100', views: s.visitorsLast30Days != null ? formatNum(s.visitorsLast30Days) : '0', saves: 0,
+          desc: s.description || '', rev: formatUsd(s.revenue?.last30Days || 0), revGrow: s.growth30d != null ? (s.growth30d >= 0 ? `↑ ${Math.round(s.growth30d)}%` : `↓ ${Math.abs(Math.round(s.growth30d))}%`) : '', waitlist: String(s.customers || 0),
+          tags: [], logo, color: 'from-gray-500 to-gray-700', cover: 'from-gray-900/10 to-transparent', label: '',
+          iconUrl: s.icon || undefined, founderAvatarUrl: s.cofounders?.[0]?.avatarUrl || (s.xHandle ? `https://unavatar.io/x/${s.xHandle}` : undefined),
+          allTimeRev: formatUsd(s.revenue?.total || 0), mrr: formatUsd(s.revenue?.mrr || 0), founder: s.cofounders?.[0]?.xName || s.xHandle || '—', founderFollowers: s.xHandle ? `@${s.xHandle}` : undefined,
+          websiteUrl: s.website || undefined, founded: s.foundedDate ? new Date(s.foundedDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown', country: s.country || 'Unknown',
+          slug: s.slug || undefined, xFollowerCount: s.xFollowerCount || undefined, profitMargin: s.profitMarginLast30Days != null ? `${Math.round(s.profitMarginLast30Days)}%` : '-',
+        };
+        return <PotentialProjectDetail project={mappedProject} onClose={() => navigate('/market')} />;
+      } else if (trustmrrLoading) {
+         return <div className="p-10 text-center text-gray-400">Loading details...</div>;
+      }
+    }
   }
 
   if (selectedAsset) {
@@ -899,7 +940,7 @@ const Market: React.FC = () => {
             {/* Top row: status chips + filter button + sort */}
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex bg-white p-1 rounded-full border border-gray-100 shadow-sm overflow-x-auto max-w-full">
-                {['All', 'SaaS', 'AI', 'Tools', 'Media', 'Content'].map(cat => (
+                {['All', 'SaaS', 'AI', 'Health', 'Marketing', 'Content', 'Education'].map(cat => (
                   <button
                     key={cat}
                     onClick={() => setPotCat(cat)}
@@ -925,11 +966,17 @@ const Market: React.FC = () => {
                 )}
               </button>
 
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
                 <select value={potSort} onChange={e => setPotSort(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer">
-                  <option value="Best deals">Best deals</option>
-                  <option value="Trending">Trending</option>
-                  <option value="Most Users">Most Users / Waitlist</option>
+                  <option value="revenue">Revenue</option>
+                  <option value="mrr">MRR</option>
+                  <option value="growth">Growth</option>
+                  <option value="traffic">Traffic</option>
+                  <option value="rpv">$/visitor</option>
+                </select>
+                <select value={potPeriod} onChange={e => setPotPeriod(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer">
+                  <option value="30d">Last 30 days</option>
+                  <option value="all">All time</option>
                 </select>
               </div>
             </div>
@@ -978,74 +1025,224 @@ const Market: React.FC = () => {
             )}
           </div>
 
+          {/* Loading & Empty states */}
+          {trustmrrLoading && (
+            <div className="text-center py-16">
+              <div className="inline-block w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mb-3" />
+              <p className="text-sm text-gray-400 font-medium">Loading startups from TrustMRR...</p>
+            </div>
+          )}
+
+          {!trustmrrLoading && trustmrrStartups.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-sm text-gray-400 font-medium">No startups available. Check your connection.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {POT_PROJECTS.filter(p => potCat === 'All' || p.mapped_cat === potCat).map((project, i) => (
-              <div key={i} onClick={() => setSelectedProject(project)} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all flex flex-col group cursor-pointer relative">
-                {/* Top Cover Section */}
-                <div className={`h-24 bg-gradient-to-br ${project.cover} bg-gray-50 relative p-4 flex items-start justify-between`}>
-                  {/* Optional Top Label */}
-                  {project.label ? (
-                    <span className="bg-white/80 backdrop-blur text-black px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border border-gray-100 shadow-sm">
-                      {project.label}
-                    </span>
-                  ) : <div></div>}
+            {[...trustmrrStartups]
+              .filter(s => potCat === 'All' || (s.category || '').toLowerCase() === potCat.toLowerCase())
+              .sort((a, b) => {
+                if (potSort === 'revenue') return (potPeriod === 'all' ? (b.revenue?.total ?? 0) - (a.revenue?.total ?? 0) : (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0));
+                if (potSort === 'mrr') return (b.revenue?.mrr ?? 0) - (a.revenue?.mrr ?? 0);
+                if (potSort === 'growth') return (b.growth30d ?? 0) - (a.growth30d ?? 0);
+                if (potSort === 'traffic') return (b.visitorsLast30Days ?? 0) - (a.visitorsLast30Days ?? 0);
+                if (potSort === 'rpv') return (b.revenuePerVisitor ?? 0) - (a.revenuePerVisitor ?? 0);
+                return 0;
+              })
+              .map((s, i) => {
+                // Derive display properties from API data
+                const catColors: Record<string, string> = {
+                  saas: 'text-violet-700 bg-violet-50 border-violet-100',
+                  ai: 'text-blue-700 bg-blue-50 border-blue-100',
+                  'health-fitness': 'text-emerald-700 bg-emerald-50 border-emerald-100',
+                  marketing: 'text-pink-700 bg-pink-50 border-pink-100',
+                  'content-creation': 'text-rose-700 bg-rose-50 border-rose-100',
+                  education: 'text-amber-700 bg-amber-50 border-amber-100',
+                  ecommerce: 'text-cyan-700 bg-cyan-50 border-cyan-100',
+                  fintech: 'text-indigo-700 bg-indigo-50 border-indigo-100',
+                  'developer-tools': 'text-sky-700 bg-sky-50 border-sky-100',
+                  'social-media': 'text-teal-700 bg-teal-50 border-teal-100',
+                };
+                const gradients: Record<string, string> = {
+                  saas: 'from-violet-400 to-violet-600',
+                  ai: 'from-indigo-400 to-blue-600',
+                  'health-fitness': 'from-emerald-400 to-emerald-600',
+                  marketing: 'from-pink-400 to-pink-600',
+                  'content-creation': 'from-rose-400 to-rose-600',
+                  education: 'from-amber-400 to-amber-600',
+                  ecommerce: 'from-cyan-400 to-blue-500',
+                  fintech: 'from-indigo-500 to-purple-600',
+                  'developer-tools': 'from-sky-400 to-blue-600',
+                  'social-media': 'from-teal-400 to-teal-600',
+                };
+                const covers: Record<string, string> = {
+                  saas: 'from-violet-900/10 to-transparent',
+                  ai: 'from-indigo-900/10 to-transparent',
+                  'health-fitness': 'from-emerald-900/10 to-transparent',
+                  marketing: 'from-pink-900/10 to-transparent',
+                  'content-creation': 'from-rose-900/10 to-transparent',
+                  education: 'from-amber-900/10 to-transparent',
+                };
 
-                  {/* Bookmark Icon */}
-                  <button className="w-7 h-7 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-white shadow-sm transition-all">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                  </button>
+                const cat = s.category || 'saas';
+                const tagColor = catColors[cat] || 'text-gray-700 bg-gray-50 border-gray-100';
+                const gradient = gradients[cat] || 'from-gray-400 to-gray-600';
+                const cover = covers[cat] || 'from-gray-900/10 to-transparent';
+                const logo = (s.name || '??').slice(0, 2);
 
-                  {/* Avatar floating at the bottom boundary of the cover */}
-                  <div className={`absolute -bottom-6 left-4 w-12 h-12 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-md border-2 border-white pointer-events-none group-hover:scale-105 transition-transform`}>
-                    {project.logo}
-                  </div>
-                </div>
+                // Format revenue based on selected metric & period
+                const rev30d = s.revenue?.last30Days ?? 0;
+                const revTotal = s.revenue?.total ?? 0;
+                const mrr = s.revenue?.mrr ?? 0;
+                // API returns growth as percentage values already (e.g. 8.06 = 8%)
+                const growthPct = s.growth30d;
+                const growthStr = growthPct != null ? (growthPct >= 0 ? `↑ ${Math.round(growthPct)}%` : `↓ ${Math.abs(Math.round(growthPct))}%`) : '';
 
-                {/* Content Body */}
-                <div className="pt-8 p-5 flex-1 flex flex-col">
-                  <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-                    <h4 className="text-base font-bold text-gray-900 leading-tight">{project.name}</h4>
-                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border leading-none ${project.tagColor}`}>{project.cat.toUpperCase()}</span>
-                  </div>
+                // Dynamic metric value based on dropdown selections
+                let metricLabel = 'REVENUE';
+                let metricValue = '';
+                if (potSort === 'revenue') {
+                  metricLabel = potPeriod === 'all' ? 'TOTAL REVENUE' : 'REVENUE (30D)';
+                  metricValue = formatUsd(potPeriod === 'all' ? revTotal : rev30d);
+                } else if (potSort === 'mrr') {
+                  metricLabel = 'VERIFIED MRR';
+                  metricValue = formatUsd(mrr);
+                } else if (potSort === 'growth') {
+                  metricLabel = 'GROWTH (30D)';
+                  metricValue = growthPct != null ? `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}%` : 'N/A';
+                } else if (potSort === 'traffic') {
+                  metricLabel = 'VISITORS (30D)';
+                  metricValue = s.visitorsLast30Days != null ? formatNum(s.visitorsLast30Days) : 'N/A';
+                } else if (potSort === 'rpv') {
+                  metricLabel = '$/VISITOR';
+                  metricValue = s.revenuePerVisitor != null ? `$${s.revenuePerVisitor.toFixed(2)}` : 'N/A';
+                }
 
-                  {/* Description */}
-                  <p className="text-[11px] text-gray-500 font-medium leading-relaxed line-clamp-2 mt-1 mb-4">
-                    {project.desc}
-                  </p>
+                // Build tags
+                const tags: string[] = [];
+                if (s.paymentProvider) tags.push(`Verified ${s.paymentProvider}`);
+                if (s.targetAudience) tags.push(s.targetAudience.toUpperCase());
+                if (s.onSale) tags.push('For Sale');
+                if (growthPct != null && growthPct > 50) tags.push('Fast Growing');
 
-                  {/* Small Detail Tags (like B2B, Repeat Founder) */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-5">
-                    {project.tags.map(t => (
-                      <span key={t} className="text-[9px] font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded tracking-wide">{t.toUpperCase()}</span>
-                    ))}
-                  </div>
+                // Label for top performers
+                let label = '';
+                if (s.rank === 1) label = '🏆 #1';
+                else if (growthPct != null && growthPct > 100) label = 'Explosive Growth';
+                else if (growthPct != null && growthPct > 30) label = 'Trending';
 
-                  {/* Metrics Bottom Divider */}
-                  <div className="mt-auto grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                    <div>
-                      <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1 flex items-center gap-1">
-                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        REVENUE
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[14px] font-bold text-gray-900">{project.rev}</span>
-                        {project.revGrow && <span className="text-[10px] font-bold text-[#00E676]">{project.revGrow}</span>}
+                // Cofounder info
+                const founder = s.cofounders?.[0]?.xName || s.xHandle || '—';
+                // Use unavatar.io for X/Twitter profile pics as list API doesn't have avatar
+                const founderAvatar = s.cofounders?.[0]?.avatarUrl || (s.xHandle ? `https://unavatar.io/x/${s.xHandle}` : null);
+                // MoM Growth = revenue growth (growth30d)
+                // Filter extreme values (>200% or <-90%) as unreliable — matches TrustMRR behavior
+                const momGrowth = (growthPct != null && growthPct > -90 && growthPct < 200) ? growthPct : null;
+
+                return (
+                  <div key={s.slug || i} onClick={() => {
+                    // Map TrustMRR data to PotProject format for detail view
+                    const mappedProject: PotProject = {
+                      name: s.name, cat: cat, mapped_cat: cat, tagColor, views: s.visitorsLast30Days != null ? formatNum(s.visitorsLast30Days) : '0', saves: 0,
+                      desc: s.description || '', rev: formatUsd(rev30d), revGrow: growthStr, waitlist: String(s.customers || 0),
+                      tags: tags, logo: logo, color: gradient, cover, label,
+                      iconUrl: s.icon || undefined,
+                      founderAvatarUrl: founderAvatar || undefined,
+                      allTimeRev: formatUsd(revTotal), mrr: formatUsd(mrr), founder: founder,
+                      founderFollowers: s.xHandle ? `@${s.xHandle}` : undefined,
+                      websiteUrl: s.website || undefined,
+                      founded: s.foundedDate ? new Date(s.foundedDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown',
+                      country: s.country || 'Unknown',
+                      slug: s.slug || undefined,
+                      xFollowerCount: s.xFollowerCount || undefined,
+                      profitMargin: s.profitMarginLast30Days != null ? `${Math.round(s.profitMarginLast30Days)}%` : '-',
+                    };
+                    navigate(`/market/startup/${s.slug}`, { state: { project: mappedProject } });
+                  }} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all flex flex-col group cursor-pointer relative">
+                    {/* Top Cover Section */}
+                    <div className={`h-24 bg-gradient-to-br ${cover} bg-gray-50 relative p-4 flex items-start justify-between`}>
+                      {/* Optional Top Label */}
+                      {label ? (
+                        <span className="bg-white/80 backdrop-blur text-black px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border border-gray-100 shadow-sm">
+                          {label}
+                        </span>
+                      ) : <div></div>}
+
+                      {/* Bookmark Icon */}
+                      <button className="w-7 h-7 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-white shadow-sm transition-all">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                      </button>
+
+                      {/* Avatar floating at the bottom boundary of the cover */}
+                      <div className={`absolute -bottom-6 left-4 w-12 h-12 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-md border-2 border-white pointer-events-none group-hover:scale-105 transition-transform overflow-hidden`}>
+                        {s.icon ? (
+                          <img src={s.icon} alt={s.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.textContent = logo; }} />
+                        ) : logo}
                       </div>
                     </div>
-                    <div>
-                      <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1 flex items-center gap-1">
-                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        MRR (ESTIMATED)
+
+                    {/* Content Body */}
+                    <div className="pt-8 p-5 flex-1 flex flex-col">
+                      <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                        <h4 className="text-base font-bold text-gray-900 leading-tight">{s.name}</h4>
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border leading-none ${tagColor}`}>{cat.toUpperCase()}</span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-[11px] text-gray-500 font-medium leading-relaxed line-clamp-2 mt-1 mb-4">
+                        {s.description || 'No description available.'}
                       </p>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[14px] font-bold text-gray-900 leading-none">{project.rev}</span>
-                        <span className="text-[9px] font-medium text-gray-500 leading-none">{project.waitlist} active subscriptions</span>
+
+                      {/* Small Detail Tags */}
+                      <div className="flex flex-wrap items-center gap-1.5 mb-5">
+                        {tags.map(t => (
+                          <span key={t} className="text-[9px] font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded tracking-wide">{t.toUpperCase()}</span>
+                        ))}
+                      </div>
+
+                      {/* Metrics Bottom Divider */}
+                      <div className="mt-auto grid grid-cols-3 gap-2 border-t border-gray-100 pt-4 items-start">
+                        {/* Metric Value */}
+                        <div>
+                          <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1 flex items-center gap-1 whitespace-nowrap">
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {metricLabel}
+                          </p>
+                          <span className="text-[13px] font-bold text-gray-900">{metricValue}</span>
+                        </div>
+
+                        {/* Founder */}
+                        <div className="min-w-0">
+                          <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1">FOUNDER</p>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                              {founderAvatar ? (
+                                <img src={founderAvatar} alt={founder} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <span className="text-[7px] font-bold text-gray-500">{founder.charAt(0).toUpperCase()}</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] font-semibold text-gray-700 break-all leading-tight">{founder}</span>
+                          </div>
+                        </div>
+
+                        {/* MoM Growth */}
+                        <div className="text-right">
+                          <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1">MoM GROWTH</p>
+                          {momGrowth != null ? (
+                            <span className={`text-[13px] font-bold ${momGrowth >= 0 ? 'text-[#00E676]' : 'text-red-400'}`}>
+                              {momGrowth >= 0 ? '↑' : '↓'} {Math.abs(Math.round(momGrowth))}%
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-gray-300 font-medium">—</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })}
           </div>
         </>
       )}

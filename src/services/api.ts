@@ -379,6 +379,19 @@ class ApiClient {
   async getMyInvitationCodes() {
     return this.request<Array<{ code: string; maxUses: number; useCount: number; isActive: boolean; expiresAt: string | null; createdAt: string }>>('/invitation/my-codes');
   }
+
+  // ============ TrustMRR ============
+
+  async getTrustMRRStartups(category?: string) {
+    const params = new URLSearchParams();
+    if (category && category !== 'All') params.set('category', category);
+    const qs = params.toString();
+    return this.request<{ data: any[]; meta: any }>(`/trustmrr/startups${qs ? `?${qs}` : ''}`);
+  }
+
+  async getTrustMRRStartupDetail(slug: string) {
+    return this.request<{ data: any; partial: boolean }>(`/trustmrr/startups/${encodeURIComponent(slug)}`);
+  }
 }
 
 // Singleton instance

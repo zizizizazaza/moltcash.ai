@@ -38,4 +38,11 @@ export const config = {
     max: isProduction ? 100 : 1000,
     authMax: isProduction ? 20 : 200, // stricter for auth endpoints
   },
+  trustmrr: {
+    apiKey: process.env.TRUSTMRR_API_KEY || '',
+    baseUrl: 'https://trustmrr.com/api/v1',
+    refreshIntervalMs: 5 * 60 * 1000,   // 5 min list refresh
+    detailTtlMs: 10 * 60 * 1000,        // 10 min detail cache
+    maxRequestsPerMinute: 18,            // leave 2 for headroom
+  },
 } as const;

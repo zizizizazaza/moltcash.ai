@@ -22,6 +22,7 @@ import liquidationRoutes from './routes/liquidation.js';
 import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
 import invitationRoutes from './routes/invitation.js';
+import trustmrrRoutes from './routes/trustmrr.js';
 import prisma from './db.js';
 
 const app = express();
@@ -97,6 +98,7 @@ app.use('/api/liquidation', liquidationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/invitation', invitationRoutes);
+app.use('/api/trustmrr', trustmrrRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);
