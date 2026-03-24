@@ -460,10 +460,16 @@ const SuperAgentHome: React.FC = () => {
   );
 };
 
-const MOCK_GROUP_MEMBERS: Record<string, { agents: string[], team: { name: string, online: boolean }[], investors: { name: string, score: number, color: string }[] }> = {
-  g1: { agents: ['Loka Agent', 'Risk Analyzer'], team: [{ name: 'Alex Chen', online: true }, { name: 'Sarah Kim', online: false }], investors: [{ name: 'CryptoWhale88', score: 850, color: 'text-emerald-600' }, { name: 'DeFi_Maxoor', score: 520, color: 'text-blue-600' }, { name: 'YieldKing', score: 1120, color: 'text-amber-600' }] },
-  g2: { agents: ['Loka Agent'], team: [{ name: 'Marcus Rivera', online: true }, { name: 'Emily Zhang', online: true }], investors: [{ name: 'RWA_Bull', score: 680, color: 'text-emerald-600' }, { name: 'OnChainFred', score: 390, color: 'text-blue-600' }] },
-  g3: { agents: ['Loka Agent', 'Market Research'], team: [{ name: 'David Park', online: false }], investors: [{ name: 'AlphaTrader', score: 720, color: 'text-emerald-600' }] },
+type GroupMemberData = {
+  agents: string[];
+  members: { name: string; online: boolean }[];
+  isAdmin: boolean; // whether the current user is admin
+  adminName: string; // which member is the admin
+};
+const MOCK_GROUP_MEMBERS: Record<string, GroupMemberData> = {
+  g1: { isAdmin: true,  adminName: 'Alex Chen',    agents: ['Loka Agent', 'Risk Analyzer'], members: [{ name: 'Alex Chen', online: true }, { name: 'Sarah Kim', online: false }, { name: 'CryptoWhale88', online: true }] },
+  g2: { isAdmin: false, adminName: 'Marcus Rivera', agents: ['Loka Agent'], members: [{ name: 'Marcus Rivera', online: true }, { name: 'Emily Zhang', online: true }, { name: 'RWA_Bull', online: false }] },
+  g3: { isAdmin: true,  adminName: 'David Park',   agents: ['Loka Agent', 'Market Research'], members: [{ name: 'David Park', online: false }, { name: 'AlphaTrader', online: true }] },
 };
 
 const MOCK_CHAT_MESSAGES: Record<string, { role: string, name: string, text: string, time: string, tag?: string }[]> = {
@@ -489,14 +495,179 @@ const MOCK_CHAT_MESSAGES: Record<string, { role: string, name: string, text: str
   ],
 };
 
+// ── Poll types & components ─────────────────────────────────────────────────
+type PollData = {
+  id: string;
+  question: string;
+  options: { id: string; text: string; votes: number }[];
+  duration: string;
+  total: number;
+  voted?: string; // option id the user voted for
+};
+type LocalMsg = { id: string; type: 'text' | 'image' | 'file' | 'poll'; content: string; poll?: PollData };
+
+const POLL_DURATIONS = ['1h', '12h', '1 day', '3 days'];
+
+const PollModal: React.FC<{ onClose: () => void; onSubmit: (p: PollData) => void }> = ({ onClose, onSubmit }) => {
+  const [question, setQuestion] = useState('');
+  const [options, setOptions] = useState(['', '']);
+  const [duration, setDuration] = useState('1 day');
+
+  const updateOption = (i: number, v: string) => setOptions(o => o.map((x, idx) => idx === i ? v : x));
+  const removeOption = (i: number) => setOptions(o => o.filter((_, idx) => idx !== i));
+  const addOption = () => setOptions(o => [...o, '']);
+
+  const canSubmit = question.trim() && options.filter(o => o.trim()).length >= 2;
+
+  const handleSubmit = () => {
+    const filled = options.filter(o => o.trim());
+    onSubmit({
+      id: Date.now().toString(),
+      question: question.trim(),
+      options: filled.map((text, i) => ({ id: `opt-${i}`, text, votes: 0 })),
+      duration,
+      total: 0,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-[15px] font-bold text-gray-900">Create Poll</h2>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-4">
+          {/* Question */}
+          <div>
+            <label className="block text-[12px] font-semibold text-gray-600 mb-1.5">Question</label>
+            <input autoFocus value={question} onChange={e => setQuestion(e.target.value)}
+              placeholder="What do you want to ask?"
+              className="w-full px-3.5 py-2.5 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder:text-gray-300" />
+          </div>
+          {/* Options */}
+          <div>
+            <label className="block text-[12px] font-semibold text-gray-600 mb-1.5">Options</label>
+            <div className="space-y-2">
+              {options.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={opt} onChange={e => updateOption(i, e.target.value)}
+                    placeholder={`Option ${i + 1}`}
+                    className="flex-1 px-3.5 py-2 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder:text-gray-300" />
+                  {options.length > 2 && (
+                    <button onClick={() => removeOption(i)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button onClick={addOption} className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-900 transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
+              Add option
+            </button>
+          </div>
+          {/* Duration */}
+          <div>
+            <label className="block text-[12px] font-semibold text-gray-600 mb-1.5">Duration</label>
+            <div className="flex gap-2 flex-wrap">
+              {POLL_DURATIONS.map(d => (
+                <button key={d} onClick={() => setDuration(d)}
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${duration === d ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-[12px] font-bold text-gray-400 hover:bg-gray-100 transition-all">Cancel</button>
+          <button onClick={handleSubmit} disabled={!canSubmit}
+            className={`px-4 py-2 rounded-xl text-[12px] font-bold transition-all ${canSubmit ? 'bg-gray-900 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+            Send Poll
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PollCard: React.FC<{ poll: PollData }> = ({ poll: initialPoll }) => {
+  const [poll, setPoll] = useState(initialPoll);
+
+  const vote = (optId: string) => {
+    if (poll.voted) return;
+    setPoll(p => ({
+      ...p,
+      voted: optId,
+      total: p.total + 1,
+      options: p.options.map(o => o.id === optId ? { ...o, votes: o.votes + 1 } : o),
+    }));
+  };
+
+  const totalVotes = poll.total;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 w-[280px]">
+      {/* Badge */}
+      <div className="flex items-center gap-1.5 mb-3">
+        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Poll · {poll.duration}</span>
+      </div>
+      {/* Question */}
+      <p className="text-[14px] font-bold text-gray-900 mb-3 leading-snug">{poll.question}</p>
+      {/* Options */}
+      <div className="space-y-2">
+        {poll.options.map(opt => {
+          const pct = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+          const isVoted = poll.voted === opt.id;
+          return (
+            <button key={opt.id} onClick={() => vote(opt.id)} disabled={!!poll.voted}
+              className={`w-full text-left rounded-xl border transition-all overflow-hidden ${
+                poll.voted
+                  ? isVoted ? 'border-gray-900 bg-gray-900' : 'border-gray-100 bg-gray-50'
+                  : 'border-gray-100 bg-gray-50 hover:border-gray-300 hover:bg-gray-100'
+              }`}>
+              <div className="relative px-3 py-2.5">
+                {poll.voted && (
+                  <div className={`absolute inset-0 rounded-xl transition-all ${isVoted ? 'bg-gray-900' : 'bg-gray-100'}`}
+                    style={{ width: `${pct}%`, borderRadius: 'inherit', opacity: 0.15 }} />
+                )}
+                <div className="relative flex items-center justify-between">
+                  <span className={`text-[13px] font-semibold ${poll.voted ? (isVoted ? 'text-gray-900' : 'text-gray-600') : 'text-gray-800'}`}>{opt.text}</span>
+                  {poll.voted && <span className="text-[11px] font-bold text-gray-400">{pct}%</span>}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {/* Footer */}
+      <p className="text-[10px] text-gray-400 mt-3">
+        {poll.voted ? `${totalVotes} vote${totalVotes !== 1 ? 's' : ''}` : 'Tap to vote'}
+      </p>
+    </div>
+  );
+};
+
 const ChatsPage: React.FC = () => {
   const [filter, setFilter] = useState<'All' | 'People' | 'Groups'>('All');
   const [selected, setSelected] = useState<string | null>(null);
+  const [conversations, setConversations] = useState(MOCK_MESSAGES);
   const [input, setInput] = useState('');
+  const [localMsgs, setLocalMsgs] = useState<LocalMsg[]>([]);
+  const [showPoll, setShowPoll] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const [showMarketplace, setShowMarketplace] = useState(false);
   const [mktSearch, setMktSearch] = useState('');
   const [mktCat, setMktCat] = useState('All');
+  const [plusMenu, setPlusMenu] = useState(false);
+  const [plusModal, setPlusModal] = useState<'friend' | 'group' | null>(null);
 
   const MKT_CATS = ['All', 'Risk Management', 'Investment Analysis', 'Operations', 'DeFi & On-chain'];
   const MKT_AGENTS = [
@@ -511,23 +682,90 @@ const ChatsPage: React.FC = () => {
     ? MKT_AGENTS.filter(a => a.name.toLowerCase().includes(mktSearch.toLowerCase()))
     : mktCat === 'All' ? MKT_AGENTS : MKT_AGENTS.filter(a => a.cat === mktCat);
 
-  const filtered = filter === 'All' ? MOCK_MESSAGES
-    : filter === 'People' ? MOCK_MESSAGES.filter(m => !m.isGroup)
-      : MOCK_MESSAGES.filter(m => m.isGroup);
+  const filtered = filter === 'All' ? conversations
+    : filter === 'People' ? conversations.filter(m => !m.isGroup)
+      : conversations.filter(m => m.isGroup);
 
-  const sel = selected ? MOCK_MESSAGES.find(m => m.id === selected) : null;
+  const sel = selected ? conversations.find(m => m.id === selected) : null;
   const msgs = selected ? (MOCK_CHAT_MESSAGES[selected] || []) : [];
-  const members = selected ? MOCK_GROUP_MEMBERS[selected] : null;
+  const [groupMembersState, setGroupMembersState] = useState<Record<string, GroupMemberData>>(MOCK_GROUP_MEMBERS);
+  const members = selected ? groupMembersState[selected] : null;
+
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [showDissolve, setShowDissolve] = useState(false);
+
+  const removeMember = (name: string) => selected && setGroupMembersState(prev => ({
+    ...prev,
+    [selected]: { ...prev[selected], members: prev[selected].members.filter(m => m.name !== name) }
+  }));
+  const removeAgent = (name: string) => selected && setGroupMembersState(prev => ({
+    ...prev,
+    [selected]: { ...prev[selected], agents: prev[selected].agents.filter(a => a !== name) }
+  }));
+  const addMember = (name: string) => selected && setGroupMembersState(prev => {
+    const existing = prev[selected].members.find(m => m.name === name);
+    if (existing) return prev;
+    return { ...prev, [selected]: { ...prev[selected], members: [...prev[selected].members, { name, online: false }] } };
+  });
+  const dissolveGroup = () => {
+    if (!selected) return;
+    setConversations(prev => prev.filter(c => c.id !== selected));
+    setSelected(null);
+    setShowDissolve(false);
+  };
 
   return (
     <div className="flex-1 flex h-full overflow-hidden">
+      {/* Modals */}
+      {plusModal === 'friend' && <AddFriendModal onClose={() => setPlusModal(null)} />}
+      {plusModal === 'group' && (
+        <CreateGroupModal
+          onClose={() => setPlusModal(null)}
+          onCreated={(newId) => {
+            setConversations(prev => [{
+              id: newId,
+              name: 'New Group',
+              avatar: 'NG',
+              role: 'group',
+              lastMsg: 'Group created',
+              time: 'now',
+              unread: 0,
+              isGroup: true,
+              color: 'bg-blue-100 text-blue-600',
+            }, ...prev]);
+            setSelected(newId);
+            setPlusModal(null);
+          }}
+        />
+      )}
       {/* ── Left: conversation list ── */}
       {/* Mobile: full-width when no chat selected, hidden when chat is open */}
       {/* Desktop: always visible as 288px sidebar */}
       <div className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-72 border-r border-gray-100 flex-col shrink-0 bg-white`}>
         <div className="flex items-center justify-between px-5 pt-5 pb-2">
           <h2 className="text-[15px] font-semibold text-gray-900">Chats</h2>
-          <button className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all"><I.Plus /></button>
+          {/* + button with dropdown */}
+          <div className="relative">
+            <button onClick={() => setPlusMenu(v => !v)}
+              className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all">
+              <I.Plus />
+            </button>
+            {plusMenu && (
+              <div className="absolute right-0 top-8 w-44 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30 animate-fadeIn">
+                <button onClick={() => { setPlusModal('friend'); setPlusMenu(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-left">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                  Add Friend
+                </button>
+                <div className="h-px bg-gray-50" />
+                <button onClick={() => { setPlusModal('group'); setPlusMenu(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-left">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  Create Group
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="px-4 pb-3 flex gap-1">
           {(['All', 'People', 'Groups'] as const).map(t => (
@@ -567,7 +805,7 @@ const ChatsPage: React.FC = () => {
               <div className="flex-1">
                 <p className="text-[14px] font-semibold text-gray-900">{sel.name}</p>
                 {sel.isGroup && members && (
-                  <p className="text-[11px] text-gray-400">{(members.agents.length + members.team.length + members.investors.length)} members</p>
+                  <p className="text-[11px] text-gray-400 font-medium">{members ? (members.agents.length + members.members.length) : 0} members</p>
                 )}
               </div>
               {/* Toggle members sidebar */}
@@ -614,85 +852,280 @@ const ChatsPage: React.FC = () => {
                   )}
                 </div>
               ))}
-              {msgs.length === 0 && (
+              {/* Local messages (images, polls, etc.) */}
+              {localMsgs.map((msg) => (
+                <div key={msg.id} className="flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-[10px] font-bold text-white shrink-0">Me</div>
+                  <div className="max-w-[75%]">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[12px] font-semibold text-gray-800">You</span>
+                      <span className="text-[10px] text-gray-300">now</span>
+                    </div>
+                    {/* Image message */}
+                    {msg.type === 'image' && (
+                      <img src={msg.content} alt="upload" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover" />
+                    )}
+                    {/* File message */}
+                    {msg.type === 'file' && (
+                      <div className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-xl px-3.5 py-2.5 shadow-sm">
+                        <svg className="w-7 h-7 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-semibold text-gray-800 truncate">{msg.content}</p>
+                          <p className="text-[10px] text-gray-400">Attachment</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Text message */}
+                    {msg.type === 'text' && (
+                      <div className="bg-gray-900 rounded-xl rounded-tl-sm px-3.5 py-2.5 text-[13px] text-white shadow-sm leading-relaxed">{msg.content}</div>
+                    )}
+                    {/* Poll message */}
+                    {msg.type === 'poll' && (
+                      <PollCard poll={msg.poll!} />
+                    )}
+                  </div>
+                </div>
+              ))}
+              {msgs.length === 0 && localMsgs.length === 0 && (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-[13px] text-gray-400">No messages yet</p>
                 </div>
               )}
             </div>
 
+            {/* Poll Modal */}
+            {showPoll && (
+              <PollModal
+                onClose={() => setShowPoll(false)}
+                onSubmit={(poll) => {
+                  setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'poll', content: '', poll }]);
+                  setShowPoll(false);
+                }}
+              />
+            )}
+
             {/* Input */}
-            <div className="px-5 py-3 border-t border-gray-100 bg-white shrink-0">
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-gray-300 transition-all">
+            <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0 relative">
+              {/* Attach popup menu */}
+              {showAttachMenu && (
+                <div className="absolute bottom-[calc(100%+6px)] right-4 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden w-40 z-10 animate-fadeIn"
+                  onClick={() => setShowAttachMenu(false)}>
+                  {/* Photo / Video */}
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors">
+                    <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                      <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </div>
+                    <span className="text-[12px] font-semibold text-gray-700">Photo or Video</span>
+                    <input type="file" accept="image/*,video/*" className="hidden" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'image', content: ev.target?.result as string }]);
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }} />
+                  </label>
+                  {/* Document */}
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-t border-gray-50">
+                    <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                      <svg className="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                    </div>
+                    <span className="text-[12px] font-semibold text-gray-700">Document</span>
+                    <input type="file" className="hidden" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'file', content: file.name }]);
+                      e.target.value = '';
+                    }} />
+                  </label>
+                  {/* Poll — group only */}
+                  {sel.isGroup && (
+                    <button onClick={() => { setShowPoll(true); setShowAttachMenu(false); }}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors w-full text-left border-t border-gray-50">
+                      <div className="w-6 h-6 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                        <svg className="w-3.5 h-3.5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                      </div>
+                      <span className="text-[12px] font-semibold text-gray-700">Poll</span>
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* Click-away backdrop */}
+              {showAttachMenu && <div className="fixed inset-0 z-[9]" onClick={() => setShowAttachMenu(false)} />}
+
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3.5 py-2.5 focus-within:border-gray-300 transition-all">
+                {/* Text input */}
                 <input value={input} onChange={e => setInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
+                      e.preventDefault();
+                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
+                      setInput('');
+                    }
+                  }}
+                  placeholder="Message..."
+                  className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400 min-w-0"
                 />
-                <button className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${input.trim() ? 'bg-gray-900 text-white' : 'text-gray-300 cursor-not-allowed'}`}>
-                  <I.Send />
+                {/* Attach button */}
+                <button onClick={() => setShowAttachMenu(v => !v)}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all shrink-0 ${showAttachMenu ? 'text-gray-700 bg-gray-100' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                 </button>
+                {/* Mic / Send */}
+                {input.trim() ? (
+                  <button onClick={() => {
+                    setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
+                    setInput('');
+                  }} className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-900 text-white transition-all shrink-0 hover:bg-gray-700">
+                    <I.Send />
+                  </button>
+                ) : (
+                  <button title="Voice input (coming soon)"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all shrink-0">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
           {/* ── Right: members sidebar (groups only, desktop only) ── */}
           {sel.isGroup && members && showMembers && (
-            <div className="hidden md:flex w-60 border-l border-gray-100 bg-white flex-col shrink-0 overflow-y-auto px-5 py-5">
-              <p className="text-[14px] font-semibold text-gray-900 mb-5">Members ({members.agents.length + members.team.length + members.investors.length})</p>
+            <div className="hidden md:flex w-60 border-l border-gray-100 bg-white flex-col shrink-0 overflow-y-auto">
+              {/* Header */}
+              <div className="px-4 pt-5 pb-3 border-b border-gray-50">
+                <p className="text-[13px] font-bold text-gray-900">Members</p>
+                <p className="text-[11px] text-gray-400">{members.agents.length + members.members.length} total</p>
+              </div>
 
-              {/* AI Agent */}
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">AI Agent</p>
-              {members.agents.map(a => (
-                <div key={a} className="flex items-center gap-3 mb-3">
-                  <div className="relative shrink-0">
-                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-[12px] font-bold text-violet-600">{a[0]}</div>
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />
-                  </div>
-                  <div>
-                    <p className="text-[12px] font-semibold text-gray-800">{a}</p>
-                    <p className="text-[11px] text-emerald-500">Always Online</p>
-                  </div>
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+                {/* ── AI Agents ── */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">AI Agents</p>
+                  {members.agents.map(a => (
+                    <div key={a} className="flex items-center gap-2.5 py-1.5 group">
+                      <div className="relative shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center text-[11px] font-bold text-violet-600">{a[0]}</div>
+                        <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-400 border-2 border-white rounded-full" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-gray-800 truncate">{a}</p>
+                        <p className="text-[10px] text-emerald-500">Always online</p>
+                      </div>
+                      {members.isAdmin && (
+                        <button onClick={() => removeAgent(a)}
+                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {/* Add Agent button — admin only */}
+                  {members.isAdmin && (
+                    <button onClick={() => setShowMarketplace(true)}
+                      className="flex items-center gap-2 mt-1 py-1.5 w-full text-left group">
+                      <div className="w-7 h-7 rounded-full border-2 border-dashed border-gray-200 group-hover:border-gray-400 flex items-center justify-center shrink-0 transition-colors">
+                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
+                      </div>
+                      <span className="text-[11px] font-semibold text-gray-400 group-hover:text-gray-700 transition-colors">Add agent</span>
+                    </button>
+                  )}
                 </div>
-              ))}
 
-              {/* Add Agent */}
-              <button onClick={() => setShowMarketplace(true)}
-                className="flex items-center gap-3 mb-4 w-full py-1 rounded-lg hover:bg-gray-50 transition-all group">
-                <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-200 group-hover:border-gray-400 flex items-center justify-center shrink-0 transition-colors">
-                  <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 5v14M5 12h14" /></svg>
+                {/* ── Members ── */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Members</p>
+                  {members.members.map(m => (
+                    <div key={m.name} className="flex items-center gap-2.5 py-1.5 group">
+                      <div className="relative shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500">{m.name[0].toUpperCase()}</div>
+                        {m.online && <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-400 border-2 border-white rounded-full" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[12px] font-semibold text-gray-800 truncate">{m.name}</p>
+                          {m.name === members.adminName && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 shrink-0">Admin</span>
+                          )}
+                        </div>
+                        <p className={`text-[10px] ${m.online ? 'text-emerald-500' : 'text-gray-300'}`}>{m.online ? 'Online' : 'Offline'}</p>
+                      </div>
+                      {members.isAdmin && m.name !== members.adminName && (
+                        <button onClick={() => removeMember(m.name)}
+                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {/* Add Member button — admin only */}
+                  {members.isAdmin && (
+                    <button onClick={() => setShowAddMember(true)}
+                      className="flex items-center gap-2 mt-1 py-1.5 w-full text-left group">
+                      <div className="w-7 h-7 rounded-full border-2 border-dashed border-gray-200 group-hover:border-gray-400 flex items-center justify-center shrink-0 transition-colors">
+                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
+                      </div>
+                      <span className="text-[11px] font-semibold text-gray-400 group-hover:text-gray-700 transition-colors">Add member</span>
+                    </button>
+                  )}
                 </div>
-                <div className="text-left">
-                  <p className="text-[12px] font-semibold text-gray-700">Add Agent</p>
-                  <p className="text-[11px] text-gray-400">Explore marketplace</p>
-                </div>
-              </button>
+              </div>
 
-              {/* Project Team */}
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Project Team</p>
-              {members.team.map(t => (
-                <div key={t.name} className="flex items-center gap-3 mb-3">
-                  <div className="relative shrink-0">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[12px] font-bold text-blue-600">{t.name[0]}</div>
-                    {t.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />}
-                  </div>
-                  <div>
-                    <p className="text-[12px] font-semibold text-gray-800">{t.name}</p>
-                    <p className={`text-[11px] ${t.online ? 'text-emerald-500' : 'text-gray-300'}`}>{t.online ? 'Online' : 'Offline'}</p>
-                  </div>
+              {/* Admin: Dissolve group */}
+              {members.isAdmin && (
+                <div className="px-4 py-3 border-t border-gray-50">
+                  <button onClick={() => setShowDissolve(true)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold text-red-400 hover:bg-red-50 hover:text-red-500 transition-all">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    Dissolve Group
+                  </button>
                 </div>
-              ))}
+              )}
 
-              {/* Investors */}
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-1 mb-3">Investors</p>
-              {members.investors.map(inv => (
-                <div key={inv.name} className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">{inv.name[0].toUpperCase()}</div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-gray-800 truncate">{inv.name}</p>
-                    <p className="text-[11px] text-gray-400">Investor</p>
+              {/* Add Member modal */}
+              {showAddMember && members && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddMember(false)}>
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                      <h2 className="text-[15px] font-bold text-gray-900">Add Member</h2>
+                      <button onClick={() => setShowAddMember(false)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto py-2">
+                      {DISCOVER_CONTACTS.filter(c => !members.members.find(m => m.name === c.name)).map(c => (
+                        <button key={c.id} onClick={() => { addMember(c.name); setShowAddMember(false); }}
+                          className="flex items-center gap-3 w-full px-5 py-2.5 hover:bg-gray-50 transition-colors text-left">
+                          <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">{c.initials}</div>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-semibold text-gray-800 truncate">{c.name}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{c.bio}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* Dissolve confirmation */}
+              {showDissolve && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowDissolve(false)}>
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4 p-6" onClick={e => e.stopPropagation()}>
+                    <div className="w-11 h-11 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <p className="text-[15px] font-bold text-gray-900 text-center mb-1">Dissolve Group?</p>
+                    <p className="text-[12px] text-gray-400 text-center mb-5">This action cannot be undone. All members will be removed and the group chat will be permanently deleted.</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowDissolve(false)}
+                        className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
+                      <button onClick={dissolveGroup}
+                        className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-red-500 hover:bg-red-600 transition-all">Dissolve</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -783,31 +1216,445 @@ const DISCOVER_AGENTS = [
 ];
 
 const DISCOVER_CONTACTS = [
-  { id: 1, name: 'Alex Chen', role: 'Founder & CEO', org: 'Copy Trading AI', followers: 12400, initials: 'AC', bgColor: 'bg-blue-500' },
-  { id: 2, name: 'Sarah Kim', role: 'Co-founder & CTO', org: 'MEV Searcher Agent', followers: 8900, initials: 'SK', bgColor: 'bg-violet-500' },
-  { id: 3, name: 'Marcus Rivera', role: 'Founder', org: 'DeFi Yield Optimizer', followers: 15600, initials: 'MR', bgColor: 'bg-emerald-500' },
-  { id: 4, name: 'Emily Zhang', role: 'CEO', org: 'On-chain Credit Score', followers: 6700, initials: 'EZ', bgColor: 'bg-amber-500' },
-  { id: 5, name: 'David Park', role: 'Head of Research', org: 'AI Agent Marketplace', followers: 4200, initials: 'DP', bgColor: 'bg-rose-500' },
-  { id: 6, name: 'Lisa Wang', role: 'Founder & CPO', org: 'Climapp.io Utility', followers: 3100, initials: 'LW', bgColor: 'bg-cyan-500' },
-  { id: 7, name: 'James Liu', role: 'Managing Partner', org: 'Loka Ventures', followers: 28500, initials: 'JL', bgColor: 'bg-indigo-500' },
-  { id: 8, name: 'Nina Patel', role: 'Lead Engineer', org: 'Copy Trading AI', followers: 5400, initials: 'NP', bgColor: 'bg-pink-500' },
-  { id: 9, name: 'Tom Wu', role: 'CFO', org: 'MEV Searcher Agent', followers: 7800, initials: 'TW', bgColor: 'bg-orange-500' },
+  { id: 1, name: 'Alex Chen',     role: 'Founder & CEO',    bio: 'Building the future of AI-driven copy trading on-chain.',        twitter: '@alexchen_defi', followers: 12400, initials: 'AC', bgColor: 'bg-blue-500' },
+  { id: 2, name: 'Sarah Kim',     role: 'Co-founder & CTO', bio: 'MEV researcher & Solidity engineer. prev @Flashbots.',           twitter: '@sarahkim_eth',  followers: 8900,  initials: 'SK', bgColor: 'bg-violet-500' },
+  { id: 3, name: 'Marcus Rivera', role: null,                bio: 'DeFi yield optimizer. Obsessed with capital efficiency.',         twitter: null,             followers: 15600, initials: 'MR', bgColor: 'bg-emerald-500' },
+  { id: 4, name: 'Emily Zhang',   role: 'CEO',              bio: 'On-chain credit scoring for the underbanked. ex-Goldman.',       twitter: '@emilyzhang',    followers: 6700,  initials: 'EZ', bgColor: 'bg-amber-500' },
+  { id: 5, name: 'David Park',    role: 'Head of Research', bio: 'Tokenomics & AI agent marketplace research. PhD candidate.',     twitter: '@dpark_rsch',    followers: 4200,  initials: 'DP', bgColor: 'bg-rose-500' },
+  { id: 6, name: 'Lisa Wang',     role: 'Founder & CPO',   bio: 'Product-led growth for web3 native apps. ex-Figma.',            twitter: null,             followers: 3100,  initials: 'LW', bgColor: 'bg-cyan-500' },
+  { id: 7, name: 'James Liu',     role: null,               bio: 'Investing in RWA & stablecoin infrastructure since 2019.',       twitter: '@jamesliu_vc',   followers: 28500, initials: 'JL', bgColor: 'bg-indigo-500' },
+  { id: 8, name: 'Nina Patel',    role: 'Lead Engineer',   bio: 'Solidity & ZK circuits. love hard technical problems.',           twitter: null,             followers: 5400,  initials: 'NP', bgColor: 'bg-pink-500' },
+  { id: 9, name: 'Tom Wu',        role: 'CFO',              bio: 'Treasury management & tokenomics for DeFi protocols.',           twitter: '@tomwu_fi',      followers: 7800,  initials: 'TW', bgColor: 'bg-orange-500' },
 ];
 
 const AGENT_CATEGORIES = ['All', 'Finance', 'Research', 'DeFi'];
 
-/* ── Contacts Page ── */
+// Mock "strangers" database — not in contacts
+const STRANGER_DB = [
+  { id: 's1', name: 'Alice Zhou',   account: '@alicez',     email: 'alice@defi.xyz',        role: 'DeFi Researcher',       mutual: 3, grad: 'from-fuchsia-500 to-pink-500',   initials: 'AZ' },
+  { id: 's2', name: 'Bob Chen',     account: '@bobchen',    email: 'bob@cryptofund.io',      role: 'Portfolio Manager',     mutual: 1, grad: 'from-sky-500 to-blue-500',       initials: 'BC' },
+  { id: 's3', name: 'Chloe Martin', account: '@chloe_m',    email: 'chloe@loka.fi',         role: 'Smart Contract Auditor',mutual: 7, grad: 'from-emerald-500 to-teal-500',   initials: 'CM' },
+  { id: 's4', name: 'Daniel Lee',   account: '@dlee_web3',  email: 'd.lee@rwa.capital',      role: 'RWA Strategist',        mutual: 2, grad: 'from-amber-400 to-orange-400',   initials: 'DL' },
+  { id: 's5', name: 'Eva Rossi',    account: '@evarossi',   email: 'eva@stablecoin.io',      role: 'Protocol Economist',    mutual: 0, grad: 'from-violet-500 to-purple-500',  initials: 'ER' },
+  { id: 's6', name: 'Tom Zhang',    account: '@tomzhang',   email: 'tom@lokafi.xyz',         role: 'Yield Farmer',          mutual: 4, grad: 'from-rose-500 to-pink-500',      initials: 'TZ' },
+  { id: 's7', name: 'Jay Park',     account: '@jaypark',    email: 'jay@onchain.vc',         role: 'On-chain Analyst',      mutual: 0, grad: 'from-indigo-500 to-blue-600',   initials: 'JP' },
+  { id: 's8', name: 'Lena Fischer', account: '@lena_fi',    email: 'lena@defiresearch.io',   role: 'Token Economist',       mutual: 2, grad: 'from-cyan-500 to-sky-500',       initials: 'LF' },
+  { id: 's9', name: 'Mike Torres',  account: '@miketorres', email: 'mike@creditlayer.io',    role: 'Credit Analyst',        mutual: 1, grad: 'from-orange-400 to-amber-500',   initials: 'MT' },
+];
+
+const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [q, setQ] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [results, setResults] = useState<typeof STRANGER_DB>([]);
+  const [sent, setSent] = useState<Set<string>>(new Set());
+
+  const handleSearch = () => {
+    if (!q.trim()) return;
+    setSearching(true);
+    setSearched(false);
+    // Simulate async search
+    setTimeout(() => {
+      const lower = q.toLowerCase();
+      const found = STRANGER_DB.filter(s =>
+        s.account.toLowerCase().includes(lower) ||
+        s.name.toLowerCase().includes(lower) ||
+        s.email.toLowerCase().includes(lower)
+      );
+      setResults(found);
+      setSearched(true);
+      setSearching(false);
+    }, 600);
+  };
+
+  const sendRequest = (id: string) =>
+    setSent(prev => { const n = new Set(prev); n.add(id); return n; });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-[15px] font-bold text-gray-900">Add Friend</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">Search by account, nickname, or email</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* Search bar */}
+        <div className="px-5 pt-4 pb-3">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                autoFocus value={q}
+                onChange={e => setQ(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                placeholder="@account · nickname · email"
+                className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder:text-gray-300"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+            <button onClick={handleSearch}
+              className="px-4 py-2.5 bg-gray-900 text-white text-[12px] font-bold rounded-xl hover:bg-gray-700 transition-all shrink-0">
+              Search
+            </button>
+          </div>
+          {/* Search hints */}
+          {!searched && !searching && (
+            <div className="flex gap-2 mt-2.5">
+              {['Account ID', 'Nickname', 'Email'].map(hint => (
+                <span key={hint} className="text-[10px] font-medium text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md">{hint}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Results area */}
+        <div className="min-h-[120px] max-h-72 overflow-y-auto px-5 pb-4">
+          {/* Loading */}
+          {searching && (
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
+              <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+              <p className="text-[11px] text-gray-400">Searching...</p>
+            </div>
+          )}
+
+          {/* No results */}
+          {searched && !searching && results.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 gap-1.5">
+              <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <p className="text-[13px] font-semibold text-gray-400">No users found</p>
+              <p className="text-[11px] text-gray-300">Try a different account ID or email</p>
+            </div>
+          )}
+
+          {/* Results */}
+          {!searching && results.map(s => {
+            const isSent = sent.has(s.id);
+            return (
+              <div key={s.id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>
+                  {s.initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[13px] font-semibold text-gray-900 leading-tight">{s.name}</p>
+                    <span className="text-[10px] text-gray-400 font-mono">{s.account}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{s.role}</p>
+                  {s.mutual > 0 && (
+                    <p className="text-[10px] text-gray-300 mt-0.5">{s.mutual} mutual connection{s.mutual > 1 ? 's' : ''}</p>
+                  )}
+                </div>
+                <button onClick={() => !isSent && sendRequest(s.id)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${isSent ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-gray-900 text-white hover:bg-gray-700'}`}>
+                  {isSent ? 'Sent ✓' : 'Add'}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Empty initial state */}
+          {!searching && !searched && (
+            <div className="flex flex-col items-center justify-center py-8 gap-2 text-gray-300">
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+              <p className="text-[12px]">Enter a keyword to find people</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-[12px] font-bold text-gray-500 hover:bg-gray-100 transition-all">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Create Group Modal ─────────────────────────────────────────────────
+const CreateGroupModal: React.FC<{
+  onClose: () => void;
+  onCreated?: (newGroupId: string) => void;
+}> = ({ onClose, onCreated }) => {
+  const [step, setStep] = useState<'members' | 'info'>('members');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [groupName, setGroupName] = useState('');
+  const [groupBio, setGroupBio] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setAvatarUrl(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const toggleMember = (id: number) =>
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  // Agents available to add (use negative IDs to distinguish from contacts)
+  const AVAILABLE_AGENTS = [
+    { id: -1, name: 'Loka Agent',      desc: 'AI-powered investment assistant',   initials: 'L' },
+    { id: -2, name: 'Risk Analyzer',   desc: 'Credit scoring & risk analysis',     initials: 'R' },
+    { id: -3, name: 'Market Research', desc: 'Real-time market intelligence',      initials: 'M' },
+    { id: -4, name: 'Yield Optimizer', desc: 'Find the best yield opportunities',  initials: 'Y' },
+  ];
+
+  const selectedCount = selected.size;
+
+  const GRAD_MAP: Record<string, string> = {
+    'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500',
+    'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400',
+    'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500',
+    'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500',
+    'bg-orange-500': 'from-orange-400 to-amber-500',
+  };
+
+  const stepLabel = step === 'members' ? 'Step 1 of 2 — Select members'
+    : 'Step 2 of 2 — Group info (optional)';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            {step === 'info' && (
+              <button onClick={() => setStep('members')} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+            )}
+            <div>
+              <h2 className="text-[15px] font-bold text-gray-900">Create Group</h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">{stepLabel}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* ── Step 1: Select Members ── */}
+        {step === 'members' && (
+          <div className="max-h-[26rem] overflow-y-auto">
+            {/* AI Agents section */}
+            <div className="px-5 pt-3 pb-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">AI Agents</p>
+            </div>
+            {AVAILABLE_AGENTS.map(a => {
+              const isSel = selected.has(a.id);
+              return (
+                <div key={a.id} onClick={() => toggleMember(a.id)}
+                  className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
+                  <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center text-[12px] font-black text-violet-600 shrink-0">{a.initials}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-semibold text-gray-900 leading-tight">{a.name}</p>
+                      <span className="text-[10px] font-semibold text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded-md">Agent</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{a.desc}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${isSel ? 'bg-gray-900 border-gray-900' : 'border-gray-200'}`}>
+                    {isSel && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Divider */}
+            <div className="px-5 pt-3 pb-1 border-t border-gray-50 mt-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contacts</p>
+            </div>
+            {DISCOVER_CONTACTS.map(c => {
+              const grad = GRAD_MAP[c.bgColor] ?? 'from-gray-400 to-gray-500';
+              const isSel = selected.has(c.id);
+              return (
+                <div key={c.id} onClick={() => toggleMember(c.id)}
+                  className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
+                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>{c.initials}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
+                      {c.role && <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">{c.role}</span>}
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{c.bio}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${isSel ? 'bg-gray-900 border-gray-900' : 'border-gray-200'}`}>
+                    {isSel && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Step 2: Group Info (optional) ── */}
+        {step === 'info' && (
+          <div className="px-5 py-5 space-y-4">
+            {/* Avatar upload */}
+            <div>
+              <label className="block text-[12px] font-semibold text-gray-600 mb-2">Avatar <span className="font-normal text-gray-300">(optional)</span></label>
+              <div className="flex items-center gap-3">
+                {/* Preview */}
+                <div className="w-14 h-14 rounded-2xl bg-gray-100 border border-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                    : <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  }
+                </div>
+                {/* Upload button */}
+                <label className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-100 bg-gray-50 text-[12px] font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer transition-all">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  Upload photo
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                </label>
+                {avatarUrl && (
+                  <button onClick={() => setAvatarUrl(null)} className="text-[11px] text-gray-400 hover:text-gray-700 transition-colors">Remove</button>
+                )}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div>
+              <label className="block text-[12px] font-semibold text-gray-600 mb-2">Name <span className="font-normal text-gray-300">(optional)</span></label>
+              <input autoFocus value={groupName} onChange={e => setGroupName(e.target.value)}
+                placeholder="e.g. DeFi Alpha Hunters"
+                className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder:text-gray-300" />
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label className="block text-[12px] font-semibold text-gray-600 mb-2">Description <span className="font-normal text-gray-300">(optional)</span></label>
+              <textarea value={groupBio} onChange={e => setGroupBio(e.target.value)} rows={2}
+                placeholder="What's this group about?"
+                className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder:text-gray-300 resize-none" />
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 flex justify-between items-center gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-[12px] font-bold text-gray-400 hover:bg-gray-100 transition-all">Cancel</button>
+          <div className="flex items-center gap-2">
+            {step === 'members' ? (
+              <button onClick={() => selected.size > 0 && setStep('info')}
+                className={`px-4 py-2 rounded-xl text-[12px] font-bold transition-all ${selected.size > 0 ? 'bg-gray-900 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+                {selectedCount > 0 ? `Next (${selectedCount} selected)` : 'Select at least 1'}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const newId = `g-${Date.now()}`;
+                  onCreated?.(newId);
+                  onClose();
+                }}
+                className="px-4 py-2 rounded-xl text-[12px] font-bold bg-gray-900 text-white hover:bg-gray-700 transition-all">
+                Create Group
+              </button>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// ── Mock pending friend requests ─────────────────────────────────────
+const MOCK_REQUESTS = [
+  { id: 'r1', name: 'Bob Chen',     account: '@bobchen',    role: 'Portfolio Manager',     mutual: 1, grad: 'from-sky-500 to-blue-500',     initials: 'BC', time: '2m ago' },
+  { id: 'r2', name: 'Lena Fischer', account: '@lena_fi',    role: 'Token Economist',       mutual: 2, grad: 'from-cyan-500 to-sky-500',     initials: 'LF', time: '1h ago' },
+  { id: 'r3', name: 'Jay Park',     account: '@jaypark',    role: 'On-chain Analyst',      mutual: 0, grad: 'from-indigo-500 to-blue-600', initials: 'JP', time: '3h ago' },
+];
+
+// ── ContactsPage ───────────────────────────────────────────────────────
 const ContactsPage: React.FC = () => {
   const [search, setSearch] = useState('');
+  const [modal, setModal] = useState<'friend' | null>(null);
+  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  const [accepted, setAccepted] = useState<Set<string>>(new Set());
+
+  const handleAccept = (id: string) => {
+    setAccepted(prev => { const n = new Set(prev); n.add(id); return n; });
+    setTimeout(() => setRequests(prev => prev.filter(r => r.id !== id)), 1200);
+  };
+  const handleDecline = (id: string) =>
+    setRequests(prev => prev.filter(r => r.id !== id));
   const filtered = DISCOVER_CONTACTS.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) || c.org.toLowerCase().includes(search.toLowerCase())
+    c.name.toLowerCase().includes(search.toLowerCase()) || c.bio.toLowerCase().includes(search.toLowerCase())
   );
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 max-w-[1600px] mx-auto w-full">
+    <div className="flex-1 flex flex-col h-full overflow-y-auto">
+      {modal === 'friend' && <AddFriendModal onClose={() => setModal(null)} />}
+      <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full min-h-full">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-[22px] font-semibold text-gray-900">Contacts</h1>
-        <span className="text-xs font-medium text-gray-400">{DISCOVER_CONTACTS.length} contacts</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-400">{DISCOVER_CONTACTS.length} contacts</span>
+          {/* + button — directly opens Add Friend */}
+          <button onClick={() => setModal('friend')}
+            className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-900 text-white hover:bg-gray-700 transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+          </button>
+        </div>
       </div>
+      {/* ── Friend Requests ─────────────────────────── */}
+      {requests.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-[13px] font-bold text-gray-900">Friend Requests</h2>
+            <span className="w-5 h-5 rounded-full bg-gray-900 text-white text-[10px] font-black flex items-center justify-center">{requests.length}</span>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+            {requests.map((r, idx) => {
+              const isAccepted = accepted.has(r.id);
+              return (
+                <div key={r.id} className={`flex items-center gap-4 px-4 py-3.5 transition-colors ${idx !== 0 ? 'border-t border-gray-50' : ''} ${isAccepted ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}>
+                  {/* Avatar */}
+                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${r.grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>
+                    {r.initials}
+                  </div>
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-semibold text-gray-900 leading-tight">{r.name}</p>
+                      <span className="text-[10px] text-gray-400 font-mono">{r.account}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {r.role}{r.mutual > 0 ? ` · ${r.mutual} mutual` : ''} · {r.time}
+                    </p>
+                  </div>
+                  {/* Actions */}
+                  {isAccepted ? (
+                    <span className="text-[11px] font-bold text-emerald-600 shrink-0 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
+                      Accepted
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => handleDecline(r.id)}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all">
+                        Decline
+                      </button>
+                      <button onClick={() => handleAccept(r.id)}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-white bg-gray-900 hover:bg-gray-700 transition-all">
+                        Accept
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="relative mb-5">
         <input
           value={search} onChange={e => setSearch(e.target.value)}
@@ -816,22 +1663,54 @@ const ContactsPage: React.FC = () => {
         />
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><I.Search /></div>
       </div>
-      <div className="space-y-1">
-        {filtered.map(c => (
-          <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all cursor-pointer group">
-            <div className={`w-9 h-9 ${c.bgColor} rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0`}>{c.initials}</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-gray-900 truncate">{c.name}</p>
-              <p className="text-[11px] text-gray-400 truncate">{c.role} · {c.org}</p>
-            </div>
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
-                <I.Chat />
+      <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+        {filtered.map((c, idx) => {
+          const gradMap: Record<string, string> = {
+            'bg-blue-500': 'from-blue-500 to-indigo-500',
+            'bg-violet-500': 'from-violet-500 to-purple-500',
+            'bg-emerald-500': 'from-emerald-500 to-teal-500',
+            'bg-amber-500': 'from-amber-400 to-orange-400',
+            'bg-rose-500': 'from-rose-500 to-pink-500',
+            'bg-cyan-500': 'from-cyan-500 to-sky-500',
+            'bg-indigo-500': 'from-indigo-500 to-blue-600',
+            'bg-pink-500': 'from-pink-500 to-rose-500',
+            'bg-orange-500': 'from-orange-400 to-amber-500',
+          };
+          const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
+          return (
+            <div key={c.id} className={`flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer group ${idx !== 0 ? 'border-t border-gray-50' : ''}`}>
+              {/* Avatar */}
+              <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>
+                {c.initials}
+              </div>
+              {/* Name + role tag + bio + twitter */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
+                  {c.role && (
+                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md leading-tight">
+                      {c.role}
+                    </span>
+                  )}
+                  {c.twitter && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-mono hover:text-gray-700 transition-colors">
+                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                      {c.twitter}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-0.5 truncate">{c.bio}</p>
+              </div>
+              {/* Message button */}
+              <button className="shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 hover:text-gray-900 transition-colors opacity-0 group-hover:opacity-100">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                Message
               </button>
             </div>
-          </div>
-        ))}
-        {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No contacts found</p>}
+          );
+        })}
+        {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-10">No contacts found</p>}
+      </div>
       </div>
     </div>
   );

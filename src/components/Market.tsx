@@ -1074,7 +1074,7 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
         </div>
-        
+
         {/* Top Badges */}
         <div className="relative z-10 flex w-full justify-between items-start">
           <div className={`px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider uppercase shadow-sm border ${asset.status === 'Failed'
@@ -1087,7 +1087,7 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
           </div>
 
           <button className="w-7 h-7 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-white shadow-sm transition-all relative z-10">
-             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
           </button>
         </div>
 
@@ -1123,7 +1123,7 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
             <p className="text-[13px] font-bold text-gray-900">${(asset.targetAmount / 1000).toFixed(0)}k</p>
           </div>
           <div>
-            <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1 flex items-center gap-1"><svg fill="currentColor" viewBox="0 0 20 20" className="w-2.5 h-2.5 text-[#00E676]"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z"/></svg>APY</p>
+            <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1 flex items-center gap-1"><svg fill="currentColor" viewBox="0 0 20 20" className="w-2.5 h-2.5 text-[#00E676]"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" /></svg>APY</p>
             <p className="text-[14px] font-bold text-[#00E676]">{asset.apy}%</p>
           </div>
           <div>
@@ -1141,8 +1141,8 @@ const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asse
             />
           </div>
           <div className="flex justify-between items-center text-[10px]">
-             <p className="font-bold text-black">${asset.raisedAmount.toLocaleString()} <span className="font-medium text-gray-400">pledged</span></p>
-             <p className="font-medium text-gray-400">{progress.toFixed(0)}% · {asset.backersCount} backers</p>
+            <p className="font-bold text-black">${asset.raisedAmount.toLocaleString()} <span className="font-medium text-gray-400">pledged</span></p>
+            <p className="font-medium text-gray-400">{progress.toFixed(0)}% · {asset.backersCount} backers</p>
           </div>
         </div>
       </div>
