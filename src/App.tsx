@@ -803,12 +803,12 @@ const ContactsPage: React.FC = () => {
     c.name.toLowerCase().includes(search.toLowerCase()) || c.org.toLowerCase().includes(search.toLowerCase())
   );
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 max-w-[900px] mx-auto w-full">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Contacts</h1>
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 max-w-[1600px] mx-auto w-full">
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-[22px] font-semibold text-gray-900">Contacts</h1>
         <span className="text-xs font-medium text-gray-400">{DISCOVER_CONTACTS.length} contacts</span>
       </div>
-      <div className="relative mb-6">
+      <div className="relative mb-5">
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search contacts..."
@@ -816,7 +816,7 @@ const ContactsPage: React.FC = () => {
         />
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><I.Search /></div>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1">
         {filtered.map(c => (
           <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all cursor-pointer group">
             <div className={`w-9 h-9 ${c.bgColor} rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0`}>{c.initials}</div>
@@ -838,18 +838,18 @@ const ContactsPage: React.FC = () => {
 };
 
 const DiscoverPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'Agents' | 'Groups'>('Agents');
+  const [activeTab, setActiveTab] = useState<'Agents' | 'People' | 'Groups'>('Agents');
   const [agentCat, setAgentCat] = useState('All');
 
-  const tabs = ['Agents', 'Groups'] as const;
+  const tabs = ['Agents', 'People', 'Groups'] as const;
 
   const filteredAgents = agentCat === 'All' ? DISCOVER_AGENTS : DISCOVER_AGENTS.filter(a => a.category === agentCat);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
       <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full min-h-full">
-        {/* Header + Tabs — flat style */}
-        <h1 className="text-[22px] font-semibold text-gray-900 mb-4">Playground</h1>
+        {/* Header + Tabs */}
+        <h1 className="text-[22px] font-semibold text-gray-900 mb-4">Discover</h1>
         <div className="flex items-center gap-6 border-b border-gray-100 mb-6">
           {tabs.map(t => (
             <button key={t}
@@ -934,6 +934,58 @@ const DiscoverPage: React.FC = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* ── People Tab ── */}
+        {activeTab === 'People' && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {[
+              { name: 'Alex Chen', role: 'Founder', org: 'ComputeDAO', score: 1200, investments: 0, raises: 3, avatar: 'A', color: 'from-violet-500 to-purple-700', followers: '12.5k' },
+              { name: 'Sarah Kim', role: 'Investor', org: 'Independent', score: 980, investments: 12, raises: 0, avatar: 'S', color: 'from-indigo-600 to-blue-700', followers: '450' },
+              { name: 'Marcus Johnson', role: 'Investor', org: 'Alpha Capital', score: 1450, investments: 28, raises: 0, avatar: 'M', color: 'from-emerald-500 to-teal-700', followers: '2.1k' },
+              { name: 'Lisa Wang', role: 'Founder', org: 'Rezi Inc.', score: 890, investments: 0, raises: 2, avatar: 'L', color: 'from-rose-500 to-pink-600', followers: '18.2k' },
+              { name: 'David Park', role: 'Investor', org: 'DePhi Ventures', score: 720, investments: 5, raises: 0, avatar: 'D', color: 'from-amber-600 to-orange-600', followers: '8,900' },
+              { name: 'Emma Torres', role: 'Contributor', org: 'Loka DAO', score: 650, investments: 3, raises: 0, avatar: 'E', color: 'from-sky-500 to-blue-500', followers: '1,200' },
+              { name: 'James Liu', role: 'Founder', org: 'Deeptrue Corp.', score: 760, investments: 1, raises: 1, avatar: 'J', color: 'from-cyan-600 to-blue-700', followers: '34.5k' },
+              { name: 'Rachel Green', role: 'Investor', org: 'Onchain Insights', score: 1100, investments: 19, raises: 0, avatar: 'R', color: 'from-fuchsia-600 to-purple-600', followers: '5,020' },
+              { name: 'Sam Altman', role: 'Founder', org: 'OpenAI', score: 9990, investments: 42, raises: 5, avatar: 'S', color: 'from-gray-700 to-gray-900', followers: '3.2M' },
+              { name: 'Brian Armstrong', role: 'Founder', org: 'Coinbase', score: 8500, investments: 30, raises: 2, avatar: 'B', color: 'from-blue-600 to-blue-800', followers: '1.2M' },
+            ].map((person, i) => (
+              <div key={i} className="group cursor-pointer flex flex-col h-full rounded-[20px] overflow-hidden bg-white hover:shadow-xl transition-all duration-500 border border-gray-100 hover:border-gray-200">
+                {/* Large Profile Image Area */}
+                <div className={`h-28 w-full bg-gradient-to-br ${person.color} relative flex items-center justify-center overflow-hidden`}>
+                   <span className="text-white/30 font-black text-5xl transition-transform duration-700 group-hover:scale-110 drop-shadow-lg">{person.avatar}</span>
+                   {/* Top Left X (Twitter) Followers */}
+                   <a href="#" onClick={(e) => e.stopPropagation()} className="absolute top-3 left-3 bg-white/95 backdrop-blur shadow-sm text-gray-900 text-[10px] font-bold px-2 py-1 rounded-lg z-10 flex items-center gap-1.5 border border-white/20 hover:scale-105 hover:bg-white transition-all cursor-pointer">
+                     <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                     {person.followers}
+                   </a>
+                   {/* Top Right Add Friend */}
+                   <button onClick={(e) => e.stopPropagation()} className="absolute top-3 right-3 w-8 h-8 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors z-10 border border-white/10">
+                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                   </button>
+                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                </div>
+                {/* Content */}
+                <div className="p-4 flex-1 flex flex-col">
+                  <h3 className="text-base font-bold text-gray-900 leading-tight mb-1.5 group-hover:text-blue-600 transition-colors">{person.name}</h3>
+                  <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-3 line-clamp-3">
+                    {person.role} @ {person.org}. {person.investments > 0 ? `${person.investments} investments. ` : ''}Active ({person.score.toLocaleString()} pts).
+                  </p>
+                  <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
+                    <a href="#" onClick={(e) => e.preventDefault()} className="text-[11px] font-semibold text-gray-400 hover:text-blue-600 transition-all">
+                      {person.name.split(' ')[0].toLowerCase() + (person.name.split(' ')[1] ? person.name.split(' ')[1].toLowerCase() : '')}.com
+                    </a>
+                    <div className="flex items-center gap-2.5 text-gray-400">
+                      <button className="hover:text-[#0A66C2] hover:scale-110 transition-all">
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
