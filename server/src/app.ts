@@ -45,6 +45,8 @@ const allowedOrigins = [
   'https://localhost',        // Capacitor Android (androidScheme: 'https')
   'capacitor://localhost',    // Capacitor iOS
   'http://localhost',         // Capacitor fallback
+  'https://www.loka.cash',    // Production apex
+  'https://loka.cash',        // Production base
   config.frontendUrl,
 ].filter(Boolean);
 
