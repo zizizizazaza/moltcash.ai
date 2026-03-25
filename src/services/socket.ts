@@ -30,9 +30,9 @@ class SocketClient {
     }
 
     this.socket = io(SOCKET_URL, {
-      path: '/ws',
+      path: '/api/socket.io',
       auth: { token: this.token },
-      transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
+      // rely on default Socket.IO negotiation (polling -> upgrade) to survive Nginx blockages
     });
 
     this.socket.on('connect', () => {
