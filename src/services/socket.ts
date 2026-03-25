@@ -1,10 +1,20 @@
 import { io, Socket } from 'socket.io-client';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
-// Extract the domain part for WebSocket URL (e.g. "http://localhost:3002")
-const SOCKET_URL = API_BASE.startsWith('http') 
-  ? API_BASE.replace('/api', '') 
-  : window.location.origin.replace('3000', '3002'); // Fallback hack for local dev
+
+// Properly derive socket connection URL and path from API_BASE
+// e.g. "https://nftkashai.online/lokacash/api" → origin: "https://nftkashai.online", path: "/lokacash/api/socket.io"
+let SOCKET_URL: string;
+let SOCKET_PATH: string;
+
+if (API_BASE.startsWith('http')) {
+  const url = new URL(API_BASE);
+  SOCKET_URL = url.origin;
+  SOCKET_PATH = url.pathname.replace(/\/?$/, '') + '/socket.io';
+} else {
+  SOCKET_URL = window.location.origin.replace('3000', '3002');
+  SOCKET_PATH = API_BASE.replace(/\/?$/, '') + '/socket.io';
+}
 
 class SocketClient {
   private socket: Socket | null = null;
@@ -30,9 +40,8 @@ class SocketClient {
     }
 
     this.socket = io(SOCKET_URL, {
-      path: '/api/socket.io',
+      path: SOCKET_PATH,
       auth: { token: this.token },
-      // rely on default Socket.IO negotiation (polling -> upgrade) to survive Nginx blockages
     });
 
     this.socket.on('connect', () => {
