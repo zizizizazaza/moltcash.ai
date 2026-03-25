@@ -161,4 +161,53 @@ router.post('/refresh', authRequired, async (req: AuthRequest, res, next) => {
   }
 });
 
+// Sync Privy user to local DB
+router.post('/sync', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const { email, name, avatar } = req.body;
+    const userId = req.userId!;
+
+    let user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    if (!user) {
+      // Maybe they signed up with email but their ID now changed because their auth provider shifted? Let's check by email first to avoid unique constraint drift if needed.
+      if (email) {
+        const existingEmailUser = await prisma.user.findUnique({ where: { email } });
+        if (existingEmailUser && existingEmailUser.id !== userId) {
+          // just update the ID and provider if we found them by email
+          user = await prisma.user.update({
+            where: { email },
+            data: { id: userId, authProvider: 'privy', name: name || existingEmailUser.name, avatar: avatar || existingEmailUser.avatar }
+          });
+          res.json(user);
+          return;
+        }
+      }
+
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          email: email || `${userId.slice(-8)}@privy.user`,
+          name: name || `User-${userId.slice(-4)}`,
+          avatar: avatar || null,
+          authProvider: 'privy',
+        },
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          name: name || user.name, 
+          avatar: avatar || user.avatar,
+          ...(email && !user.email?.includes('@privy.user') ? { email } : {}) 
+        },
+      });
+    }
+
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

@@ -23,6 +23,7 @@ import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
 import invitationRoutes from './routes/invitation.js';
 import trustmrrRoutes from './routes/trustmrr.js';
+import communityRoutes from './routes/community.js';
 import prisma from './db.js';
 
 const app = express();
@@ -99,6 +100,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/invitation', invitationRoutes);
 app.use('/api/trustmrr', trustmrrRoutes);
+app.use('/api/community', communityRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

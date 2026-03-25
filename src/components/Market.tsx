@@ -538,9 +538,14 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                   <h3 className="text-[13px] font-bold text-black mb-4">Tech Stack</h3>
                   {project.techStack && project.techStack.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {project.techStack.map(t => (
-                        <span key={t} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">{t}</span>
-                      ))}
+                      {project.techStack.map((t: any) => {
+                        const label = typeof t === 'string' ? t : (t.slug || t.category || '');
+                        return label ? (
+                          <span key={label} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                            {label}
+                          </span>
+                        ) : null;
+                      })}
                     </div>
                   ) : <p className="text-[12px] text-gray-400">Not available</p>}
                 </div>
@@ -627,12 +632,12 @@ const Market: React.FC = () => {
   const [potMrrMax, setPotMrrMax] = useState<string>('');
   const [potUsersMin, setPotUsersMin] = useState<string>('');
   const [potUsersMax, setPotUsersMax] = useState<string>('');
-  const [potSort, setPotSort] = useState<string>('revenue');
-  const [potPeriod, setPotPeriod] = useState<string>('30d');
+  const [potSort, setPotSort] = useState<string>('default');
 
   // TrustMRR live data
   const [trustmrrStartups, setTrustmrrStartups] = useState<any[]>([]);
   const [trustmrrLoading, setTrustmrrLoading] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(60);
 
   const refreshAssets = () => {
     api.getProjects().then(data => {
@@ -967,16 +972,20 @@ const Market: React.FC = () => {
               </button>
 
               <div className="ml-auto flex items-center gap-2">
-                <select value={potSort} onChange={e => setPotSort(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer">
-                  <option value="revenue">Revenue</option>
-                  <option value="mrr">MRR</option>
-                  <option value="growth">Growth</option>
-                  <option value="traffic">Traffic</option>
-                  <option value="rpv">$/visitor</option>
-                </select>
-                <select value={potPeriod} onChange={e => setPotPeriod(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer">
-                  <option value="30d">Last 30 days</option>
-                  <option value="all">All time</option>
+                <select value={potSort} onChange={e => setPotSort(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer shadow-sm">
+                  <option value="default">Best deals (default)</option>
+                  <option value="listed_desc">Listed: Newest First</option>
+                  <option value="listed_asc">Listed: Oldest First</option>
+                  <option value="multiple_asc">Multiple: Low to High</option>
+                  <option value="multiple_desc">Multiple: High to Low</option>
+                  <option value="asking_asc">Asking Price: Low to High</option>
+                  <option value="asking_desc">Asking Price: High to Low</option>
+                  <option value="revenue_asc">Revenue: Low to High</option>
+                  <option value="revenue_desc">Revenue: High to Low</option>
+                  <option value="growth_asc">Growth: Low to High</option>
+                  <option value="growth_desc">Growth: High to Low</option>
+                  <option value="founded_asc">Founded: Oldest First</option>
+                  <option value="founded_desc">Founded: Newest First</option>
                 </select>
               </div>
             </div>
@@ -1040,17 +1049,46 @@ const Market: React.FC = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...trustmrrStartups]
-              .filter(s => potCat === 'All' || (s.category || '').toLowerCase() === potCat.toLowerCase())
-              .sort((a, b) => {
-                if (potSort === 'revenue') return (potPeriod === 'all' ? (b.revenue?.total ?? 0) - (a.revenue?.total ?? 0) : (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0));
-                if (potSort === 'mrr') return (b.revenue?.mrr ?? 0) - (a.revenue?.mrr ?? 0);
-                if (potSort === 'growth') return (b.growth30d ?? 0) - (a.growth30d ?? 0);
-                if (potSort === 'traffic') return (b.visitorsLast30Days ?? 0) - (a.visitorsLast30Days ?? 0);
-                if (potSort === 'rpv') return (b.revenuePerVisitor ?? 0) - (a.revenuePerVisitor ?? 0);
-                return 0;
-              })
-              .map((s, i) => {
+            {(() => {
+              const sorted = [...trustmrrStartups]
+                .sort((a, b) => {
+                  if (potSort === 'default') {
+                    // Default TrustMRR behavior: Revenue Descending
+                    return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
+                  }
+
+                  // Universal property extractor
+                  let valA: number | null = null, valB: number | null = null;
+                  if (potSort.startsWith('multiple')) { valA = a.multiple; valB = b.multiple; }
+                  else if (potSort.startsWith('asking')) { valA = a.askingPrice; valB = b.askingPrice; }
+                  else if (potSort.startsWith('revenue')) { valA = a.revenue?.last30Days ?? null; valB = b.revenue?.last30Days ?? null; }
+                  else if (potSort.startsWith('growth')) { valA = a.growth30d; valB = b.growth30d; }
+                  else if (potSort.startsWith('listed')) {
+                    valA = a.firstListedForSaleAt ? new Date(a.firstListedForSaleAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : null);
+                    valB = b.firstListedForSaleAt ? new Date(b.firstListedForSaleAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : null);
+                  }
+                  else if (potSort.startsWith('founded')) { 
+                    valA = a.foundedDate ? new Date(a.foundedDate).getTime() : null;
+                    valB = b.foundedDate ? new Date(b.foundedDate).getTime() : null;
+                  }
+
+                  // Standard Database Emulation: 'NULLS LAST'
+                  // Empty values (like N/A Growth or Make Offer) are globally pushed to the bottom of the list
+                  if (valA == null && valB != null) return 1;
+                  if (valB == null && valA != null) return -1;
+                  if (valA == null && valB == null) {
+                      // Stable fallback to prevent React array shuffling when hundreds of items tie as null
+                      return (a.id || a.slug || '').localeCompare(b.id || b.slug || '');
+                  }
+
+                  // Actual Numerical Sort
+                  const asc = potSort.endsWith('_asc');
+                  return asc ? valA! - valB! : valB! - valA!;
+                });
+
+              return (
+                <>
+                  {sorted.slice(0, visibleCount).map((s, i) => {
                 // Derive display properties from API data
                 const catColors: Record<string, string> = {
                   saas: 'text-violet-700 bg-violet-50 border-violet-100',
@@ -1100,23 +1138,23 @@ const Market: React.FC = () => {
                 const growthStr = growthPct != null ? (growthPct >= 0 ? `↑ ${Math.round(growthPct)}%` : `↓ ${Math.abs(Math.round(growthPct))}%`) : '';
 
                 // Dynamic metric value based on dropdown selections
-                let metricLabel = 'REVENUE';
-                let metricValue = '';
-                if (potSort === 'revenue') {
-                  metricLabel = potPeriod === 'all' ? 'TOTAL REVENUE' : 'REVENUE (30D)';
-                  metricValue = formatUsd(potPeriod === 'all' ? revTotal : rev30d);
-                } else if (potSort === 'mrr') {
-                  metricLabel = 'VERIFIED MRR';
-                  metricValue = formatUsd(mrr);
-                } else if (potSort === 'growth') {
+                let metricLabel = 'REVENUE (30D)';
+                let metricValue = formatUsd(rev30d);
+                if (potSort.startsWith('multiple')) {
+                  metricLabel = 'MULTIPLE';
+                  metricValue = s.multiple != null ? `${parseFloat(s.multiple).toFixed(1)}x` : 'N/A';
+                } else if (potSort.startsWith('asking')) {
+                  metricLabel = 'ASKING PRICE';
+                  metricValue = s.askingPrice != null ? formatUsd(s.askingPrice) : 'Offer';
+                } else if (potSort.startsWith('growth')) {
                   metricLabel = 'GROWTH (30D)';
                   metricValue = growthPct != null ? `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}%` : 'N/A';
-                } else if (potSort === 'traffic') {
-                  metricLabel = 'VISITORS (30D)';
-                  metricValue = s.visitorsLast30Days != null ? formatNum(s.visitorsLast30Days) : 'N/A';
-                } else if (potSort === 'rpv') {
-                  metricLabel = '$/VISITOR';
-                  metricValue = s.revenuePerVisitor != null ? `$${s.revenuePerVisitor.toFixed(2)}` : 'N/A';
+                } else if (potSort.startsWith('founded')) {
+                  metricLabel = 'FOUNDED';
+                  metricValue = s.foundedDate ? new Date(s.foundedDate).getFullYear().toString() : 'N/A';
+                } else if (potSort === 'revenue_desc' || potSort === 'revenue_asc') {
+                  metricLabel = 'REVENUE (30D)';
+                  metricValue = formatUsd(rev30d);
                 }
 
                 // Build tags
@@ -1243,6 +1281,23 @@ const Market: React.FC = () => {
                   </div>
                 );
               })}
+              
+            {/* Load More Button spanning full grid */}
+            {sorted.length > visibleCount && (
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center mt-6">
+                <button
+                  onClick={() => setVisibleCount(v => v + 60)}
+                  className="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl shadow-sm hover:border-gray-900 transition-all text-sm flex items-center gap-2 mx-auto"
+                >
+                  Load More Startups
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <p className="text-xs text-gray-400 mt-2 font-medium">Showing {visibleCount} of {sorted.length}</p>
+              </div>
+            )}
+            </>
+           );
+          })()}
           </div>
         </>
       )}
