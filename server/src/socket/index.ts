@@ -16,7 +16,7 @@ export function setupSocket(server: HttpServer) {
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    path: '/socket.io',
+    path: '/api/socket.io',
   });
 
   // JWT authentication middleware for WebSocket
