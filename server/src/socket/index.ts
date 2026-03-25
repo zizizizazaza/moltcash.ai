@@ -12,11 +12,11 @@ const onlineUsers = new Set<string>();
 export function setupSocket(server: HttpServer) {
   io = new Server(server, {
     cors: {
-      origin: config.frontendUrl,
+      origin: [config.frontendUrl, 'https://www.loka.cash', 'https://loka.cash', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    path: '/api/socket.io',
+    path: '/socket.io',
   });
 
   // JWT authentication middleware for WebSocket
