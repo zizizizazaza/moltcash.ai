@@ -1,9 +1,13 @@
 import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
+import { verifyToken } from '../middleware/auth.js';
+import prisma from '../db.js';
 
 let io: Server;
+
+// ── Online status tracking ──
+const onlineUsers = new Set<string>();
 
 export function setupSocket(server: HttpServer) {
   io = new Server(server, {
@@ -16,14 +20,14 @@ export function setupSocket(server: HttpServer) {
   });
 
   // JWT authentication middleware for WebSocket
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
     if (!token) {
       return next(new Error('Authentication required'));
     }
     try {
-      const payload = jwt.verify(token as string, config.jwt.secret) as { userId: string };
-      (socket as any).userId = payload.userId;
+      const payload = await verifyToken(token as string);
+      (socket as any).userId = payload.userId || payload.sub?.replace('did:privy:', '');
       next();
     } catch {
       next(new Error('Invalid or expired token'));
@@ -36,6 +40,20 @@ export function setupSocket(server: HttpServer) {
 
     // Auto-join the user's personal room
     socket.join(`user:${userId}`);
+
+    // ── Online status ──
+    onlineUsers.add(userId);
+    // Broadcast to all connected clients (friends will filter client-side)
+    socket.broadcast.emit('user:online', { userId });
+
+    // ── Auto-join group rooms from DB ──
+    // This is vastly superior to relying on frontend `join-group` emits, as it intrinsically survives 
+    // WebSocket disconnects/reconnects without dropping frames or losing synchrony.
+    prisma.groupMember.findMany({ where: { userId } })
+      .then(members => {
+        members.forEach(m => socket.join(`group:${m.groupId}`));
+      })
+      .catch(err => console.error('Failed to auto-join DB groups:', err));
 
     // Join group chat room (validated - userId is already authenticated)
     socket.on('join-group', (groupId: string) => {
@@ -50,8 +68,32 @@ export function setupSocket(server: HttpServer) {
       }
     });
 
+    // ── DM: typing indicator ──
+    socket.on('dm:typing', (data: { conversationId: string; recipientId: string }) => {
+      if (data?.recipientId && data?.conversationId) {
+        emitToUser(data.recipientId, 'dm:typing', {
+          userId,
+          conversationId: data.conversationId,
+        });
+      }
+    });
+
+    // ── Get online users (client request) ──
+    socket.on('get-online-users', (callback: (ids: string[]) => void) => {
+      if (typeof callback === 'function') {
+        callback(Array.from(onlineUsers));
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`🔌 Client disconnected: ${socket.id}`);
+
+      // Check if user has other active sockets before marking offline
+      const rooms = io.sockets.adapter.rooms.get(`user:${userId}`);
+      if (!rooms || rooms.size === 0) {
+        onlineUsers.delete(userId);
+        socket.broadcast.emit('user:offline', { userId });
+      }
     });
   });
 
@@ -76,3 +118,9 @@ export function emitToGroup(groupId: string, event: string, data: unknown) {
     io.to(`group:${groupId}`).emit(event, data);
   }
 }
+
+// Helper to get online user IDs
+export function getOnlineUserIds(): string[] {
+  return Array.from(onlineUsers);
+}
+

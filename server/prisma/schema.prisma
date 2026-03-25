@@ -43,6 +43,12 @@ model User {
   groupMembers        GroupMember[]
   invitationCodes     InvitationCode[]  // codes this user generated
 
+  // Community: friends & DM
+  friendshipsRequested Friendship[]              @relation("FriendshipRequester")
+  friendshipsReceived  Friendship[]              @relation("FriendshipAddressee")
+  conversationLinks    ConversationParticipant[]
+  directMessages       DirectMessage[]
+
   @@index([email])
   @@index([walletAddress])
 }
@@ -214,6 +220,8 @@ model GroupChat {
   id          String   @id @default(cuid())
   projectId   String?  @unique
   name        String
+  bio         String?
+  avatar      String?
   fundedAmount Float   @default(0)
   apy         Float    @default(0)
   createdAt   DateTime @default(now())
@@ -227,8 +235,9 @@ model GroupMember {
   id        String   @id @default(cuid())
   groupId   String
   userId    String
-  role      String   @default("member") // member, issuer, agent
-  joinedAt  DateTime @default(now())
+  role       String   @default("member") // member, issuer, agent
+  joinedAt   DateTime @default(now())
+  lastReadAt DateTime @default(now())
 
   group GroupChat @relation(fields: [groupId], references: [id])
   user  User     @relation(fields: [userId], references: [id])
@@ -502,4 +511,57 @@ model IdempotencyKey {
 
   @@index([key])
   @@index([createdAt])
+}
+
+// ============ Community: Friendship ============
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      String   @default("pending") // pending, accepted, blocked
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id])
+  addressee User @relation("FriendshipAddressee", fields: [addresseeId], references: [id])
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+}
+
+// ============ Community: DM Conversations ============
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     DirectMessage[]
+}
+
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model DirectMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
 }
