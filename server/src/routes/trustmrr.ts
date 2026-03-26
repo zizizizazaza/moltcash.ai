@@ -18,8 +18,8 @@ router.get('/startups', (_req: Request, res: Response) => {
     data = data.filter(s => s.category.toLowerCase() === category.toLowerCase());
   }
 
-  // Optional limit
-  const limit = parseInt(_req.query.limit as string) || 50;
+  // Deliver full catalog for frontend's local pagination (default to 5000)
+  const limit = parseInt(_req.query.limit as string) || 5000;
   data = data.slice(0, limit);
 
   res.json({ data, meta: { total: data.length, cached: true } });
