@@ -2264,8 +2264,8 @@ const ContactsPage: React.FC = () => {
             <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[11px] font-bold text-gray-400">{contacts.length} Connections</span>
           )}
           <button onClick={() => setModal('friend')}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gray-900 text-white hover:bg-black hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24 group"><path className="group-hover:stroke-[3px] transition-all" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+            className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-gray-900 text-white hover:bg-black hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all group">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path className="group-hover:stroke-[3px] transition-all" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
           </button>
         </div>
       </div>
