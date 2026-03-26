@@ -850,6 +850,24 @@ const Market: React.FC = () => {
   // TrustMRR live data
   const [trustmrrStartups, setTrustmrrStartups] = useState<any[]>([]);
   const [trustmrrLoading, setTrustmrrLoading] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(100);
+
+  // Reset infinite scroll on filter changes
+  useEffect(() => {
+    setDisplayLimit(100);
+  }, [potCat, potRevMin, potRevMax, potMrrMin, potMrrMax, potGrowthMin, potGrowthMax, potMarginMin, potMarginMax, potAudience, potFoundedFrom, potFoundedTo, potSort]);
+
+  const observerRef = React.useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = React.useCallback((node: HTMLDivElement | null) => {
+    if (trustmrrLoading) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        setDisplayLimit(prev => prev + 100);
+      }
+    });
+    if (node) observerRef.current.observe(node);
+  }, [trustmrrLoading]);
 
   const refreshAssets = () => {
     api.getProjects().then(data => {
@@ -1415,6 +1433,7 @@ const Market: React.FC = () => {
                 if (potSort === 'founded-asc') return new Date(a.foundedDate || '2099').getTime() - new Date(b.foundedDate || '2099').getTime();
                 return 0;
               })
+              .slice(0, displayLimit)
               .map((s, i) => {
                 // Derive display properties from API data
                 const catColors: Record<string, string> = {
@@ -1582,6 +1601,10 @@ const Market: React.FC = () => {
                 );
               })}
           </div>
+          {/* Intersection Observer target for infinite scrolling */}
+          {!trustmrrLoading && trustmrrStartups.length > 0 && (
+            <div ref={loadMoreRef} className="h-10 w-full" />
+          )}
         </>
       )}
     </div>
