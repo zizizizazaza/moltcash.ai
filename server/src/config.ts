@@ -28,9 +28,9 @@ export const config = {
     refreshExpiresIn: '30d',
   },
   lokaAi: {
-    apiKey: process.env.LOKA_AI_API_KEY || '',
-    baseUrl: process.env.LOKA_AI_BASE_URL || '',
-    model: process.env.LOKA_AI_MODEL || 'deepseek-v3',
+    apiKey: process.env.LOKA_AI_API_KEY?.trim() || '',
+    baseUrl: process.env.LOKA_AI_BASE_URL?.trim() || '',
+    model: process.env.LOKA_AI_MODEL?.trim() || 'deepseek-v3',
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   rateLimit: {
