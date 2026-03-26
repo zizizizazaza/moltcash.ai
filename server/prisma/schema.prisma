@@ -48,6 +48,8 @@ model User {
   friendshipsReceived  Friendship[]              @relation("FriendshipAddressee")
   conversationLinks    ConversationParticipant[]
   directMessages       DirectMessage[]
+  pollsCreated         Poll[]         @relation("PollCreator")
+  pollVotes            PollVote[]
 
   @@index([email])
   @@index([walletAddress])
@@ -229,6 +231,7 @@ model GroupChat {
   project  Project?       @relation(fields: [projectId], references: [id])
   messages GroupMessage[]
   members  GroupMember[]
+  polls    Poll[]
 }
 
 model GroupMember {
@@ -248,17 +251,65 @@ model GroupMember {
 }
 
 model GroupMessage {
-  id        String   @id @default(cuid())
-  groupId   String
-  userId    String
-  content   String
-  role      String   @default("investor") // issuer, investor, agent
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  groupId        String
+  userId         String
+  content        String
+  attachmentUrl  String?
+  attachmentType String?
+  role           String   @default("investor") // issuer, investor, agent
+  createdAt      DateTime @default(now())
 
   group GroupChat @relation(fields: [groupId], references: [id])
   user  User     @relation(fields: [userId], references: [id])
 
   @@index([groupId])
+}
+
+// ============ Polls (Group Chat) ============
+
+model Poll {
+  id         String   @id @default(cuid())
+  groupId    String
+  userId     String   // creator
+  question   String
+  duration   String   @default("1 day") // 1h, 12h, 1 day, 3 days
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  group   GroupChat     @relation(fields: [groupId], references: [id])
+  creator User         @relation("PollCreator", fields: [userId], references: [id])
+  options PollOption[]
+  votes   PollVote[]
+
+  @@index([groupId])
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  text   String
+  order  Int    @default(0)
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id       String   @id @default(cuid())
+  pollId   String
+  optionId String
+  userId   String
+  createdAt DateTime @default(now())
+
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id])
+
+  @@unique([pollId, userId]) // one vote per user per poll
+  @@index([pollId])
 }
 
 // ============ Chat / AI ============
@@ -558,6 +609,8 @@ model DirectMessage {
   conversationId String
   senderId       String
   content        String
+  attachmentUrl  String?
+  attachmentType String?
   createdAt      DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Page } from './types';
@@ -514,7 +514,7 @@ type PollData = {
   total: number;
   voted?: string; // option id the user voted for
 };
-type LocalMsg = { id: string; type: 'text' | 'image' | 'file' | 'poll'; content: string; poll?: PollData };
+type LocalMsg = { id: string; type: 'text' | 'image' | 'file' | 'poll'; content: string; poll?: PollData; file?: File };
 
 const POLL_DURATIONS = ['1h', '12h', '1 day', '3 days'];
 
@@ -606,17 +606,42 @@ const PollModal: React.FC<{ onClose: () => void; onSubmit: (p: PollData) => void
   );
 };
 
-const PollCard: React.FC<{ poll: PollData }> = ({ poll: initialPoll }) => {
-  const [poll, setPoll] = useState(initialPoll);
+const PollCard: React.FC<{ poll: PollData; onVote?: (pollId: string, optId: string) => void }> = ({ poll: parentPoll, onVote }) => {
+  const [poll, setPoll] = useState(parentPoll);
 
-  const vote = (optId: string) => {
+  // Sync with parent when data updates (e.g. from WebSocket)
+  useEffect(() => {
+    setPoll(prev => ({
+      ...parentPoll,
+      voted: parentPoll.voted || prev.voted,
+    }));
+  }, [parentPoll]);
+
+  const vote = async (optId: string) => {
     if (poll.voted) return;
+    // Optimistic update
     setPoll(p => ({
       ...p,
       voted: optId,
       total: p.total + 1,
       options: p.options.map(o => o.id === optId ? { ...o, votes: o.votes + 1 } : o),
     }));
+    // Call API
+    if (onVote) {
+      onVote(poll.id, optId);
+    } else {
+      try {
+        await api.votePoll(poll.id, optId);
+      } catch (err) {
+        console.error('Vote failed:', err);
+        setPoll(p => ({
+          ...p,
+          voted: undefined,
+          total: p.total - 1,
+          options: p.options.map(o => o.id === optId ? { ...o, votes: o.votes - 1 } : o),
+        }));
+      }
+    }
   };
 
   const totalVotes = poll.total;
@@ -648,8 +673,8 @@ const PollCard: React.FC<{ poll: PollData }> = ({ poll: initialPoll }) => {
                     style={{ width: `${pct}%`, borderRadius: 'inherit', opacity: 0.15 }} />
                 )}
                 <div className="relative flex items-center justify-between">
-                  <span className={`text-[13px] font-semibold ${poll.voted ? (isVoted ? 'text-gray-900' : 'text-gray-600') : 'text-gray-800'}`}>{opt.text}</span>
-                  {poll.voted && <span className="text-[11px] font-bold text-gray-400">{pct}%</span>}
+                  <span className={`text-[13px] font-semibold ${poll.voted ? (isVoted ? 'text-white' : 'text-gray-600') : 'text-gray-800'}`}>{opt.text}</span>
+                  {poll.voted && <span className={`text-[11px] font-bold ${isVoted ? 'text-gray-300' : 'text-gray-400'}`}>{pct}%</span>}
                 </div>
               </div>
             </button>
@@ -786,6 +811,7 @@ const ChatsPage: React.FC = () => {
   const [memberMenuOpts, setMemberMenuOpts] = useState<string | null>(null);
   const [memberToKick, setMemberToKick] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [groupPolls, setGroupPolls] = useState<any[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sendingMsg, setSendingMsg] = useState(false);
@@ -795,8 +821,14 @@ const ChatsPage: React.FC = () => {
 
   // Auto-scroll to latest message
   useEffect(() => {
+    // Immediate scroll
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, localMsgs]);
+    // Delayed scroll to handle async image loading
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [chatMessages, localMsgs, groupPolls]);
 
   // Extract API call so we can reuse it when unknown chats ping us via WS
   const loadConvs = useCallback(() => {
@@ -823,7 +855,11 @@ const ChatsPage: React.FC = () => {
           }
         });
       }, 500);
-    }).catch(() => setConversations([]));
+    }).catch((err) => {
+      console.error('[loadConvs] Failed to load conversations:', err.message);
+      // Only clear if we have no existing data (first load). Keep stale data on refresh failures.
+      setConversations(prev => prev.length > 0 ? prev : []);
+    });
   }, []);
 
   // Load conversations from API on mount
@@ -844,6 +880,8 @@ const ChatsPage: React.FC = () => {
         id: msg.id,
         senderId: msg.senderId || msg.userId,
         content: msg.content,
+        attachmentUrl: msg.attachmentUrl || null,
+        attachmentType: msg.attachmentType || null,
         createdAt: msg.createdAt,
         sender: msg.sender || msg.user || { id: msg.userId, name: 'User' },
       };
@@ -889,12 +927,38 @@ const ChatsPage: React.FC = () => {
       if (selected === data.groupId) setSelected(null);
     };
     socket.on('group:dissolved', handleDissolved);
+
+    // Poll events
+    const handleNewPoll = (poll: any) => {
+      if (selected === poll.groupId) {
+        setGroupPolls(prev => {
+          if (prev.some(p => p.id === poll.id)) return prev;
+          return [...prev, poll];
+        });
+      }
+      // Update sidebar preview for all group members
+      setConversations(prev => prev.map(c => c.id === poll.groupId ? {
+        ...c,
+        lastMsg: `📊 Poll: ${poll.question}`,
+        time: new Date(poll.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      } : c));
+    };
+    const handlePollVote = (data: any) => {
+      setGroupPolls(prev => prev.map(p => p.id === data.pollId ? {
+        ...p, options: data.options, total: data.total,
+      } : p));
+    };
+    socket.on('group:poll', handleNewPoll);
+    socket.on('group:poll-vote', handlePollVote);
+
     return () => {
       socket.off('dm:message', handleNewMsg);
       socket.off('group:message', handleNewMsg);
       socket.off('group:joined', loadConvs);
       socket.off('group:removed', loadConvs);
       socket.off('group:dissolved', handleDissolved);
+      socket.off('group:poll', handleNewPoll);
+      socket.off('group:poll-vote', handlePollVote);
     };
   }, [selected, loadConvs]);
 
@@ -912,36 +976,97 @@ const ChatsPage: React.FC = () => {
 
     setLoadingMsgs(true);
     api.getConversationMessages(selected)
-      .then(data => setChatMessages(data.messages || []))
+      .then(data => {
+        setChatMessages(data.messages || []);
+        // Scroll to bottom after messages load
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 100);
+      })
       .catch(() => setChatMessages([]))
       .finally(() => setLoadingMsgs(false));
+
+    // Load polls (always attempt — API returns 403 for non-groups, which we silently ignore)
+    api.getGroupPolls(selected).then(setGroupPolls).catch(() => setGroupPolls([]));
   }, [selected]);
 
   // Send message handler
   const handleSendMessage = async () => {
-    if (!input.trim() || !selected || sendingMsg) return;
+    if ((!input.trim() && localMsgs.filter(m => m.type === 'file' || m.type === 'image').length === 0) || !selected || sendingMsg) return;
     const text = input.trim();
+    const attachments = localMsgs.filter(m => m.type === 'image' || m.type === 'file');
     setInput('');
     setSendingMsg(true);
+
     try {
-      const msg = await api.sendConversationMessage(selected, text);
-      setChatMessages(prev => {
-        if (prev.some(m => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-      // Update conversation list preview
+      // 1. Send attachments
+      for (const att of attachments) {
+        if (!att.file) continue;
+        const { url, type } = await api.uploadFile(att.file);
+        const msg = await api.sendConversationMessage(selected, '', url, type);
+        setChatMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+      
+      // 2. Send text message
+      if (text) {
+        const msg = await api.sendConversationMessage(selected, text);
+        setChatMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+
+      setLocalMsgs(prev => prev.filter(m => m.type !== 'image' && m.type !== 'file'));
+      
       setConversations(prev => prev.map(c =>
-        c.id === selected ? { ...c, lastMsg: text, time: 'now' } : c
+        c.id === selected ? { ...c, lastMsg: text || 'Attachment', time: 'now' } : c
       ));
     } catch {
-      // Fallback: show locally even if API fails
-      setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        senderId: dbUserId, // Use actual dbUserId instead of 'me' for consistency
-        content: text,
-        createdAt: new Date().toISOString(),
-        sender: { id: dbUserId, name: dbUserName, avatar: null },
-      }]);
+      // Fallback
+    } finally {
+      setSendingMsg(false);
+    }
+  };
+
+  const handleSendFile = async (file: File, type: 'image' | 'file') => {
+    if (!selected) return;
+    setSendingMsg(true);
+
+    const tempId = Date.now().toString() + 'uploading';
+    // Add temporary uploading indicator
+    setChatMessages(prev => [...prev, {
+      id: tempId,
+      senderId: dbUserId,
+      content: `Uploading ${file.name}...`,
+      attachmentType: 'uploading',
+      createdAt: new Date().toISOString(),
+      sender: { id: dbUserId, name: dbUserName, avatar: null },
+    } as any]);
+
+    try {
+      const uploadRes = await api.uploadFile(file);
+      const msgContent = uploadRes.type === 'file' ? file.name : '';
+      const msg = await api.sendConversationMessage(selected, msgContent, uploadRes.url, uploadRes.type);
+      
+      setChatMessages(prev => {
+        const filtered = prev.filter(m => m.id !== tempId);
+        if (filtered.some(m => m.id === msg.id)) return filtered;
+        return [...filtered, msg];
+      });
+      setConversations(prev => prev.map(c =>
+        c.id === selected ? { ...c, lastMsg: 'Attachment', time: 'now' } : c
+      ));
+    } catch (err: any) {
+      console.error('[handleSendFile] Upload failed:', err);
+      // Replace uploading with error message
+      setChatMessages(prev => prev.map(m => m.id === tempId ? {
+        ...m,
+        content: `Upload failed: ${err.message || 'Unknown error'}`,
+        attachmentType: 'error'
+      } : m));
+      // Remove error after 3 seconds
+      setTimeout(() => setChatMessages(p => p.filter(m => m.id !== tempId)), 3000);
     } finally {
       setSendingMsg(false);
     }
@@ -965,7 +1090,24 @@ const ChatsPage: React.FC = () => {
       : conversations.filter(m => m.isGroup);
 
   const sel = selected ? conversations.find(m => m.id === selected) : null;
-  const msgs = chatMessages;
+
+  // Merge polls into message timeline
+  const mergedMsgs = useMemo(() => {
+    const pollMsgs = groupPolls.map(p => ({
+      id: `poll:${p.id}`,
+      _isPoll: true,
+      _pollData: p,
+      senderId: p.creator?.id || p.userId,
+      content: '',
+      createdAt: p.createdAt,
+      sender: p.creator || { id: p.userId, name: 'User' },
+    }));
+    return [...chatMessages, ...pollMsgs].sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [chatMessages, groupPolls]);
+
+  const msgs = mergedMsgs;
   
   const members = sel?.isGroup && sel.groupMembers ? {
     agents: [],
@@ -1039,9 +1181,17 @@ const ChatsPage: React.FC = () => {
               unread: 0,
               isGroup: true,
               color: groupColor,
+              groupMembers: group.members?.map((m: any) => ({
+                id: m.user?.id || m.userId,
+                name: m.user?.name || 'Unknown',
+                avatar: m.user?.avatar,
+                role: m.role,
+              })) || [],
             }, ...prev]);
             setSelected(group.id);
             setPlusModal(null);
+            // Also join the socket room
+            socket.emit('join-group', group.id);
           }}
         />
       )}
@@ -1090,7 +1240,7 @@ const ChatsPage: React.FC = () => {
               <div className="flex-1 text-left min-w-0">
                 <div className="flex justify-between items-center">
                   <p className="text-[13px] font-medium text-gray-900 truncate">{m.name}</p>
-                  <span className="text-[11px] text-gray-300 shrink-0 ml-2">{m.time}</span>
+                  <span className="text-[11px] text-gray-400 shrink-0 ml-2">{m.time}</span>
                 </div>
                 <p className="text-[12px] text-gray-400 truncate mt-0.5">{m.lastMsg}</p>
               </div>
@@ -1136,23 +1286,63 @@ const ChatsPage: React.FC = () => {
             <div className="flex-1 overflow-y-auto px-5 py-4">
               <div className="max-w-4xl mx-auto w-full space-y-4">
               {msgs.map((msg: any, i: number) => {
+                if (!msg._isPoll && msg.attachmentType === 'poll') return null;
                 const isMe = msg.senderId === dbUserId;
                 return (
                 <div key={msg.id || i}>
                   {msg.sender && (
                     <div className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs(((msg.sender.name && msg.sender.name !== 'User' && msg.sender.name !== 'You' ? msg.sender.name : (isMe ? dbUserName : 'U'))).charCodeAt(0)) % 5]}-500`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((msg.sender.name || 'U').charCodeAt(0)) % 5]}-500`}>
                         {msg.sender.avatar?.startsWith('http') 
                            ? <img src={msg.sender.avatar} className="w-full h-full object-cover" alt="" /> 
-                           : ((msg.sender.name && msg.sender.name !== 'User' && msg.sender.name !== 'You' ? msg.sender.name : (isMe ? dbUserName : 'U'))).split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                           : (msg.sender.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
                       <div className="max-w-[70%]">
                         <div className={`flex items-center gap-1.5 mb-1 ${isMe ? 'flex-row-reverse' : ''}`}>
                           <span className="text-[12px] font-semibold text-gray-800">{isMe ? 'You' : (msg.sender.name || 'User')}</span>
-                          <span className="text-[10px] text-gray-300">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                          <span className="text-[10px] text-gray-400">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                         </div>
-                        <div className={`${isMe ? 'bg-gray-900 text-white rounded-xl rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-700 rounded-xl rounded-tl-sm'} px-3.5 py-2.5 text-[13px] shadow-sm leading-relaxed`}>
-                          {msg.content}
+                        <div className={`flex flex-col gap-1.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                          {msg.attachmentUrl && msg.attachmentType === 'image' && (
+                            <img src={msg.attachmentUrl} alt="attachment" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover" />
+                          )}
+                          {msg.attachmentUrl && msg.attachmentType === 'video' && (
+                            <video
+                              src={msg.attachmentUrl}
+                              controls
+                              preload="metadata"
+                              className="max-w-[300px] rounded-xl border border-gray-100 shadow-sm"
+                            />
+                          )}
+                          {msg.attachmentUrl && msg.attachmentType === 'file' && (
+                            <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" download className={`flex items-center gap-2.5 border border-gray-100 rounded-xl px-3.5 py-2.5 shadow-sm transition-colors ${isMe ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-white hover:bg-gray-50'}`}>
+                              <svg className={`w-7 h-7 shrink-0 ${isMe ? 'text-gray-300' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                              <div className="min-w-0">
+                                <p className="text-[12px] font-semibold truncate max-w-[200px]">{msg.content || 'Document'}</p>
+                                <p className={`text-[10px] ${isMe ? 'text-gray-400' : 'text-gray-500'}`}>Click to download</p>
+                              </div>
+                            </a>
+                          )}
+                          {msg.attachmentType === 'uploading' && (
+                            <div className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl shadow-sm ${isMe ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-500 border border-gray-100'}`}>
+                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                              <span className="text-[13px] italic">{msg.content}</span>
+                            </div>
+                          )}
+                          {msg.attachmentType === 'error' && (
+                            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl shadow-sm bg-red-50 text-red-500 border border-red-100">
+                              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              <span className="text-[13px]">{msg.content}</span>
+                            </div>
+                          )}
+                          {msg._isPoll && msg._pollData && (
+                            <PollCard poll={{ ...msg._pollData, voted: msg._pollData.voted || undefined }} />
+                          )}
+                          {!msg._isPoll && msg.content && msg.attachmentType !== 'file' && msg.attachmentType !== 'uploading' && msg.attachmentType !== 'error' && msg.attachmentType !== 'poll' && (
+                            <div className={`${isMe ? 'bg-gray-900 text-white rounded-xl rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-700 rounded-xl rounded-tl-sm'} px-3.5 py-2.5 text-[13px] shadow-sm leading-relaxed`}>
+                              {msg.content}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1165,6 +1355,7 @@ const ChatsPage: React.FC = () => {
                   <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
                 </div>
               )}
+              {/* Group Polls section removed — polls are now merged into the message timeline */}
               {/* Local messages (images, polls, etc.) */}
               {localMsgs.map((msg) => {
                 const myColor = `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((dbUserName || 'U').charCodeAt(0)) % 5]}-500`;
@@ -1212,11 +1403,30 @@ const ChatsPage: React.FC = () => {
             </div>
 
             {/* Poll Modal */}
-            {showPoll && (
+            {showPoll && selected && (
               <PollModal
                 onClose={() => setShowPoll(false)}
-                onSubmit={(poll) => {
-                  setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'poll', content: '', poll }]);
+                onSubmit={async (pollData) => {
+                  try {
+                    const newPoll = await api.createPoll(selected, {
+                      question: pollData.question,
+                      options: pollData.options.map(o => o.text),
+                      duration: pollData.duration,
+                    });
+                    // Add poll immediately so creator sees it (WebSocket dedup prevents duplicates)
+                    setGroupPolls(prev => {
+                      if (prev.some(p => p.id === newPoll.id)) return prev;
+                      return [...prev, newPoll];
+                    });
+                    // Update sidebar conversation preview
+                    setConversations(prev => prev.map(c => c.id === selected ? {
+                      ...c,
+                      lastMsg: `📊 Poll: ${pollData.question}`,
+                      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    } : c));
+                  } catch (err) {
+                    console.error('Failed to create poll:', err);
+                  }
                   setShowPoll(false);
                 }}
               />
@@ -1225,35 +1435,37 @@ const ChatsPage: React.FC = () => {
             {/* Input */}
             <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0">
               <div className="max-w-4xl mx-auto w-full relative">
-              {/* Attach popup menu */}
               {showAttachMenu && (
-                <div className="absolute bottom-[calc(100%+6px)] right-4 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden w-40 z-10 animate-fadeIn"
-                  onClick={() => setShowAttachMenu(false)}>
+                <div className="absolute bottom-[calc(100%+6px)] right-4 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden w-40 z-10 animate-fadeIn">
                   {/* Photo / Video */}
-                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors">
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={e => e.stopPropagation()}>
                     <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                       <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
                     <span className="text-[12px] font-semibold text-gray-700">Photo or Video</span>
                     <input type="file" accept="image/*,video/*" className="hidden" onChange={e => {
                       const file = e.target.files?.[0];
+                      console.log('[Attach] Photo/Video selected:', file?.name, file?.size);
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = ev => setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'image', content: ev.target?.result as string }]);
-                      reader.readAsDataURL(file);
+                      handleSendFile(file, 'image');
+                      setShowAttachMenu(false);
                       e.target.value = '';
                     }} />
                   </label>
                   {/* Document */}
-                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-t border-gray-50">
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-t border-gray-50"
+                    onClick={e => e.stopPropagation()}>
                     <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
                       <svg className="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                     </div>
                     <span className="text-[12px] font-semibold text-gray-700">Document</span>
                     <input type="file" className="hidden" onChange={e => {
                       const file = e.target.files?.[0];
+                      console.log('[Attach] Document selected:', file?.name, file?.size);
                       if (!file) return;
-                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'file', content: file.name }]);
+                      handleSendFile(file, 'file');
+                      setShowAttachMenu(false);
                       e.target.value = '';
                     }} />
                   </label>
@@ -1290,7 +1502,7 @@ const ChatsPage: React.FC = () => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                 </button>
                 {/* Mic / Send */}
-                {input.trim() ? (
+                {input.trim() || localMsgs.some(m => m.type === 'image' || m.type === 'file') ? (
                   <button disabled={sendingMsg} onClick={handleSendMessage} className={`w-7 h-7 rounded-lg flex items-center justify-center bg-gray-900 text-white transition-all shrink-0 hover:bg-gray-700 ${sendingMsg ? 'opacity-50' : ''}`}>
                     <I.Send />
                   </button>
@@ -1713,6 +1925,7 @@ const CreateGroupModal: React.FC<{
   const [groupName, setGroupName] = useState('');
   const [groupBio, setGroupBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const [contacts, setContacts] = useState<any[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
@@ -1730,6 +1943,7 @@ const CreateGroupModal: React.FC<{
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = ev => setAvatarUrl(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -1905,10 +2119,16 @@ const CreateGroupModal: React.FC<{
                 onClick={async () => {
                   setLoading(true);
                   try {
+                    // Upload avatar to R2 if one was selected
+                    let uploadedAvatarUrl: string | undefined;
+                    if (avatarFile) {
+                      const uploadRes = await api.uploadFile(avatarFile);
+                      uploadedAvatarUrl = uploadRes.url;
+                    }
                     const group = await api.createCommunityGroup({
                       name: groupName.trim() || 'New Group',
                       bio: groupBio,
-                      avatar: avatarUrl,
+                      avatar: uploadedAvatarUrl,
                       memberIds: Array.from(selected).map(String)
                     });
                     onCreated?.(group);
