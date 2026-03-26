@@ -842,7 +842,7 @@ const Market: React.FC = () => {
   const [potMarginMin, setPotMarginMin] = useState<string>('');
   const [potMarginMax, setPotMarginMax] = useState<string>('');
   const [potAudience, setPotAudience] = useState<string>('Any');
-  const [potSort, setPotSort] = useState<string>('rev-desc');
+  const [potSort, setPotSort] = useState<string>('default');
   const [potFoundedFrom, setPotFoundedFrom] = useState<string>('');
   const [potFoundedTo, setPotFoundedTo] = useState<string>('');
   const [potCatExpanded, setPotCatExpanded] = useState(false);
@@ -964,6 +964,13 @@ const Market: React.FC = () => {
         return true;
       })
       .sort((a, b) => {
+        if (potSort === 'default') return (a.rank ?? 999999) - (b.rank ?? 999999);
+        if (potSort === 'listed-desc') return new Date(b.createdAt || b.foundedDate || '1970').getTime() - new Date(a.createdAt || a.foundedDate || '1970').getTime();
+        if (potSort === 'listed-asc') return new Date(a.createdAt || a.foundedDate || '2099').getTime() - new Date(b.createdAt || b.foundedDate || '2099').getTime();
+        if (potSort === 'multiple-asc') return (a.multiple ?? 999999) - (b.multiple ?? 999999);
+        if (potSort === 'multiple-desc') return (b.multiple ?? -999999) - (a.multiple ?? -999999);
+        if (potSort === 'asking-asc') return (a.askingPrice ?? 999999999) - (b.askingPrice ?? 999999999);
+        if (potSort === 'asking-desc') return (b.askingPrice ?? -999999999) - (a.askingPrice ?? -999999999);
         if (potSort === 'rev-desc') return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
         if (potSort === 'rev-asc') return (a.revenue?.last30Days ?? 0) - (b.revenue?.last30Days ?? 0);
         if (potSort === 'growth-desc') return (b.growth30d ?? -999) - (a.growth30d ?? -999);
@@ -1311,12 +1318,19 @@ const Market: React.FC = () => {
 
               <div className="ml-auto flex items-center gap-2">
                 <select value={potSort} onChange={e => setPotSort(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer" style={{ WebkitAppearance: 'menulist', appearance: 'menulist' }}>
-                  <option value="rev-desc">Revenue: High to Low</option>
+                  <option value="default">Best deals (default)</option>
+                  <option value="listed-desc">Listed: Newest First</option>
+                  <option value="listed-asc">Listed: Oldest First</option>
+                  <option value="multiple-asc">Multiple: Low to High</option>
+                  <option value="multiple-desc">Multiple: High to Low</option>
+                  <option value="asking-asc">Asking Price: Low to High</option>
+                  <option value="asking-desc">Asking Price: High to Low</option>
                   <option value="rev-asc">Revenue: Low to High</option>
-                  <option value="growth-desc">Growth: High to Low</option>
+                  <option value="rev-desc">Revenue: High to Low</option>
                   <option value="growth-asc">Growth: Low to High</option>
-                  <option value="founded-desc">Founded: Newest First</option>
+                  <option value="growth-desc">Growth: High to Low</option>
                   <option value="founded-asc">Founded: Oldest First</option>
+                  <option value="founded-desc">Founded: Newest First</option>
                 </select>
               </div>
             </div>
