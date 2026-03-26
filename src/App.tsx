@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { usePrivy, useLogout } from '@privy-io/react-auth';
+import { Capacitor } from '@capacitor/core';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { Page } from './types';
 import { api } from './services/api';
 import { socket } from './services/socket';
@@ -784,7 +786,15 @@ const AddMemberModal: React.FC<{
 
 const ChatsPage: React.FC = () => {
   const [filter, setFilter] = useState<'All' | 'People' | 'Groups'>('All');
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const selectedRef = useRef<string | null>(null);
+
+  const setSelected = useCallback((id: string | null) => {
+    setSelectedState(id);
+    selectedRef.current = id;
+  }, []);
+
+  const selected = selectedState;
   const location = useLocation();
 
   useEffect(() => {
@@ -888,7 +898,7 @@ const ChatsPage: React.FC = () => {
       };
 
       // 1. Update the active chat log if we are currently looking at it
-      if (selected === convId) {
+      if (String(selectedRef.current) === String(convId)) {
         setChatMessages(prev => {
           if (prev.some(m => m.id === formattedMsg.id)) return prev;
           return [...prev, formattedMsg];
@@ -899,21 +909,21 @@ const ChatsPage: React.FC = () => {
 
       // 2. Update the left conversational menu preview snippets
       setConversations(prev => {
-        const exists = prev.some(c => c.id === convId);
+        const exists = prev.some(c => String(c.id) === String(convId));
         if (!exists) {
           // A brand new conversation started (e.g. someone messaged us first time), we must fetch its metadata
           loadConvs();
           return prev;
         }
-        return prev.map(c => c.id === convId ? {
+        return prev.map(c => String(c.id) === String(convId) ? {
           ...c,
           lastMsg: formattedMsg.content || (formattedMsg.attachmentType === 'image' ? '📷 Photo' : formattedMsg.attachmentType === 'video' ? '🎬 Video' : formattedMsg.attachmentType === 'file' ? '📎 File' : ''),
           time: new Date(formattedMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          unread: selected === convId ? 0 : (c.unread || 0) + 1
+          unread: String(selectedRef.current) === String(convId) ? 0 : (c.unread || 0) + 1
         } : c).sort((a, b) => {
           // Bring updated conversation to top
-          if (a.id === convId) return -1;
-          if (b.id === convId) return 1;
+          if (String(a.id) === String(convId)) return -1;
+          if (String(b.id) === String(convId)) return 1;
           return 0;
         });
       });
@@ -924,21 +934,21 @@ const ChatsPage: React.FC = () => {
     socket.on('group:joined', loadConvs);
     socket.on('group:removed', loadConvs);
     const handleDissolved = (data: any) => {
-      setConversations(prev => prev.filter(c => c.id !== data.groupId));
-      if (selected === data.groupId) setSelected(null);
+      setConversations(prev => prev.filter(c => String(c.id) !== String(data.groupId)));
+      if (String(selectedRef.current) === String(data.groupId)) setSelected(null);
     };
     socket.on('group:dissolved', handleDissolved);
 
     // Poll events
     const handleNewPoll = (poll: any) => {
-      if (selected === poll.groupId) {
+      if (String(selectedRef.current) === String(poll.groupId)) {
         setGroupPolls(prev => {
           if (prev.some(p => p.id === poll.id)) return prev;
           return [...prev, poll];
         });
       }
       // Update sidebar preview for all group members
-      setConversations(prev => prev.map(c => c.id === poll.groupId ? {
+      setConversations(prev => prev.map(c => String(c.id) === String(poll.groupId) ? {
         ...c,
         lastMsg: `📊 Poll: ${poll.question}`,
         time: new Date(poll.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -961,7 +971,7 @@ const ChatsPage: React.FC = () => {
       socket.off('group:poll', handleNewPoll);
       socket.off('group:poll-vote', handlePollVote);
     };
-  }, [selected, loadConvs]);
+  }, [loadConvs, setSelected]);
 
   // Load messages when a conversation is selected
   useEffect(() => {
@@ -2621,6 +2631,13 @@ const App: React.FC = () => {
     onSuccess: () => navigate('/'),
   });
   const isLoggedIn = ready && authenticated;
+
+  // Hide splash screen once Privy is ready
+  useEffect(() => {
+    if (ready && Capacitor.isNativePlatform()) {
+      SplashScreen.hide().catch(console.error);
+    }
+  }, [ready]);
 
   // Sync Privy access token to API client and socket and sync user to DB
   useEffect(() => {
