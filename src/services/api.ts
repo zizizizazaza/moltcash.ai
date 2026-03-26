@@ -6,14 +6,9 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 class ApiClient {
   private token: string | null = null;
-  private tokenGetter: (() => Promise<string | null>) | null = null;
 
   constructor() {
     this.token = sessionStorage.getItem('loka_token');
-  }
-
-  setTokenGetter(getter: () => Promise<string | null>) {
-    this.tokenGetter = getter;
   }
 
   setToken(token: string) {
@@ -23,24 +18,21 @@ class ApiClient {
 
   clearToken() {
     this.token = null;
-    this.tokenGetter = null;
     sessionStorage.removeItem('loka_token');
   }
 
   get isAuthenticated(): boolean {
-    return Boolean(this.token || this.tokenGetter);
+    return Boolean(this.token);
   }
 
-  private async request<T>(path: string, options: RequestInit = {}, _isRetry = false): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
     };
 
-    const activeToken = this.tokenGetter ? await this.tokenGetter() : this.token;
-
-    if (activeToken) {
-      headers['Authorization'] = `Bearer ${activeToken}`;
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
     }
 
     const response = await fetch(`${API_BASE}${path}`, {
@@ -48,26 +40,10 @@ class ApiClient {
       headers,
     });
 
-    // Auto-retry on 401: refresh token from Privy and try once more
-    if (response.status === 401 && !_isRetry && this.tokenGetter) {
-      console.warn('[API] 401 received, refreshing token and retrying...');
-      try {
-        const freshToken = await this.tokenGetter();
-        if (freshToken) {
-          this.token = freshToken;
-          sessionStorage.setItem('loka_token', freshToken);
-          return this.request<T>(path, options, true);
-        }
-      } catch (refreshErr) {
-        console.error('[API] Token refresh failed:', refreshErr);
-      }
-    }
-
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
       throw new Error(error.error || `HTTP ${response.status}`);
     }
-
 
     return response.json() as Promise<T>;
   }
@@ -416,114 +392,6 @@ class ApiClient {
   async getTrustMRRStartupDetail(slug: string) {
     return this.request<{ data: any; partial: boolean }>(`/trustmrr/startups/${encodeURIComponent(slug)}`);
   }
-
-  // ============ Community ============
-
-  // Friends
-  async sendFriendRequest(userId: string) {
-    return this.request<any>('/community/friends/request', { method: 'POST', body: JSON.stringify({ userId }) });
-  }
-  async acceptFriendRequest(friendshipId: string) {
-    return this.request<any>('/community/friends/accept', { method: 'POST', body: JSON.stringify({ friendshipId }) });
-  }
-  async rejectFriendRequest(friendshipId: string) {
-    return this.request<any>('/community/friends/reject', { method: 'POST', body: JSON.stringify({ friendshipId }) });
-  }
-  async removeFriend(userId: string) {
-    return this.request<any>(`/community/friends/${userId}`, { method: 'DELETE' });
-  }
-  async getFriends() {
-    return this.request<any[]>('/community/friends');
-  }
-  async getFriendRequests() {
-    return this.request<any[]>('/community/friends/requests');
-  }
-
-  // Conversations
-  async getCommunityConversations() {
-    return this.request<any[]>('/community/conversations');
-  }
-  async createDMConversation(userId: string) {
-    return this.request<any>('/community/conversations', { method: 'POST', body: JSON.stringify({ userId }) });
-  }
-  async getConversationMessages(convId: string, cursor?: string) {
-    const params = new URLSearchParams();
-    if (cursor) params.set('cursor', cursor);
-    const qs = params.toString();
-    return this.request<{ messages: any[]; nextCursor: string | null; hasMore: boolean }>(
-      `/community/conversations/${convId}/messages${qs ? `?${qs}` : ''}`
-    );
-  }
-  async sendConversationMessage(convId: string, content: string, attachmentUrl?: string, attachmentType?: string) {
-    return this.request<any>(`/community/conversations/${convId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ content, attachmentUrl, attachmentType }),
-    });
-  }
-  
-  async uploadFile(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const activeToken = this.tokenGetter ? await this.tokenGetter() : this.token;
-    const headers: Record<string, string> = {};
-    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`;
-
-    const response = await fetch(`${API_BASE}/upload`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-
-    if (!response.ok) throw new Error('Upload failed');
-    return response.json() as Promise<{ url: string; type: string }>;
-  }
-  async markConversationAsRead(convId: string) {
-    return this.request<{ success: boolean }>(`/community/conversations/${convId}/read`, { method: 'POST' });
-  }
-
-  // User search
-  async searchUsers(query: string) {
-    return this.request<any[]>(`/community/users/search?q=${encodeURIComponent(query)}`);
-  }
-
-  // Groups
-  async createCommunityGroup(data: { name: string; bio?: string; avatar?: string; memberIds?: string[] }) {
-    return this.request<any>('/community/groups', { method: 'POST', body: JSON.stringify(data) });
-  }
-  async addGroupMembers(groupId: string, userIds: string[]) {
-    return this.request<{ added: number; members: any[] }>(`/community/groups/${groupId}/members`, {
-      method: 'POST',
-      body: JSON.stringify({ userIds }),
-    });
-  }
-  async removeGroupMember(groupId: string, memberId: string) {
-    return this.request<{ members: any[] }>(`/community/groups/${groupId}/members/${memberId}`, {
-      method: 'DELETE',
-    });
-  }
-  async dissolveGroup(groupId: string) {
-    return this.request<{ deleted: boolean; groupId: string }>(`/community/groups/${groupId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Unread count (for badge)
-  async getUnreadCount() {
-    return this.request<{ unread: number; dmUnread: number; friendRequests: number }>('/community/unread-count');
-  }
-
-  // Polls
-  async createPoll(groupId: string, data: { question: string; options: string[]; duration: string }) {
-    return this.request<any>(`/community/groups/${groupId}/polls`, { method: 'POST', body: JSON.stringify(data) });
-  }
-  async votePoll(pollId: string, optionId: string) {
-    return this.request<any>(`/community/polls/${pollId}/vote`, { method: 'POST', body: JSON.stringify({ optionId }) });
-  }
-  async getGroupPolls(groupId: string) {
-    return this.request<any[]>(`/community/groups/${groupId}/polls`);
-  }
-
 }
 
 // Singleton instance

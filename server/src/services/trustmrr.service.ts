@@ -35,12 +35,15 @@ export interface TrustMRRStartup {
   rank: number;
   visitorsLast30Days: number | null;
   revenuePerVisitor: number | null;
-  onSale: boolean;
   xHandle: string | null;
   // Detail-only fields
   xFollowerCount?: number;
-  techStack?: { slug: string; category: string }[];
-  cofounders?: { xHandle: string; xName: string }[];
+  techStack?: { slug: string; category: string }[] | string[];
+  cofounders?: { xHandle: string; xName: string; avatarUrl?: string }[];
+  // Descriptive fields (returned by some detail endpoints)
+  valueProposition?: string;
+  problemSolved?: string;
+  pricing?: string;
 }
 
 interface CacheEntry<T> {
@@ -73,108 +76,36 @@ function normalizeMoney(s: any): TrustMRRStartup {
   return s as TrustMRRStartup;
 }
 
-interface TokenRequest {
-  resolve: () => void;
-  priority: number;
-}
-const tokenQueue: TokenRequest[] = [];
-let isScheduling = false;
-
 /** Wait until the next token-bucket slot. */
-async function acquireToken(priority: number = 0): Promise<void> {
+async function acquireToken(): Promise<void> {
   const now = Date.now();
-  
-  // If the queue is empty AND the bucket is available right now
-  if (tokenQueue.length === 0 && now >= tokenAvailableAt) {
+  if (now >= tokenAvailableAt) {
     tokenAvailableAt = now + BUCKET_INTERVAL_MS;
     return;
   }
-
-  // Otherwise, we must wait our turn in the priority queue
-  return new Promise<void>(resolve => {
-    tokenQueue.push({ resolve, priority });
-    // Sort highest priority first
-    tokenQueue.sort((a, b) => b.priority - a.priority);
-    scheduleNextToken();
-  });
+  const waitMs = tokenAvailableAt - now;
+  tokenAvailableAt += BUCKET_INTERVAL_MS;
+  return new Promise(resolve => setTimeout(resolve, waitMs));
 }
-
-function scheduleNextToken() {
-  if (isScheduling || tokenQueue.length === 0) return;
-  isScheduling = true;
-
-  const now = Date.now();
-  const waitMs = Math.max(0, tokenAvailableAt - now);
-  
-  setTimeout(() => {
-    // We are now at the execution slot
-    tokenAvailableAt = Date.now() + BUCKET_INTERVAL_MS;
-    const next = tokenQueue.shift();
-    if (next) next.resolve();
-    
-    isScheduling = false;
-    // Recursively schedule the next one if the queue isn't empty
-    if (tokenQueue.length > 0) {
-      scheduleNextToken();
-    }
-  }, waitMs);
-}
-
-let isFirstBoot = true;
 
 // ─── List: Fetch & Cache ────────────────────────────────────
 async function fetchStartupList(): Promise<TrustMRRStartup[]> {
   try {
-    let allStartups: TrustMRRStartup[] = [];
-    let page = 1;
-    let hasMore = true;
-    let totalExpected = 0;
+    await acquireToken();
+    const url = `${TMRR.baseUrl}/startups?sort=revenue-desc&limit=50`;
+    const res = await fetch(url, { headers: HEADERS });
 
-    // Safety timeout bound: abort list fetch if we get stuck (e.g. 10 mins)
-    const startTime = Date.now();
-    const MAX_SYNC_DURATION = 10 * 60 * 1000;
-
-    while (hasMore) {
-      if (Date.now() - startTime > MAX_SYNC_DURATION) {
-        console.warn(`[TrustMRR] List sync aborted—exceeded 10m maximum safety bound.`);
-        break;
-      }
-
-      await acquireToken(0); // low priority list fetch
-      const url = `${TMRR.baseUrl}/startups?sort=revenue-desc&limit=50&onSale=true&page=${page}`;
-      const res = await fetch(url, { headers: HEADERS });
-
-      if (!res.ok) {
-        console.error(`[TrustMRR] List fetch failed (page ${page}): ${res.status} ${res.statusText}`);
-        break;
-      }
-
-      const json = await res.json() as { data: any[]; meta: any };
-      const startups = json.data.map(normalizeMoney);
-      allStartups = [...allStartups, ...startups];
-
-      // Progressive chunk rendering: stream partial data immediately to frontend during the first 2-minute cold boot
-      if (isFirstBoot) {
-        listCache = { data: allStartups, fetchedAt: Date.now() };
-        console.log(`[TrustMRR] ⏳ Boot Sync: Page ${page} loaded (${allStartups.length}/${json.meta?.total || '?'} startups)`);
-      }
-
-      if (page === 1) totalExpected = json.meta?.total || 0;
-      
-      hasMore = json.meta?.hasMore && allStartups.length < totalExpected;
-      page++;
-      
-      // Strict bounded loop
-      if (page > 300) break;
+    if (!res.ok) {
+      console.error(`[TrustMRR] List fetch failed: ${res.status} ${res.statusText}`);
+      return listCache?.data ?? [];
     }
 
-    if (allStartups.length > 0) {
-      isFirstBoot = false; // Lock progressive rendering for future background syncs
-      listCache = { data: allStartups, fetchedAt: Date.now() };
-      console.log(`[TrustMRR] ✅ Catalog cache synced — isolated ${allStartups.length}/${totalExpected} on-sale startups.`);
-    }
+    const json = await res.json() as { data: any[]; meta: any };
+    const startups = json.data.map(normalizeMoney);
 
-    return listCache?.data ?? [];
+    listCache = { data: startups, fetchedAt: Date.now() };
+    console.log(`[TrustMRR] ✅ List cache refreshed — ${startups.length} startups`);
+    return startups;
   } catch (err) {
     console.error('[TrustMRR] List fetch error:', err);
     return listCache?.data ?? [];
@@ -184,7 +115,7 @@ async function fetchStartupList(): Promise<TrustMRRStartup[]> {
 // ─── Detail: Fetch with Dedup & Queue ───────────────────────
 async function fetchStartupDetail(slug: string): Promise<TrustMRRStartup | null> {
   try {
-    await acquireToken(10); // high priority detail click
+    await acquireToken();
     const url = `${TMRR.baseUrl}/startups/${encodeURIComponent(slug)}`;
     const res = await fetch(url, { headers: HEADERS });
 
@@ -277,12 +208,11 @@ export async function startTrustMRRService(): Promise<void> {
     return;
   }
 
-  console.log('[TrustMRR] 🚀 Starting service (Background sync initiated)...');
-  // Detached execution to prevent deadlocking the Express/WebSocket boot pipeline
-  fetchStartupList().catch(console.error);
+  console.log('[TrustMRR] 🚀 Starting service...');
+  await fetchStartupList();
 
   refreshTimer = setInterval(() => {
-    fetchStartupList().catch(console.error);
+    fetchStartupList();
   }, TMRR.refreshIntervalMs);
 
   console.log(`[TrustMRR] ⏰ Auto-refresh every ${TMRR.refreshIntervalMs / 1000}s`);

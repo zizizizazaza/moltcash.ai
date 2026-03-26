@@ -23,9 +23,6 @@ import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
 import invitationRoutes from './routes/invitation.js';
 import trustmrrRoutes from './routes/trustmrr.js';
-import communityRoutes from './routes/community.js';
-import uploadRoutes from './routes/upload.js';
-import path from 'path';
 import prisma from './db.js';
 
 const app = express();
@@ -47,8 +44,6 @@ const allowedOrigins = [
   'https://localhost',        // Capacitor Android (androidScheme: 'https')
   'capacitor://localhost',    // Capacitor iOS
   'http://localhost',         // Capacitor fallback
-  'https://www.loka.cash',    // Production apex
-  'https://loka.cash',        // Production base
   config.frontendUrl,
 ].filter(Boolean);
 
@@ -104,11 +99,6 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/invitation', invitationRoutes);
 app.use('/api/trustmrr', trustmrrRoutes);
-app.use('/api/community', communityRoutes);
-app.use('/api/upload', uploadRoutes);
-
-// Static file serving for uploads
-app.use('/api/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 
 // Error handler (must be last)
 app.use(errorHandler);

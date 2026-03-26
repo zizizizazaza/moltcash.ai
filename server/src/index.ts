@@ -26,6 +26,8 @@ async function main() {
       console.log(`🚀 Server running on http://localhost:${config.port}`);
       console.log(`📡 WebSocket ready`);
       console.log(`🌍 Environment: ${config.nodeEnv}`);
+      // Start TrustMRR service in background (non-blocking)
+      startTrustMRRService().catch(err => console.error('[TrustMRR] startup error:', err));
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

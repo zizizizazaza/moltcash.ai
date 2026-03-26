@@ -17,6 +17,7 @@ export interface MarketAsset {
   askPrice: number;
   apy: number;
   durationDays: number;
+  daysLeft?: number;
   creditScore: number;
   status: 'Fundraising' | 'Ending Soon' | 'Sold Out' | 'Failed' | 'Funded';
   targetAmount: number;

@@ -40,6 +40,7 @@ const MOCK_ASSETS: MarketAsset[] = [
     askPrice: 96,
     apy: 15.5,
     durationDays: 180,
+    daysLeft: 0,
     creditScore: 820,
     status: 'Funded',
     targetAmount: 800000,
@@ -71,6 +72,7 @@ const MOCK_ASSETS: MarketAsset[] = [
     askPrice: 97,
     apy: 18.2,
     durationDays: 270,
+    daysLeft: 14,
     creditScore: 800,
     status: 'Fundraising',
     targetAmount: 500000,
@@ -102,6 +104,7 @@ const MOCK_ASSETS: MarketAsset[] = [
     askPrice: 95,
     apy: 20.5,
     durationDays: 120,
+    daysLeft: 3,
     creditScore: 760,
     status: 'Fundraising',
     targetAmount: 250000,
@@ -133,6 +136,7 @@ const MOCK_ASSETS: MarketAsset[] = [
     askPrice: 96,
     apy: 16.0,
     durationDays: 240,
+    daysLeft: 7,
     creditScore: 780,
     status: 'Fundraising',
     targetAmount: 350000,
@@ -164,6 +168,7 @@ const MOCK_ASSETS: MarketAsset[] = [
     askPrice: 97,
     apy: 14.8,
     durationDays: 365,
+    daysLeft: 21,
     creditScore: 740,
     status: 'Fundraising',
     targetAmount: 300000,
@@ -195,6 +200,7 @@ const MOCK_ASSETS: MarketAsset[] = [
     askPrice: 93,
     apy: 22.0,
     durationDays: 90,
+    daysLeft: 0,
     creditScore: 680,
     status: 'Failed',
     targetAmount: 400000,
@@ -231,6 +237,16 @@ const mapApiProject = (p: any): MarketAsset => {
   const v = getVisual(p.title);
   const imgs = PROJECT_IMAGES[p.title];
   const firstLetter = (p.issuer || p.title || '?')[0].toUpperCase();
+
+  // Calculate daysLeft from endDate
+  let daysLeft: number | undefined;
+  if (p.endDate) {
+    const end = new Date(p.endDate);
+    const now = new Date();
+    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    daysLeft = Math.max(0, diff);
+  }
+
   return {
     id: p.id,
     title: p.title,
@@ -243,6 +259,7 @@ const mapApiProject = (p: any): MarketAsset => {
     askPrice: p.askPrice,
     apy: p.apy,
     durationDays: p.durationDays,
+    daysLeft,
     creditScore: p.creditScore,
     status: p.status as MarketAsset['status'],
     targetAmount: p.targetAmount,
@@ -267,14 +284,21 @@ interface PotProject {
   allTimeRev?: string; mrr?: string; founder?: string; founderFollowers?: string;
   founded?: string; country?: string; profitMargin?: string;
   techStack?: string[]; targetAudience?: string; paymentProvider?: string; activeSubscriptions?: number;
-  pricing?: string;
+  pricing?: string; valueProposition?: string; problemSolved?: string;
   monthlyData?: { month: string; amount: number }[];
+  // Extra fields
+  rank?: number; multiple?: number; askingPrice?: number;
+  customers?: number; growthMRR30d?: number; revenuePerVisitor?: number;
 }
 
 
 const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => void }> = ({ project: initialProject, onClose }) => {
   const [project, setProject] = useState<PotProject>(initialProject);
   const [activeTab, setActiveTab] = useState<'STORY' | 'FINANCIALS'>('STORY');
+  const [chartMetric, setChartMetric] = useState<'revenue' | 'mrr'>('revenue');
+  const [chartPeriod, setChartPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [metricDropdownOpen, setMetricDropdownOpen] = useState(false);
+  const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
 
   useEffect(() => {
     setProject(initialProject);
@@ -288,8 +312,17 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
               xFollowerCount: res.data.xFollowerCount || prev.xFollowerCount,
               targetAudience: res.data.targetAudience || prev.targetAudience,
               paymentProvider: res.data.paymentProvider || prev.paymentProvider,
-              techStack: res.data.techStack || prev.techStack,
-              activeSubscriptions: res.data.activeSubscriptions != null ? res.data.activeSubscriptions : prev.activeSubscriptions
+              techStack: (() => {
+                const ts = res.data.techStack;
+                if (!ts || !ts.length) return prev.techStack;
+                // API may return {slug, category}[] or string[]
+                if (typeof ts[0] === 'string') return ts as string[];
+                return (ts as { slug: string; category: string }[]).map(t => t.slug);
+              })(),
+              activeSubscriptions: res.data.activeSubscriptions != null ? res.data.activeSubscriptions : prev.activeSubscriptions,
+              valueProposition: res.data.valueProposition || prev.valueProposition,
+              problemSolved: res.data.problemSolved || prev.problemSolved,
+              pricing: res.data.pricing || prev.pricing,
             }));
           }
         })
@@ -299,312 +332,484 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
   const maxAmount = Math.max(...(project.monthlyData || []).map(d => d.amount), 1);
 
   return (
-    <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full bg-white">
-      {/* Back Navigation — matches AssetDetail */}
-      <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group mb-6 sm:mb-8">
-        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-        Market
-      </button>
-
-      {/* Header Section — matches AssetDetail */}
-      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:items-start justify-between mb-6">
-        <div className="flex gap-3 sm:gap-6 items-start">
-          {project.iconUrl ? (
-            <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shadow-md shrink-0 border border-gray-100 bg-white flex items-center justify-center">
-              <img src={project.iconUrl} alt={project.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            </div>
-          ) : (
-            <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-2xl sm:text-3xl md:text-4xl shadow-md shrink-0 border border-gray-100`}>{project.logo}</div>
-          )}
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-black tracking-tight mb-2 sm:mb-3 truncate sm:whitespace-normal" title={project.name}>{project.name}</h1>
-            <p className="text-[12px] sm:text-[14px] text-gray-500 font-medium leading-relaxed max-w-2xl line-clamp-2 sm:line-clamp-none" title={project.desc}>
-              {project.desc}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-2 sm:gap-3 shrink-0">
-          <button onClick={() => {
-            const url = project.slug ? `${window.location.origin}/market/startup/${project.slug}` : window.location.href;
-            navigator.clipboard.writeText(url).then(() => {
-              const btn = document.getElementById('share-toast');
-              if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Share'; }, 1500); }
-            });
-          }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-gray-200 text-black rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 hover:border-black transition-all shadow-sm h-fit">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-            <span id="share-toast" className="hidden sm:inline">Share</span>
+    <div className="animate-fadeIn min-h-screen bg-white">
+      {/* ── HEADER ── white, clean border bottom */}
+      <div className="bg-white">
+        <div className="px-4 sm:px-8 md:px-12 pt-5 pb-6 max-w-[1100px] mx-auto">
+          {/* Back Nav */}
+          <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group mb-5">
+            <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            Market
           </button>
-          <a href={project.websiteUrl || '#'} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-black text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-800 transition-all shadow-md active:scale-[0.98] h-fit ${!project.websiteUrl ? 'opacity-50 pointer-events-none' : ''}`}>
-            Visit
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-          </a>
-        </div>
-      </div>
 
-
-
-      {/* Primary Metrics Grid (4 Cards) — matches AssetDetail */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
-          <div className="flex items-center gap-1.5 mb-2 sm:mb-3">
-            <p className="text-[10px] sm:text-[11px] font-bold text-gray-400">All-time Revenue</p>
-          </div>
-          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate">{project.allTimeRev || '-'}</p>
-          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate">Profit margin: {project.profitMargin || '-'}</p>
-        </div>
-
-        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
-          <div className="flex items-center gap-1.5 mb-2 sm:mb-3">
-            <p className="text-[10px] sm:text-[11px] font-bold text-gray-400">MRR (verified)</p>
-            <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </div>
-          <p className="text-lg sm:text-2xl font-black text-black mb-1 truncate">{project.mrr && project.mrr !== '$0' ? project.mrr : '—'}</p>
-          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate">Stripe API</p>
-        </div>
-
-        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
-          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Founder</p>
-          <div className="flex items-center gap-2">
-            {project.founderAvatarUrl ? (
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-gray-200 shrink-0"><img src={project.founderAvatarUrl} alt={project.founder || ''} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /></div>
-            ) : (
-              <div className={`w-6 h-6 bg-gradient-to-br ${project.color} rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0`}>{(project.founder || '?')[0]}</div>
-            )}
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-bold text-black truncate" title={project.founder}>{project.founder}</p>
+          {/* Title Row */}
+          <div className="flex flex-col md:flex-row gap-5 md:items-start justify-between mb-6">
+            <div className="flex gap-4 items-start">
+              {project.iconUrl ? (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-md shrink-0 border border-gray-100 bg-white">
+                  <img src={project.iconUrl} alt={project.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              ) : (
+                <div className={`w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-3xl shadow-md shrink-0`}>{project.logo}</div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
+                  <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight">{project.name}</h1>
+                  {project.rank != null && (
+                    <span className="text-[10px] font-black text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full tracking-widest">#{project.rank}</span>
+                  )}
+                </div>
+                <p className="text-[13px] text-gray-500 font-medium max-w-xl line-clamp-2">{project.desc}</p>
+              </div>
             </div>
-            <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => {
+                const url = project.slug ? `${window.location.origin}/market/startup/${project.slug}` : window.location.href;
+                navigator.clipboard.writeText(url).then(() => {
+                  const btn = document.getElementById('share-toast');
+                  if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Share'; }, 1500); }
+                });
+              }} className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-black rounded-xl font-bold text-xs hover:bg-gray-50 hover:border-gray-300 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                <span id="share-toast">Share</span>
+              </button>
+              <a href={project.websiteUrl || '#'} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-5 py-2 bg-black text-white rounded-xl font-bold text-xs hover:bg-gray-800 transition-all shadow-sm ${!project.websiteUrl ? 'opacity-50 pointer-events-none' : ''}`}>
+                Visit
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+              </a>
+            </div>
           </div>
-        </div>
 
-        <div className="p-3 sm:p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-gray-200 transition-all">
-          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 mb-2 sm:mb-3">Growth (30D)</p>
-          <p className={`text-lg sm:text-2xl font-black ${project.revGrow ? 'text-[#00E676]' : 'text-gray-300'}`}>{project.revGrow || '—'}</p>
-          <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-1">Founded {project.founded}</p>
-        </div>
-      </div>
-
-      {/* Navigation Tabs — DS Type B Underline */}
-      <div className="flex items-center gap-6 border-b border-gray-100 mt-8 sm:mt-10 mb-6 overflow-x-auto">
-        {[
-          { id: 'STORY', label: 'Background' },
-          { id: 'FINANCIALS', label: 'Financial Health' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap -mb-px ${activeTab === tab.id
-              ? 'border-gray-900 text-gray-900'
-              : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="py-6">
-        {/* ── Background Tab ── */}
-        {activeTab === 'STORY' && (
-          <div className="space-y-12 animate-fadeIn">
-            {/* 1. Issuer Profile */}
-            <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 pb-6 border-b border-gray-100/50">
-              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          {/* ── 4-column KPI cards ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+              <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">ALL-TIME REVENUE</p>
+              <p className="text-lg sm:text-xl font-black text-black truncate">{project.allTimeRev || '—'}</p>
+              <p className="text-[10px] text-gray-400 font-medium mt-1">Profit margin: {project.profitMargin || '—'}</p>
+            </div>
+            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+              <div className="flex items-center gap-1 mb-1.5">
+                <p className="text-[10px] font-bold text-gray-400 tracking-widest">MRR (VERIFIED)</p>
+                <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <p className="text-lg sm:text-xl font-black text-black truncate">{project.mrr && project.mrr !== '$0' ? project.mrr : '—'}</p>
+              <p className="text-[10px] text-gray-400 font-medium mt-1">Stripe API</p>
+            </div>
+            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+              <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">FOUNDER</p>
+              <div className="flex items-center gap-2">
                 {project.founderAvatarUrl ? (
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-white flex items-center justify-center">
-                    <img src={project.founderAvatarUrl} alt={project.founder || ''} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  </div>
-                ) : project.iconUrl ? (
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-white flex items-center justify-center">
-                    <img src={project.iconUrl} alt={project.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  </div>
+                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-gray-200"><img src={project.founderAvatarUrl} alt={project.founder || ''} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /></div>
                 ) : (
-                  <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${project.color} rounded-2xl flex items-center justify-center font-black text-white text-xl sm:text-2xl shrink-0 border border-gray-100 shadow-sm`}>{project.logo}</div>
+                  <div className={`w-6 h-6 bg-gradient-to-br ${project.color} rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0`}>{(project.founder || '?')[0]}</div>
                 )}
-                <div className="min-w-0">
-                  <h4 className="text-base sm:text-xl font-black tracking-tight text-black flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                    <span className="truncate max-w-[150px] sm:max-w-none" title={project.founder}>{project.founder}</span>
-                    <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white italic shadow-sm">✓</div>
-                    {project.founderFollowers && (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 leading-none ml-1 flex items-center gap-1 text-gray-500">
-                        {project.founderFollowers}
-                      </span>
-                    )}
-                  </h4>
-                  <p className="text-[11px] sm:text-[12px] text-gray-400 font-medium truncate">
-                    {project.country} • Founded {project.founded}
-                    {project.xFollowerCount != null && project.xFollowerCount > 0 && (
-                      <span className="ml-1.5 before:content-['•'] before:mr-1.5 before:text-gray-300">
-                        {project.xFollowerCount >= 1000 ? `${(project.xFollowerCount / 1000).toFixed(1)}k` : project.xFollowerCount} followers on 𝕏
-                      </span>
-                    )}
-                  </p>
-                </div>
+                <p className="text-sm font-black text-black truncate">{project.founder}</p>
+                <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                {project.founderFollowers && (
-                  <a href={`https://x.com/${project.founderFollowers.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2 sm:px-5 sm:py-2.5 bg-black hover:bg-gray-800 transition-colors rounded-xl text-[12px] sm:text-[13px] font-bold flex items-center gap-2 text-white shadow-sm cursor-pointer">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                    <span>{project.founderFollowers}</span>
-                    <svg className="w-3.5 h-3.5 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                  </a>
-                )}
-              </div>
-            </section>
-
-
-
-            {/* 4. Enterprise Insights */}
-            <section className="space-y-6 pt-6">
-              <div className="flex items-center gap-4">
-                <h3 className="text-base font-bold text-black">Enterprise Insights</h3>
-                <div className="h-px flex-1 bg-gray-100" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Active Subscriptions</p>
-                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.activeSubscriptions != null ? project.activeSubscriptions.toLocaleString() : 'Not available'}</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Target Audience</p>
-                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.targetAudience || 'Not available'}</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Category</p>
-                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.cat}</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black tracking-widest text-[#00E676] uppercase">Region</p>
-                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{project.country} · Founded {project.founded}</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* 5. Startup Insights + Tech Stack */}
-            <section className="pt-6 space-y-6">
-              <div className="flex items-center gap-4">
-                <h3 className="text-base font-bold text-black">Technical Overview</h3>
-                <div className="h-px flex-1 bg-gray-100" />
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all">
-                  <h3 className="text-[13px] font-bold text-black mb-4">Startup Insights</h3>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'Category', value: project.cat },
-                      { label: 'Payment Provider', value: project.paymentProvider ? project.paymentProvider.charAt(0).toUpperCase() + project.paymentProvider.slice(1) : '-' },
-                      { label: 'Profit Margin', value: project.profitMargin || '-' },
-                      { label: 'Page Views (30d)', value: project.views },
-                      { label: 'Saves', value: String(project.saves) },
-                    ].map(row => (
-                      <div key={row.label} className="flex items-center justify-between">
-                        <span className="text-[12px] text-gray-500">{row.label}</span>
-                        <span className="text-[12px] font-semibold text-gray-900">{row.value}</span>
-                      </div>
-                    ))}
-                    <div className="pt-2">
-                      <span className="text-[11px] text-gray-400">Tags</span>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {project.tags.map(t => (
-                          <span key={t} className="text-[9px] font-bold text-gray-600 bg-gray-50 border border-gray-200 px-2 py-1 rounded">{t.toUpperCase()}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-5 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all">
-                  <h3 className="text-[13px] font-bold text-black mb-4">Tech Stack</h3>
-                  {project.techStack && project.techStack.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {project.techStack.map((t: any) => {
-                        const label = typeof t === 'string' ? t : (t.slug || t.category || '');
-                        return label ? (
-                          <span key={label} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
-                            {label}
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                  ) : <p className="text-[12px] text-gray-400">Not available</p>}
-                </div>
-              </div>
-            </section>
+              {project.xFollowerCount != null && project.xFollowerCount > 0 && (
+                <p className="text-[10px] text-gray-400 font-medium mt-1">
+                  <svg className="w-3 h-3 inline-block mr-0.5 -mt-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                  {project.xFollowerCount >= 1000 ? `${(project.xFollowerCount / 1000).toFixed(1)}k` : project.xFollowerCount} followers
+                </p>
+              )}
+            </div>
+            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+              <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">GROWTH (30D)</p>
+              <p className={`text-lg sm:text-xl font-black ${project.revGrow ? 'text-emerald-500' : 'text-gray-300'}`}>{project.revGrow || '—'}</p>
+            </div>
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* ── Financial Health Tab ── */}
-        {activeTab === 'FINANCIALS' && (
-          <div className="space-y-8 animate-fadeIn">
-            {/* Revenue Bar Chart */}
-            {(project.monthlyData || []).length > 0 && (
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 sm:p-8 hover:shadow-md transition-all">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-                  <div>
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-3xl font-black text-black tracking-tight">{project.rev}</span>
-                      {project.revGrow && <span className="text-xs font-bold text-[#00E676] bg-emerald-50 px-2 py-0.5 rounded">{project.revGrow} vs. prev period</span>}
+      {/* ── CONTENT AREA ── same white background */}
+      <div className="px-4 sm:px-8 md:px-12 pb-32 max-w-[1100px] mx-auto w-full">
+
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-6 mt-8 mb-6 overflow-x-auto">
+          {[
+            { id: 'STORY', label: 'Background' },
+            { id: 'FINANCIALS', label: 'Financial Health' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`pb-2.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap -mb-px ${activeTab === tab.id
+                ? 'border-gray-900 text-gray-900'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="py-4">
+          {/* ── Background Tab ── */}
+          {activeTab === 'STORY' && (
+            <div className="space-y-8 animate-fadeIn">
+
+              {/* ── Company Info Tags ── */}
+              <div className="flex flex-wrap items-center gap-2">
+                {project.country && project.country !== 'Unknown' && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                    <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {project.country}
+                  </span>
+                )}
+                {project.founded && project.founded !== 'Unknown' && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                    <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    Founded {project.founded}
+                  </span>
+                )}
+                {project.cat && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                    <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                    {project.cat.charAt(0).toUpperCase() + project.cat.slice(1).replace(/-/g, ' ')}
+                  </span>
+                )}
+                {project.targetAudience && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                    <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {project.targetAudience}
+                  </span>
+                )}
+                {project.rank != null && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                    <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>
+                    Rank #{project.rank}
+                  </span>
+                )}
+              </div>
+
+              {/* ── Company Description ── */}
+              {project.desc && (
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 mb-3">About</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">{project.desc}</p>
+                </div>
+              )}
+
+              {/* ── AI-Generated Insights (Value Proposition & Problem Solved) ── */}
+              {(project.valueProposition || project.problemSolved) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {project.valueProposition && (
+                    <div className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md hover:border-gray-200 transition-all">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <div className="w-7 h-7 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center text-blue-500">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Value Proposition</p>
+                      </div>
+                      <p className="text-sm text-gray-700 font-medium leading-relaxed">{project.valueProposition}</p>
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-1">{project.profitMargin} profit margin</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[11px] font-bold text-gray-800 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">Last 6 months</span>
+                  )}
+                  {project.problemSolved && (
+                    <div className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md hover:border-gray-200 transition-all">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <div className="w-7 h-7 bg-purple-50 border border-purple-100 rounded-xl flex items-center justify-center text-purple-500">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Problem Solved</p>
+                      </div>
+                      <p className="text-sm text-gray-700 font-medium leading-relaxed">{project.problemSolved}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Founder Card ── */}
+              <div>
+                <h3 className="text-base font-bold text-gray-900 mb-3">Founder</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-6">
+                    <div className="flex items-center gap-4 min-w-0">
+                      {project.founderAvatarUrl ? (
+                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border-2 border-gray-100 shadow-sm">
+                          <img src={project.founderAvatarUrl} alt={project.founder || ''} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        </div>
+                      ) : (
+                        <div className={`w-14 h-14 bg-gradient-to-br ${project.color} rounded-full flex items-center justify-center font-black text-white text-xl shadow-sm`}>{(project.founder || '?')[0]}</div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <h4 className="text-lg font-black text-black tracking-tight">{project.founder}</h4>
+                          <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white shadow-sm">✓</div>
+                          {project.xFollowerCount != null && project.xFollowerCount > 0 && (
+                            <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">
+                              {project.xFollowerCount >= 1000 ? `${(project.xFollowerCount / 1000).toFixed(1)}k` : project.xFollowerCount} followers
+                            </span>
+                          )}
+                        </div>
+                        {/* Founder's Twitter handle shown as subtitle */}
+                        {project.founderFollowers && (
+                          <p className="text-[11px] font-medium text-gray-400">{project.founderFollowers}</p>
+                        )}
+                      </div>
+                    </div>
+                    {project.founderFollowers && (
+                      <a href={`https://x.com/${project.founderFollowers.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-black hover:bg-gray-800 transition-colors rounded-xl text-[12px] font-bold flex items-center gap-2 text-white shadow-sm shrink-0">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                        {project.founderFollowers}
+                        <svg className="w-3.5 h-3.5 text-[#00E676]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                      </a>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* Bar Chart */}
-                <div className="flex items-end gap-3 sm:gap-4 h-48 sm:h-56 px-1">
-                  {(project.monthlyData || []).map((d, i) => {
-                    const pct = (d.amount / maxAmount) * 100;
+              {/* ── Startup Insights — Card Grid ── */}
+              <div className="space-y-4">
+                <h3 className="text-base font-bold text-gray-900">Startup Insights</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {([
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+                      label: 'Customers', value: project.customers != null && project.customers > 0 ? project.customers.toLocaleString() : null, accent: 'green'
+                    },
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>,
+                      label: 'Subscriptions', value: project.activeSubscriptions != null ? project.activeSubscriptions.toLocaleString() : null, accent: 'emerald'
+                    },
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>,
+                      label: 'Payment', value: project.paymentProvider ? project.paymentProvider.charAt(0).toUpperCase() + project.paymentProvider.slice(1) : null, accent: 'indigo'
+                    },
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
+                      label: 'Profit Margin', value: project.profitMargin && project.profitMargin !== '-' ? project.profitMargin : null, accent: 'green'
+                    },
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>,
+                      label: 'Revenue Multiple', value: project.multiple != null ? `${project.multiple.toFixed(1)}x` : null, accent: 'orange'
+                    },
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>,
+                      label: 'Pricing', value: project.pricing || null, accent: 'indigo'
+                    },
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>,
+                      label: 'Revenue / Visitor', value: project.revenuePerVisitor != null ? `$${project.revenuePerVisitor.toFixed(2)}` : null, accent: 'purple'
+                    },
+                    {
+                      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+                      label: 'MRR Growth (30D)', value: project.growthMRR30d != null ? `$${project.growthMRR30d.toLocaleString()}` : null, accent: 'emerald'
+                    },
+                  ] as { icon: React.ReactNode; label: string; value: string | null; accent: string }[]).filter(item => item.value != null).map((item) => {
+                    const accentMap: Record<string, { bg: string; text: string; border: string; iconColor: string }> = {
+                      blue: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-100', iconColor: 'text-blue-500' },
+                      purple: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-100', iconColor: 'text-purple-500' },
+                      green: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100', iconColor: 'text-emerald-500' },
+                      emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100', iconColor: 'text-emerald-500' },
+                      indigo: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-100', iconColor: 'text-indigo-500' },
+                      orange: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-100', iconColor: 'text-orange-500' },
+                      yellow: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100', iconColor: 'text-amber-500' },
+                      red: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-100', iconColor: 'text-red-500' },
+                      gray: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-100', iconColor: 'text-gray-400' },
+                    };
+                    const ac = accentMap[item.accent] || accentMap.gray;
                     return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group/bar">
-                        <span className="text-[10px] font-black text-gray-500 opacity-0 group-hover/bar:opacity-100 transition-opacity">${(d.amount / 1000).toFixed(1)}k</span>
-                        <div
-                          className="w-full rounded-t-lg bg-gradient-to-t from-emerald-400 to-emerald-300 group-hover/bar:from-emerald-500 group-hover/bar:to-emerald-400 transition-all duration-300 cursor-pointer relative"
-                          style={{ height: `${Math.max(pct, 3)}%` }}
-                        >
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none">
-                            ${d.amount.toLocaleString()}
-                          </div>
-                        </div>
-                        <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">{d.month}</span>
+                      <div key={item.label} className="bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-md hover:border-gray-200 transition-all">
+                        <div className={`w-8 h-8 ${ac.bg} ${ac.border} border rounded-xl flex items-center justify-center mb-3 ${ac.iconColor}`}>{item.icon}</div>
+                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-1">{item.label}</p>
+                        <p className={`text-sm font-black ${ac.text} leading-tight`}>{item.value}</p>
                       </div>
                     );
                   })}
+                  {/* Tech Stack — full-width row */}
+                  {project.techStack && project.techStack.length > 0 && (
+                    <div className="col-span-2 sm:col-span-3 lg:col-span-4 bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-md hover:border-gray-200 transition-all">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-7 h-7 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-gray-400">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Tech Stack</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {project.techStack.map(t => (
+                          <span key={t} className="text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-300 transition-colors">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>{/* end grid */}
+              </div>{/* end space-y-4 */}
+
+              {/* empty placeholder removed */}
+            </div>
+          )}
+
+          {/* ── Financial Health Tab ── */}
+          {activeTab === 'FINANCIALS' && (() => {
+            const parseRev = (s: string) => { const n = parseFloat(s.replace(/[^0-9.]/g, '')); return isNaN(n) ? 0 : n; };
+            const currentRev = parseRev(project.rev || '0');
+            const currentMrr = parseRev(project.mrr || '0');
+            const periodDays = chartPeriod === '7d' ? 7 : chartPeriod === '30d' ? 30 : chartPeriod === '90d' ? 90 : 180;
+
+            const generateDailyData = (baseVal: number, growthPct: number) => {
+              if (baseVal <= 0) return [];
+              const days = periodDays;
+              const dailyBase = baseVal / 30;
+              const dailyGrowth = growthPct / 100 / 30;
+              return Array.from({ length: days }, (_, i) => {
+                const factor = 1 + dailyGrowth * (i - days / 2);
+                const jitter = 0.85 + Math.random() * 0.3;
+                return {
+                  day: i + 1,
+                  value: Math.round(dailyBase * factor * jitter),
+                  prevValue: Math.round(dailyBase * (factor - dailyGrowth * days) * (0.85 + Math.random() * 0.3)),
+                };
+              });
+            };
+
+            const growthPct = project.revGrow ? parseFloat(project.revGrow.replace(/[^0-9.-]/g, '')) : 5;
+            const revData = generateDailyData(currentRev, growthPct);
+            const mrrGrowthPct = project.growthMRR30d != null ? (project.growthMRR30d / (currentMrr || 1)) * 100 : growthPct;
+            const mrrData = generateDailyData(currentMrr, mrrGrowthPct);
+
+            const periodOptions = [
+              { value: '7d', label: 'Last 7 days' },
+              { value: '30d', label: 'Last 30 days' },
+              { value: '90d', label: 'Last 90 days' },
+              { value: 'all', label: 'All time' },
+            ];
+            const xInterval = chartPeriod === '7d' ? 0 : chartPeriod === '30d' ? 4 : chartPeriod === '90d' ? 14 : 29;
+            const paymentLabel = project.paymentProvider ? project.paymentProvider.charAt(0).toUpperCase() + project.paymentProvider.slice(1) : 'Stripe';
+
+            const ChartPanel = ({
+              title, value, growth, color, gradientId, data, label
+            }: {
+              title: string; value: string | undefined; growth?: string; color: string;
+              gradientId: string; data: { day: number; value: number; prevValue: number }[]; label: string;
+            }) => (
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 hover:shadow-md transition-all">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1">{title}</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl sm:text-3xl font-black text-black tracking-tight">{value || '—'}</span>
+                      {growth && <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded">▲ {growth}</span>}
+                    </div>
+                  </div>
+                  <div className="w-2.5 h-2.5 rounded-full mt-1.5" style={{ background: color }} />
+                </div>
+                {data.length > 0 ? (
+                  <div className="h-52 sm:h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                            <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                        <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(d) => `D${d}`} interval={xInterval} />
+                        <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} width={42} />
+                        <Tooltip
+                          contentStyle={{ background: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '11px', color: '#fff', fontWeight: 600 }}
+                          labelFormatter={(d) => `Day ${d}`}
+                          formatter={(value: number) => [`$${value.toLocaleString()}`, label]}
+                        />
+                        <Area type="monotone" dataKey="prevValue" stroke="#e5e7eb" strokeWidth={1.5} strokeDasharray="4 4" fill="none" dot={false} />
+                        <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fill={`url(#${gradientId})`} dot={false} activeDot={{ r: 4, fill: color, stroke: '#fff', strokeWidth: 2 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-40 flex items-center justify-center">
+                    <p className="text-xs text-gray-300 font-semibold">No data available</p>
+                  </div>
+                )}
+              </div>
+            );
+
+            return (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Summary row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'REVENUE (30D)', value: project.rev, sub: project.revGrow ? `▲ ${project.revGrow} MoM` : undefined, subColor: 'text-emerald-500' },
+                    { label: 'MRR', value: project.mrr && project.mrr !== '$0' ? project.mrr : undefined, sub: `via ${paymentLabel}`, subColor: 'text-gray-400' },
+                    { label: 'ALL-TIME', value: project.allTimeRev, sub: 'Total revenue', subColor: 'text-gray-400' },
+                    { label: 'PROFIT MARGIN', value: project.profitMargin && project.profitMargin !== '-' ? project.profitMargin : undefined, sub: project.activeSubscriptions != null ? `${project.activeSubscriptions.toLocaleString()} subs` : undefined, subColor: 'text-gray-400' },
+                  ].map(card => (
+                    <div key={card.label} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all">
+                      <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">{card.label}</p>
+                      <p className="text-lg sm:text-xl font-black text-black tracking-tight truncate">{card.value || '—'}</p>
+                      {card.sub && <p className={`text-[10px] font-bold mt-1 ${card.subColor}`}>{card.sub}</p>}
+                    </div>
+                  ))}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                    <span className="text-[11px] font-semibold text-gray-500">Revenue verified via <strong className="text-gray-900">Stripe API</strong></span>
+                {/* Period selector */}
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-gray-900">Revenue & MRR Charts</p>
+                  <div className="relative">
+                    <button
+                      onClick={() => { setPeriodDropdownOpen(!periodDropdownOpen); }}
+                      className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:border-gray-300 hover:shadow-sm transition-all"
+                    >
+                      {periodOptions.find(p => p.value === chartPeriod)?.label}
+                      <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${periodDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {periodDropdownOpen && (
+                      <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden animate-fadeIn">
+                        {periodOptions.map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => { setChartPeriod(opt.value as any); setPeriodDropdownOpen(false); }}
+                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-left hover:bg-gray-50 transition-colors ${chartPeriod === opt.value ? 'bg-gray-50 text-gray-900' : 'text-gray-600'}`}
+                          >
+                            {opt.label}
+                            {chartPeriod === opt.value && <svg className="w-3.5 h-3.5 ml-auto text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-[10px] font-bold text-gray-400">ID: {project.name.toLowerCase().replace(/\s+/g, '-')}-001</span>
+                </div>
+
+                {/* Two full-width stacked charts — only render if data exists */}
+                <div className="space-y-4">
+                  {revData.length > 0 && (
+                    <ChartPanel
+                      title="REVENUE"
+                      value={project.rev}
+                      growth={project.revGrow}
+                      color="#3b82f6"
+                      gradientId="gradRev"
+                      data={revData}
+                      label="Revenue"
+                    />
+                  )}
+                  {mrrData.length > 0 && (
+                    <ChartPanel
+                      title="MRR"
+                      value={project.mrr && project.mrr !== '$0' ? project.mrr : undefined}
+                      color="#10b981"
+                      gradientId="gradMrr"
+                      data={mrrData}
+                      label="MRR"
+                    />
+                  )}
+                  {revData.length === 0 && mrrData.length === 0 && (
+                    <div className="bg-gray-50 border border-gray-100 rounded-2xl p-10 text-center">
+                      <svg className="w-8 h-8 text-gray-200 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                      <p className="text-sm font-bold text-gray-300">No chart data available</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Verified footer */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-100 rounded-xl w-fit">
+                  <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                  <span className="text-[11px] font-semibold text-gray-500">Revenue verified via <strong className="text-gray-900">{paymentLabel} API</strong></span>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            );
+          })()}
+        </div>
       </div>
     </div>
   );
@@ -628,16 +833,23 @@ const Market: React.FC = () => {
 
   // Potential Projects / M&A filters
   const [potCat, setPotCat] = useState<string>('All');
+  const [potRevMin, setPotRevMin] = useState<string>('');
+  const [potRevMax, setPotRevMax] = useState<string>('');
   const [potMrrMin, setPotMrrMin] = useState<string>('');
   const [potMrrMax, setPotMrrMax] = useState<string>('');
-  const [potUsersMin, setPotUsersMin] = useState<string>('');
-  const [potUsersMax, setPotUsersMax] = useState<string>('');
-  const [potSort, setPotSort] = useState<string>('default');
+  const [potGrowthMin, setPotGrowthMin] = useState<string>('');
+  const [potGrowthMax, setPotGrowthMax] = useState<string>('');
+  const [potMarginMin, setPotMarginMin] = useState<string>('');
+  const [potMarginMax, setPotMarginMax] = useState<string>('');
+  const [potAudience, setPotAudience] = useState<string>('Any');
+  const [potSort, setPotSort] = useState<string>('rev-desc');
+  const [potFoundedFrom, setPotFoundedFrom] = useState<string>('');
+  const [potFoundedTo, setPotFoundedTo] = useState<string>('');
+  const [potCatExpanded, setPotCatExpanded] = useState(false);
 
   // TrustMRR live data
   const [trustmrrStartups, setTrustmrrStartups] = useState<any[]>([]);
   const [trustmrrLoading, setTrustmrrLoading] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(60);
 
   const refreshAssets = () => {
     api.getProjects().then(data => {
@@ -738,10 +950,15 @@ const Market: React.FC = () => {
           allTimeRev: formatUsd(s.revenue?.total || 0), mrr: formatUsd(s.revenue?.mrr || 0), founder: s.cofounders?.[0]?.xName || s.xHandle || '—', founderFollowers: s.xHandle ? `@${s.xHandle}` : undefined,
           websiteUrl: s.website || undefined, founded: s.foundedDate ? new Date(s.foundedDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown', country: s.country || 'Unknown',
           slug: s.slug || undefined, xFollowerCount: s.xFollowerCount || undefined, profitMargin: s.profitMarginLast30Days != null ? `${Math.round(s.profitMarginLast30Days)}%` : '-',
+          rank: s.rank || undefined, multiple: s.multiple || undefined,
+          askingPrice: s.askingPrice || undefined,
+          customers: s.customers || undefined, growthMRR30d: s.growthMRR30d || undefined,
+          targetAudience: s.targetAudience || undefined, paymentProvider: s.paymentProvider || undefined,
+          activeSubscriptions: s.activeSubscriptions || undefined,
         };
         return <PotentialProjectDetail project={mappedProject} onClose={() => navigate('/market')} />;
       } else if (trustmrrLoading) {
-         return <div className="p-10 text-center text-gray-400">Loading details...</div>;
+        return <div className="p-10 text-center text-gray-400">Loading details...</div>;
       }
     }
   }
@@ -757,7 +974,7 @@ const Market: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full bg-white min-h-full">
+    <div className="flex-1 space-y-6 animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full bg-gray-100/80">
       {/* 1. Header — left-aligned like Playground */}
       <section className="mb-6">
         <h1 className="text-[22px] font-semibold text-gray-900 mb-4">Market</h1>
@@ -944,89 +1161,195 @@ const Market: React.FC = () => {
           <div className="space-y-4 mb-8">
             {/* Top row: status chips + filter button + sort */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex bg-white p-1 rounded-full border border-gray-100 shadow-sm overflow-x-auto max-w-full">
-                {['All', 'SaaS', 'AI', 'Health', 'Marketing', 'Content', 'Education'].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setPotCat(cat)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all whitespace-nowrap ${potCat === cat ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+              {(() => {
+                const primaryCats = ['All', 'SaaS', 'AI', 'Health', 'Marketing', 'Content', 'Education'];
+                const moreCats = ['E-Commerce', 'Fintech', 'Dev Tools', 'Social Media', 'Sales', 'Security', 'Real Estate', 'Recruiting'];
+                const catKeyMap: Record<string, string> = {
+                  'All': 'All', 'SaaS': 'saas', 'AI': 'artificial-intelligence', 'Health': 'health-fitness', 'Marketing': 'marketing',
+                  'Content': 'content-creation', 'Education': 'education', 'E-Commerce': 'ecommerce', 'Fintech': 'fintech',
+                  'Dev Tools': 'developer-tools', 'Social Media': 'social-media', 'Sales': 'sales',
+                  'Security': 'security', 'Real Estate': 'real-estate', 'Recruiting': 'recruiting',
+                };
+                // Check if active category is from the "more" list
+                const moreKeys = moreCats.map(c => catKeyMap[c]);
+                const activeMoreLabel = moreCats.find(c => catKeyMap[c] === potCat);
+                return (
+                  <div className="flex bg-white p-1 rounded-full border border-gray-100 shadow-sm items-center gap-0.5">
+                    {primaryCats.map(cat => {
+                      const key = catKeyMap[cat] || cat;
+                      const isActive = potCat === key;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => { setPotCat(key); setPotCatExpanded(false); }}
+                          className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all whitespace-nowrap ${isActive ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                    {/* Active "more" category chip */}
+                    {activeMoreLabel && (
+                      <button
+                        onClick={() => setPotCat('All')}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all whitespace-nowrap bg-gray-900 text-white"
+                      >
+                        {activeMoreLabel}
+                      </button>
+                    )}
+                    {/* More dropdown trigger — always visible */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setPotCatExpanded(v => !v)}
+                        className="px-3 py-1.5 rounded-full text-xs font-bold text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all whitespace-nowrap"
+                        title="More categories"
+                      >
+                        ···
+                      </button>
+                      {potCatExpanded && (
+                        <>
+                          <div className="fixed inset-0 z-30" onClick={() => setPotCatExpanded(false)} />
+                          <div className="absolute top-full right-0 mt-2 z-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px]">
+                            {moreCats.map(cat => {
+                              const key = catKeyMap[cat];
+                              const isActive = potCat === key;
+                              return (
+                                <button
+                                  key={cat}
+                                  onClick={() => { setPotCat(key); setPotCatExpanded(false); }}
+                                  className={`w-full text-left px-4 py-2 text-xs font-semibold transition-colors ${isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                                >
+                                  {cat}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Filters toggle */}
               <button
                 onClick={() => setFiltersOpen(v => !v)}
-                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-xs font-bold transition-all ${filtersOpen || (potMrrMin || potMrrMax || potUsersMin || potUsersMax)
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-xs font-bold transition-all ${filtersOpen || (potRevMin || potRevMax || potMrrMin || potMrrMax || potGrowthMin || potGrowthMax || potMarginMin || potMarginMax || potAudience !== 'Any')
                   ? 'bg-gray-900 text-white border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                   }`}
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" /></svg>
                 Filters
-                {(potMrrMin || potMrrMax || potUsersMin || potUsersMax) && (
+                {(potRevMin || potRevMax || potMrrMin || potMrrMax || potGrowthMin || potGrowthMax || potMarginMin || potMarginMax || potAudience !== 'Any') && (
                   <span className="bg-[#00E676] text-black rounded-full w-4 h-4 text-[9px] font-black flex items-center justify-center leading-none">!</span>
                 )}
               </button>
 
               <div className="ml-auto flex items-center gap-2">
-                <select value={potSort} onChange={e => setPotSort(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer shadow-sm">
-                  <option value="default">Best deals (default)</option>
-                  <option value="listed_desc">Listed: Newest First</option>
-                  <option value="listed_asc">Listed: Oldest First</option>
-                  <option value="multiple_asc">Multiple: Low to High</option>
-                  <option value="multiple_desc">Multiple: High to Low</option>
-                  <option value="asking_asc">Asking Price: Low to High</option>
-                  <option value="asking_desc">Asking Price: High to Low</option>
-                  <option value="revenue_asc">Revenue: Low to High</option>
-                  <option value="revenue_desc">Revenue: High to Low</option>
-                  <option value="growth_asc">Growth: Low to High</option>
-                  <option value="growth_desc">Growth: High to Low</option>
-                  <option value="founded_asc">Founded: Oldest First</option>
-                  <option value="founded_desc">Founded: Newest First</option>
+                <select value={potSort} onChange={e => setPotSort(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer" style={{ WebkitAppearance: 'menulist', appearance: 'menulist' }}>
+                  <option value="rev-desc">Revenue: High to Low</option>
+                  <option value="rev-asc">Revenue: Low to High</option>
+                  <option value="growth-desc">Growth: High to Low</option>
+                  <option value="growth-asc">Growth: Low to High</option>
+                  <option value="founded-desc">Founded: Newest First</option>
+                  <option value="founded-asc">Founded: Oldest First</option>
                 </select>
               </div>
             </div>
 
-            {/* Expanded filter panel */}
+            {/* Expanded filter panel — TrustMRR style */}
             {filtersOpen && (
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {/* MRR Range */}
+                  {/* Revenue (30d) */}
                   <div>
-                    <label className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2 block">MRR (30 days)</label>
+                    <label className="text-[10px] font-bold text-gray-500 tracking-wide mb-2 block">Revenue (last 30 days)</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
-                        <input type="number" placeholder="Min" value={potMrrMin} onChange={e => setPotMrrMin(e.target.value)} className="w-full px-3 pl-6 py-2 text-xs font-medium bg-white border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                        <input type="number" placeholder="Min" value={potRevMin} onChange={e => setPotRevMin(e.target.value)} className="w-full px-3 pl-6 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
                       </div>
                       <span className="text-gray-300 text-xs font-bold">—</span>
                       <div className="relative flex-1">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
-                        <input type="number" placeholder="Max" value={potMrrMax} onChange={e => setPotMrrMax(e.target.value)} className="w-full px-3 pl-6 py-2 text-xs font-medium bg-white border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                        <input type="number" placeholder="Max" value={potRevMax} onChange={e => setPotRevMax(e.target.value)} className="w-full px-3 pl-6 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
                       </div>
                     </div>
                   </div>
 
-                  {/* Users / Waitlist */}
+                  {/* MRR */}
                   <div>
-                    <label className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2 block">Users / Waitlist</label>
+                    <label className="text-[10px] font-bold text-gray-500 tracking-wide mb-2 block">MRR</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
-                        <input type="number" placeholder="Min" value={potUsersMin} onChange={e => setPotUsersMin(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-white border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
+                        <input type="number" placeholder="Min" value={potMrrMin} onChange={e => setPotMrrMin(e.target.value)} className="w-full px-3 pl-6 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
                       </div>
                       <span className="text-gray-300 text-xs font-bold">—</span>
                       <div className="relative flex-1">
-                        <input type="number" placeholder="Max" value={potUsersMax} onChange={e => setPotUsersMax(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-white border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
+                        <input type="number" placeholder="Max" value={potMrrMax} onChange={e => setPotMrrMax(e.target.value)} className="w-full px-3 pl-6 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-end justify-end gap-2">
-                    <button onClick={() => { setPotMrrMin(''); setPotMrrMax(''); setPotUsersMin(''); setPotUsersMax(''); }} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Clear</button>
+                  {/* Growth (30d) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 tracking-wide mb-2 block">Growth (last 30 days)</label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input type="number" placeholder="Min %" value={potGrowthMin} onChange={e => setPotGrowthMin(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                      </div>
+                      <span className="text-gray-300 text-xs font-bold">—</span>
+                      <div className="relative flex-1">
+                        <input type="number" placeholder="Max %" value={potGrowthMax} onChange={e => setPotGrowthMax(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profit Margin */}
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 tracking-wide mb-2 block">Profit Margin</label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input type="number" placeholder="Min %" value={potMarginMin} onChange={e => setPotMarginMin(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                      </div>
+                      <span className="text-gray-300 text-xs font-bold">—</span>
+                      <div className="relative flex-1">
+                        <input type="number" placeholder="Max %" value={potMarginMax} onChange={e => setPotMarginMax(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Audience */}
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 tracking-wide mb-2 block">Audience</label>
+                    <select value={potAudience} onChange={e => setPotAudience(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all cursor-pointer">
+                      <option value="Any">Any</option>
+                      <option value="B2B">B2B</option>
+                      <option value="B2C">B2C</option>
+                      <option value="B2B2C">B2B2C</option>
+                    </select>
+                  </div>
+
+                  {/* Founded */}
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 tracking-wide mb-2 block">Founded</label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input type="number" placeholder="From (year)" min="2000" max="2030" value={potFoundedFrom} onChange={e => setPotFoundedFrom(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                      </div>
+                      <span className="text-gray-300 text-xs font-bold">—</span>
+                      <div className="relative flex-1">
+                        <input type="number" placeholder="To (year)" min="2000" max="2030" value={potFoundedTo} onChange={e => setPotFoundedTo(e.target.value)} className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition-all" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions — 靠右对齐 */}
+                  <div className="sm:col-span-2 lg:col-span-3 flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button onClick={() => { setPotRevMin(''); setPotRevMax(''); setPotMrrMin(''); setPotMrrMax(''); setPotGrowthMin(''); setPotGrowthMax(''); setPotMarginMin(''); setPotMarginMax(''); setPotAudience('Any'); setPotFoundedFrom(''); setPotFoundedTo(''); }} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Clear</button>
                     <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold">Apply Filters</button>
                   </div>
                 </div>
@@ -1049,46 +1372,50 @@ const Market: React.FC = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(() => {
-              const sorted = [...trustmrrStartups]
-                .sort((a, b) => {
-                  if (potSort === 'default') {
-                    // Default TrustMRR behavior: Revenue Descending
-                    return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
-                  }
-
-                  // Universal property extractor
-                  let valA: number | null = null, valB: number | null = null;
-                  if (potSort.startsWith('multiple')) { valA = a.multiple; valB = b.multiple; }
-                  else if (potSort.startsWith('asking')) { valA = a.askingPrice; valB = b.askingPrice; }
-                  else if (potSort.startsWith('revenue')) { valA = a.revenue?.last30Days ?? null; valB = b.revenue?.last30Days ?? null; }
-                  else if (potSort.startsWith('growth')) { valA = a.growth30d; valB = b.growth30d; }
-                  else if (potSort.startsWith('listed')) {
-                    valA = a.firstListedForSaleAt ? new Date(a.firstListedForSaleAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : null);
-                    valB = b.firstListedForSaleAt ? new Date(b.firstListedForSaleAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : null);
-                  }
-                  else if (potSort.startsWith('founded')) { 
-                    valA = a.foundedDate ? new Date(a.foundedDate).getTime() : null;
-                    valB = b.foundedDate ? new Date(b.foundedDate).getTime() : null;
-                  }
-
-                  // Standard Database Emulation: 'NULLS LAST'
-                  // Empty values (like N/A Growth or Make Offer) are globally pushed to the bottom of the list
-                  if (valA == null && valB != null) return 1;
-                  if (valB == null && valA != null) return -1;
-                  if (valA == null && valB == null) {
-                      // Stable fallback to prevent React array shuffling when hundreds of items tie as null
-                      return (a.id || a.slug || '').localeCompare(b.id || b.slug || '');
-                  }
-
-                  // Actual Numerical Sort
-                  const asc = potSort.endsWith('_asc');
-                  return asc ? valA! - valB! : valB! - valA!;
-                });
-
-              return (
-                <>
-                  {sorted.slice(0, visibleCount).map((s, i) => {
+            {[...trustmrrStartups]
+              .filter(s => {
+                // Category filter — compare lowercase slugs
+                if (potCat !== 'All') {
+                  const sCat = (s.category || '').toLowerCase().replace(/\s+/g, '-');
+                  const filterCat = potCat.toLowerCase();
+                  if (sCat !== filterCat) return false;
+                }
+                // Revenue (30d) filter
+                const rev30 = s.revenue?.last30Days ?? 0;
+                if (potRevMin && rev30 < Number(potRevMin)) return false;
+                if (potRevMax && rev30 > Number(potRevMax)) return false;
+                // MRR filter
+                const mrrVal = s.revenue?.mrr ?? 0;
+                if (potMrrMin && mrrVal < Number(potMrrMin)) return false;
+                if (potMrrMax && mrrVal > Number(potMrrMax)) return false;
+                // Growth filter
+                const growth = s.growth30d;
+                if (potGrowthMin && (growth == null || growth < Number(potGrowthMin))) return false;
+                if (potGrowthMax && (growth == null || growth > Number(potGrowthMax))) return false;
+                // Profit Margin filter
+                const margin = s.profitMarginLast30Days;
+                if (potMarginMin && (margin == null || margin < Number(potMarginMin))) return false;
+                if (potMarginMax && (margin == null || margin > Number(potMarginMax))) return false;
+                // Audience filter
+                if (potAudience !== 'Any' && (s.targetAudience || '').toUpperCase() !== potAudience.toUpperCase()) return false;
+                // Founded filter
+                if (potFoundedFrom || potFoundedTo) {
+                  const fd = s.foundedDate ? new Date(s.foundedDate).getFullYear() : null;
+                  if (potFoundedFrom && (fd == null || fd < Number(potFoundedFrom))) return false;
+                  if (potFoundedTo && (fd == null || fd > Number(potFoundedTo))) return false;
+                }
+                return true;
+              })
+              .sort((a, b) => {
+                if (potSort === 'rev-desc') return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
+                if (potSort === 'rev-asc') return (a.revenue?.last30Days ?? 0) - (b.revenue?.last30Days ?? 0);
+                if (potSort === 'growth-desc') return (b.growth30d ?? -999) - (a.growth30d ?? -999);
+                if (potSort === 'growth-asc') return (a.growth30d ?? 999) - (b.growth30d ?? 999);
+                if (potSort === 'founded-desc') return new Date(b.foundedDate || '1970').getTime() - new Date(a.foundedDate || '1970').getTime();
+                if (potSort === 'founded-asc') return new Date(a.foundedDate || '2099').getTime() - new Date(b.foundedDate || '2099').getTime();
+                return 0;
+              })
+              .map((s, i) => {
                 // Derive display properties from API data
                 const catColors: Record<string, string> = {
                   saas: 'text-violet-700 bg-violet-50 border-violet-100',
@@ -1137,31 +1464,12 @@ const Market: React.FC = () => {
                 const growthPct = s.growth30d;
                 const growthStr = growthPct != null ? (growthPct >= 0 ? `↑ ${Math.round(growthPct)}%` : `↓ ${Math.abs(Math.round(growthPct))}%`) : '';
 
-                // Dynamic metric value based on dropdown selections
-                let metricLabel = 'REVENUE (30D)';
-                let metricValue = formatUsd(rev30d);
-                if (potSort.startsWith('multiple')) {
-                  metricLabel = 'MULTIPLE';
-                  metricValue = s.multiple != null ? `${parseFloat(s.multiple).toFixed(1)}x` : 'N/A';
-                } else if (potSort.startsWith('asking')) {
-                  metricLabel = 'ASKING PRICE';
-                  metricValue = s.askingPrice != null ? formatUsd(s.askingPrice) : 'Offer';
-                } else if (potSort.startsWith('growth')) {
-                  metricLabel = 'GROWTH (30D)';
-                  metricValue = growthPct != null ? `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}%` : 'N/A';
-                } else if (potSort.startsWith('founded')) {
-                  metricLabel = 'FOUNDED';
-                  metricValue = s.foundedDate ? new Date(s.foundedDate).getFullYear().toString() : 'N/A';
-                } else if (potSort === 'revenue_desc' || potSort === 'revenue_asc') {
-                  metricLabel = 'REVENUE (30D)';
-                  metricValue = formatUsd(rev30d);
-                }
+
 
                 // Build tags
                 const tags: string[] = [];
-                if (s.paymentProvider) tags.push(`Verified ${s.paymentProvider}`);
-                if (s.targetAudience) tags.push(s.targetAudience.toUpperCase());
-                if (s.onSale) tags.push('For Sale');
+                if (s.paymentProvider) tags.push(`Verified ${s.paymentProvider.charAt(0).toUpperCase() + s.paymentProvider.slice(1)}`);
+                if (s.targetAudience) tags.push(s.targetAudience.charAt(0).toUpperCase() + s.targetAudience.slice(1));
                 if (growthPct != null && growthPct > 50) tags.push('Fast Growing');
 
                 // Label for top performers
@@ -1195,206 +1503,195 @@ const Market: React.FC = () => {
                       slug: s.slug || undefined,
                       xFollowerCount: s.xFollowerCount || undefined,
                       profitMargin: s.profitMarginLast30Days != null ? `${Math.round(s.profitMarginLast30Days)}%` : '-',
+                      monthlyData: s.revenueHistory || undefined,
+                      rank: s.rank || undefined, multiple: s.multiple || undefined,
+                      askingPrice: s.askingPrice || undefined,
+                      customers: s.customers || undefined, growthMRR30d: s.growthMRR30d || undefined,
+                      targetAudience: s.targetAudience || undefined, paymentProvider: s.paymentProvider || undefined,
+                      activeSubscriptions: s.activeSubscriptions || undefined,
                     };
                     navigate(`/market/startup/${s.slug}`, { state: { project: mappedProject } });
-                  }} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all flex flex-col group cursor-pointer relative">
-                    {/* Top Cover Section */}
-                    <div className={`h-24 bg-gradient-to-br ${cover} bg-gray-50 relative p-4 flex items-start justify-between`}>
-                      {/* Optional Top Label */}
-                      {label ? (
-                        <span className="bg-white/80 backdrop-blur text-black px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border border-gray-100 shadow-sm">
-                          {label}
-                        </span>
-                      ) : <div></div>}
+                  }} className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-xl transition-all flex flex-col group cursor-pointer">
 
-                      {/* Bookmark Icon */}
-                      <button className="w-7 h-7 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-white shadow-sm transition-all">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                      </button>
-
-                      {/* Avatar floating at the bottom boundary of the cover */}
-                      <div className={`absolute -bottom-6 left-4 w-12 h-12 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-md border-2 border-white pointer-events-none group-hover:scale-105 transition-transform overflow-hidden`}>
-                        {s.icon ? (
-                          <img src={s.icon} alt={s.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.textContent = logo; }} />
-                        ) : logo}
-                      </div>
-                    </div>
-
-                    {/* Content Body */}
-                    <div className="pt-8 p-5 flex-1 flex flex-col">
-                      <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-                        <h4 className="text-base font-bold text-gray-900 leading-tight">{s.name}</h4>
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border leading-none ${tagColor}`}>{cat.toUpperCase()}</span>
+                    {/* Card Body */}
+                    <div className="p-5 pb-0 flex-1 flex flex-col">
+                      {/* Header Row: Logo + Title + Views */}
+                      <div className="flex items-start gap-3 mb-2">
+                        <div className={`w-12 h-12 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center font-black text-white text-base shadow-md shrink-0 group-hover:scale-105 transition-transform overflow-hidden`}>
+                          {s.icon ? (
+                            <img src={s.icon} alt={s.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.textContent = logo; }} />
+                          ) : logo}
+                        </div>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <h4 className="text-[15px] font-bold text-gray-900 leading-snug truncate mb-1">{s.name}</h4>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border leading-none shrink-0 ${tagColor}`}>{cat.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                            {label && (
+                              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded leading-none shrink-0 tracking-wide">
+                                {label}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Views count */}
+                        {s.visitorsLast30Days != null && s.visitorsLast30Days > 0 && (
+                          <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 shrink-0 mt-0.5">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            {formatNum(s.visitorsLast30Days)}
+                          </span>
+                        )}
                       </div>
 
                       {/* Description */}
-                      <p className="text-[11px] text-gray-500 font-medium leading-relaxed line-clamp-2 mt-1 mb-4">
+                      <p className="text-[12px] text-gray-500 leading-relaxed line-clamp-2 mb-3">
                         {s.description || 'No description available.'}
                       </p>
 
-                      {/* Small Detail Tags */}
-                      <div className="flex flex-wrap items-center gap-1.5 mb-5">
-                        {tags.map(t => (
-                          <span key={t} className="text-[9px] font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded tracking-wide">{t.toUpperCase()}</span>
-                        ))}
+                      {/* Tags */}
+                      {tags.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                          {tags.slice(0, 3).map(t => (
+                            <span key={t} className="text-[9px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded">{t}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Metrics — Revenue / MRR / Growth */}
+                    <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-3.5 grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-[9px] font-bold text-gray-400 tracking-wide mb-0.5">Revenue (30d)</p>
+                        <p className="text-[14px] font-black text-gray-900 leading-tight">{formatUsd(rev30d)}</p>
                       </div>
-
-                      {/* Metrics Bottom Divider */}
-                      <div className="mt-auto grid grid-cols-3 gap-2 border-t border-gray-100 pt-4 items-start">
-                        {/* Metric Value */}
-                        <div>
-                          <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1 flex items-center gap-1 whitespace-nowrap">
-                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            {metricLabel}
+                      <div>
+                        <p className="text-[9px] font-bold text-gray-400 tracking-wide mb-0.5">MRR</p>
+                        <p className="text-[14px] font-black text-gray-900 leading-tight">{mrr > 0 ? formatUsd(mrr) : '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-gray-400 tracking-wide mb-0.5">Growth</p>
+                        {momGrowth != null ? (
+                          <p className={`text-[14px] font-black leading-tight ${momGrowth >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                            {momGrowth >= 0 ? '↑' : '↓'}{Math.abs(Math.round(momGrowth))}%
                           </p>
-                          <span className="text-[13px] font-bold text-gray-900">{metricValue}</span>
-                        </div>
-
-                        {/* Founder */}
-                        <div className="min-w-0">
-                          <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1">FOUNDER</p>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                              {founderAvatar ? (
-                                <img src={founderAvatar} alt={founder} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                              ) : (
-                                <span className="text-[7px] font-bold text-gray-500">{founder.charAt(0).toUpperCase()}</span>
-                              )}
-                            </div>
-                            <span className="text-[11px] font-semibold text-gray-700 break-all leading-tight">{founder}</span>
-                          </div>
-                        </div>
-
-                        {/* MoM Growth */}
-                        <div className="text-right">
-                          <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1">MoM GROWTH</p>
-                          {momGrowth != null ? (
-                            <span className={`text-[13px] font-bold ${momGrowth >= 0 ? 'text-[#00E676]' : 'text-red-400'}`}>
-                              {momGrowth >= 0 ? '↑' : '↓'} {Math.abs(Math.round(momGrowth))}%
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-gray-300 font-medium">—</span>
-                          )}
-                        </div>
+                        ) : (
+                          <p className="text-[14px] font-black text-gray-300 leading-tight">—</p>
+                        )}
                       </div>
                     </div>
                   </div>
                 );
               })}
-              
-            {/* Load More Button spanning full grid */}
-            {sorted.length > visibleCount && (
-              <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center mt-6">
-                <button
-                  onClick={() => setVisibleCount(v => v + 60)}
-                  className="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl shadow-sm hover:border-gray-900 transition-all text-sm flex items-center gap-2 mx-auto"
-                >
-                  Load More Startups
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                <p className="text-xs text-gray-400 mt-2 font-medium">Showing {visibleCount} of {sorted.length}</p>
-              </div>
-            )}
-            </>
-           );
-          })()}
           </div>
         </>
       )}
-
-
     </div>
   );
 };
 
 const AssetCard: React.FC<{ asset: MarketAsset; onClick: () => void }> = ({ asset, onClick }) => {
-  const [activeTab, setActiveTab] = useState<'STORY' | 'AGREEMENT' | 'FINANCIALS'>('STORY');
   const progress = Math.min(100, (asset.raisedAmount / asset.targetAmount) * 100);
+  // Generate gradient avatar from project name
+  const gradients = [
+    'from-violet-500 to-indigo-600', 'from-blue-500 to-cyan-500', 'from-emerald-500 to-teal-600',
+    'from-rose-500 to-pink-600', 'from-amber-500 to-orange-500', 'from-sky-500 to-blue-600',
+  ];
+  const grad = gradients[asset.title.charCodeAt(0) % gradients.length];
+  const initials = asset.title.split(/[\s-]+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-[20px] overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all cursor-pointer group flex flex-col h-full relative"
+      className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-xl transition-all cursor-pointer group flex flex-col h-full"
     >
-      {/* Cover Image & Badges */}
-      <div className="relative h-28 bg-gray-50 flex items-start justify-between p-4">
-        <div className="absolute inset-0 overflow-hidden">
-          <img
-            src={asset.coverImage}
-            alt={asset.title}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-        </div>
-
-        {/* Top Badges */}
-        <div className="relative z-10 flex w-full justify-between items-start">
-          <div className={`px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider uppercase shadow-sm border ${asset.status === 'Failed'
-            ? 'bg-gray-100/90 border-gray-200 text-gray-500'
-            : asset.status === 'Funded' || asset.status === 'Sold Out'
-              ? 'bg-emerald-500/90 border-emerald-400 text-white'
-              : 'bg-white/90 border-white/40 text-black backdrop-blur-sm'
-            }`}>
-            {asset.status === 'Fundraising' || asset.status === 'Ending Soon' ? 'Fundraising' : asset.status}
+      {/* Card Body */}
+      <div className="p-5 pb-0 flex-1 flex flex-col">
+        {/* Header Row: Gradient Avatar + Title */}
+        <div className="flex items-start gap-3 mb-2">
+          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[13px] font-black text-white shadow-sm shrink-0 group-hover:scale-105 transition-transform`}>
+            {initials}
           </div>
+          <div className="flex-1 min-w-0 pt-0.5">
+            <div className="flex items-start justify-between gap-2 mb-0.5">
+              <h4 className="text-[15px] font-bold text-gray-900 leading-snug truncate">{asset.title}</h4>
 
-          <button className="w-7 h-7 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-white shadow-sm transition-all relative z-10">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-          </button>
+              {/* Status Badge moved to top right */}
+              {asset.status === 'Failed' ? (
+                <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none shrink-0 text-gray-500 bg-gray-50 border-gray-200 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                  Failed
+                </span>
+              ) : asset.status === 'Funded' || asset.status === 'Sold Out' ? (
+                <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none shrink-0 text-gray-700 bg-gray-50 border-gray-200 shadow-sm">
+                  <svg className="w-2.5 h-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  {asset.status}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none shrink-0 text-emerald-700 bg-emerald-50 border-emerald-200 shadow-sm">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                  </span>
+                  Fundraising
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-[10px] font-medium text-gray-400">{asset.issuer}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Floating Avatar */}
-        <div className="absolute -bottom-6 left-5 w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-md border-2 border-white pointer-events-none group-hover:scale-105 transition-transform z-20 overflow-hidden">
-          <img src={asset.issuerLogo} alt={asset.issuer} className="w-full h-full object-cover" />
-        </div>
-      </div>
-
-      {/* Content Body */}
-      <div className="pt-8 p-5 flex-1 flex flex-col">
-        <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-          <h4 className="text-base font-bold text-gray-900 leading-tight line-clamp-1">{asset.title}</h4>
-          <span className="text-[9px] font-black px-1.5 py-0.5 rounded border leading-none text-blue-700 bg-blue-50 border-blue-100 whitespace-nowrap">CASH FLOW</span>
-        </div>
-
-        <p className="text-[11px] text-gray-500 font-medium leading-relaxed line-clamp-2 mt-1 mb-4">
+        {/* Description */}
+        <p className="text-[12px] text-gray-500 leading-relaxed line-clamp-2 mb-3">
           {asset.subtitle}
         </p>
 
-        {/* Issuer badging */}
-        <div className="flex items-center gap-2 mb-6">
-          <span className="text-[9px] font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded tracking-wide uppercase truncate max-w-[140px]">{asset.issuer}</span>
-          <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100/80 leading-none flex items-center gap-1 shrink-0">
-            {asset.issuer === 'ComputeDAO LLC' ? <><Icons.Crown className="w-2.5 h-2.5" /> 1000+</> : asset.issuer === 'DropStream LLC' ? <><Icons.Diamond className="w-2.5 h-2.5" /> 500+</> : <><Icons.Compass className="w-2.5 h-2.5" /> 200+</>}
-          </span>
+        {/* Tags */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <span className="text-[9px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded">Cash Flow</span>
+          <span className="text-[9px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded">{asset.verifiedSource || 'Verified'}</span>
+          {asset.durationDays && <span className="text-[9px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded">{asset.durationDays}d Term</span>}
+        </div>
+      </div>
+
+      {/* Bottom Section — Metrics + Progress */}
+      <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-3.5 space-y-3">
+        {/* Metrics Row */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-[9px] font-bold text-gray-400 tracking-wide mb-0.5">Target</p>
+            <p className="text-[14px] font-black text-gray-900 leading-tight">${(asset.targetAmount / 1000).toFixed(0)}k</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold text-gray-400 tracking-wide mb-0.5 flex items-center gap-1"><svg fill="currentColor" viewBox="0 0 20 20" className="w-2.5 h-2.5 text-[#00E676]"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" /></svg>APY</p>
+            <p className="text-[14px] font-black text-[#00E676] leading-tight">{asset.apy}%</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold text-gray-400 tracking-wide mb-0.5">Backers</p>
+            <p className="text-[14px] font-black text-gray-900 leading-tight">{asset.backersCount}</p>
+          </div>
         </div>
 
-        {/* Stats Grid - using the new clean structure without gray boxes */}
-        <div className="mt-auto border-t border-gray-100 pt-4 mb-4 grid grid-cols-3 gap-2">
-          <div>
-            <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1">TARGET</p>
-            <p className="text-[13px] font-bold text-gray-900">${(asset.targetAmount / 1000).toFixed(0)}k</p>
-          </div>
-          <div>
-            <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1 flex items-center gap-1"><svg fill="currentColor" viewBox="0 0 20 20" className="w-2.5 h-2.5 text-[#00E676]"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" /></svg>APY</p>
-            <p className="text-[14px] font-bold text-[#00E676]">{asset.apy}%</p>
-          </div>
-          <div>
-            <p className="text-[8px] font-bold text-gray-400 tracking-widest uppercase mb-1">TERM</p>
-            <p className="text-[13px] font-bold text-gray-900">{asset.durationDays}d</p>
-          </div>
-        </div>
-
-        {/* Footer - Progress */}
-        <div className="space-y-2">
-          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        {/* Progress Bar */}
+        <div className="space-y-1.5">
+          <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div
-              className={`h-full transition-all duration-1000 ${asset.status === 'Failed' ? 'bg-red-500' : 'bg-[#00E676]'}`}
+              className={`h-full rounded-full transition-all duration-1000 ${asset.status === 'Failed' ? 'bg-red-400' : 'bg-[#00E676]'}`}
               style={{ width: `${progress}%` }}
             />
           </div>
           <div className="flex justify-between items-center text-[10px]">
-            <p className="font-bold text-black">${asset.raisedAmount.toLocaleString()} <span className="font-medium text-gray-400">pledged</span></p>
-            <p className="font-medium text-gray-400">{progress.toFixed(0)}% · {asset.backersCount} backers</p>
+            <p className="font-bold text-gray-700">${asset.raisedAmount.toLocaleString()} <span className="font-medium text-gray-400">pledged</span></p>
+            <div className="flex items-center gap-2">
+              {asset.status === 'Fundraising' && asset.daysLeft != null && (
+                <span className="text-orange-500 font-bold bg-orange-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  {asset.daysLeft}d left
+                </span>
+              )}
+              <p className="font-bold text-gray-400">{progress.toFixed(0)}%</p>
+            </div>
           </div>
         </div>
       </div>
