@@ -2167,7 +2167,10 @@ const ContactsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Fetch real contacts and requests
+  const [accepted, setAccepted] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [followedUp, setFollowedUp] = useState<Set<string>>(new Set());
+
   const fetchLists = () => {
     setLoading(true);
     Promise.all([
@@ -2179,6 +2182,8 @@ const ContactsPage: React.FC = () => {
         id: f.user.id,
         name: f.user.name || 'User',
         email: f.user.email,
+        bio: f.user.email || 'LokaCash Member',
+        role: 'LokaCash User',
         initials: (f.user.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
         avatar: f.user.avatar,
         since: f.since,
@@ -2186,10 +2191,13 @@ const ContactsPage: React.FC = () => {
       })));
 
       setRequests(requestsData.map((r: any) => ({
-        id: r.id, // Friendship ID needed to accept/decline
+        id: r.id, 
         userId: r.requester.id,
         name: r.requester.name || 'User',
         email: r.requester.email,
+        account: r.requester.email,
+        role: 'New Connection',
+        mutual: 0,
         initials: (r.requester.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
         grad: `from-${['sky', 'fuchsia', 'emerald', 'amber'][Math.abs((r.requester.name || 'a').charCodeAt(0)) % 4]}-500 to-${['blue', 'pink', 'teal', 'orange'][Math.abs((r.requester.name || 'a').charCodeAt(0)) % 4]}-500`,
         time: new Date(r.createdAt).toLocaleDateString()
@@ -2200,23 +2208,19 @@ const ContactsPage: React.FC = () => {
 
   useEffect(() => {
     fetchLists();
-
-    // Listen for real-time WebSocket events
     const unsubRequest = socket.on('friend:request', () => fetchLists());
     const unsubAccepted = socket.on('friend:accepted', () => fetchLists());
-
-    return () => {
-      unsubRequest();
-      unsubAccepted();
-    };
+    return () => { unsubRequest(); unsubAccepted(); };
   }, []);
 
   const handleAccept = async (id: string) => {
     try {
       await api.acceptFriendRequest(id);
-      setRequests(prev => prev.filter(r => r.id !== id));
-      // Refresh list to show new friend
-      fetchLists();
+      setAccepted(prev => new Set(prev).add(id));
+      setTimeout(() => {
+        setRequests(prev => prev.filter(r => r.id !== id));
+        fetchLists();
+      }, 1500);
     } catch (e) { console.error('Accept fail', e); }
   };
   const handleDecline = async (id: string) => {
@@ -2235,62 +2239,179 @@ const ContactsPage: React.FC = () => {
     try {
       const conv = await api.createDMConversation(userId);
       navigate(`/chat?convId=${conv.id}`);
-    } catch (err) {
-      console.error('Failed to start chat', err);
-    }
+    } catch (err) { }
   };
+
+  const suggestions = STRANGER_DB
+    .filter(s => s.mutual > 0 && !dismissed.has(s.id))
+    .sort((a, b) => b.mutual - a.mutual);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
       {modal === 'friend' && <AddFriendModal onClose={() => setModal(null)} />}
-      <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full min-h-full">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-[22px] font-semibold text-gray-900">Contacts</h1>
-        <div className="flex items-center gap-2">
+      <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1400px] mx-auto w-full min-h-full">
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-[26px] font-bold text-gray-900 tracking-tight">Contacts</h1>
+          <p className="text-[13px] text-gray-400 mt-1">Manage your network and professional connections</p>
+        </div>
+        <div className="flex items-center gap-3">
           {loading ? (
-            <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+             <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
           ) : (
-            <span className="text-xs font-medium text-gray-400">{contacts.length} contacts</span>
+            <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[11px] font-bold text-gray-400">{contacts.length} Connections</span>
           )}
-          {/* + button — directly opens Add Friend */}
           <button onClick={() => setModal('friend')}
-            className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-900 text-white hover:bg-gray-700 transition-all">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+            className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gray-900 text-white hover:bg-black hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24 group"><path className="group-hover:stroke-[3px] transition-all" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
           </button>
         </div>
       </div>
-      {/* ── Friend Requests ─────────────────────────── */}
+
+      {/* ── Section: Friend Requests ── */}
       {requests.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-[13px] font-bold text-gray-900">Friend Requests</h2>
-            <span className="w-5 h-5 rounded-full bg-gray-900 text-white text-[10px] font-black flex items-center justify-center">{requests.length}</span>
+        <div className="mb-12 animate-slideDown">
+          <div className="flex items-center gap-2.5 mb-4 px-1 text-gray-900 font-bold text-[14px] uppercase tracking-widest opacity-80">
+            Friend Requests
+            <span className="w-5 h-5 rounded-full bg-gray-900 text-white text-[10px] flex items-center justify-center font-black">{requests.length}</span>
           </div>
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-            {requests.map((r, idx) => {
+          <div className="bg-white border border-gray-100 rounded-[24px] shadow-sm shadow-gray-50 overflow-hidden divide-y divide-gray-50">
+            {requests.map((r) => {
+              const isAccepted = accepted.has(r.id);
               return (
-                <div key={r.id} className={`flex items-center gap-4 px-4 py-3.5 transition-colors ${idx !== 0 ? 'border-t border-gray-50' : ''} hover:bg-gray-50`}>
-                  {/* Avatar */}
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0 overflow-hidden bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((r.name || r.email?.split('@')[0] || 'U').charCodeAt(0)) % 5]}-500`}>
+                <div key={r.id} className={`flex items-center gap-4 px-6 py-4.5 transition-all ${isAccepted ? 'bg-emerald-50/40' : 'hover:bg-gray-50/50'}`}>
+                  <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${r.grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-200 overflow-hidden`}>
                     {r.avatar?.startsWith('http') ? <img src={r.avatar} className="w-full h-full object-cover" alt="" /> : r.initials}
                   </div>
-                  {/* Info */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold text-gray-900 leading-tight">{r.name}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {r.email} · {r.time}
+                    <div className="flex items-center gap-2">
+                      <p className="text-[14px] font-bold text-gray-900">{r.name}</p>
+                      <span className="text-[10px] text-gray-400 font-medium px-2 py-0.5 rounded-full bg-gray-50 border border-gray-100">{r.account}</span>
+                    </div>
+                    <p className="text-[12px] text-gray-400 mt-1">
+                      {r.role} · <span className="font-bold text-gray-500">{r.mutual} mutuals</span> · {r.time}
                     </p>
                   </div>
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => handleDecline(r.id)}
-                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all">
-                      Decline
-                    </button>
-                    <button onClick={() => handleAccept(r.id)}
-                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-white bg-gray-900 hover:bg-gray-700 transition-all">
-                      Accept
-                    </button>
+                  {isAccepted ? (
+                    <span className="text-[12px] font-black text-emerald-600 flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-emerald-50/50 border border-emerald-100">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
+                      Connected
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-2.5 shrink-0 ml-4">
+                      <button onClick={(e) => { e.stopPropagation(); handleDecline(r.id); }}
+                        className="px-5 py-2.5 rounded-2xl text-[12px] font-bold text-gray-400 bg-white hover:bg-gray-50 border border-gray-100 transition-all">
+                        Decline
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleAccept(r.id); }}
+                        className="px-5 py-2.5 rounded-2xl text-[12px] font-bold text-white bg-gray-900 hover:bg-black shadow-md shadow-gray-100 transition-all active:scale-95">
+                        Accept
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Section: All Contacts ── */}
+      <div className="mb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 px-1">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[14px] font-bold text-gray-900 uppercase tracking-widest opacity-80">All Contacts</h2>
+            <span className="text-[11px] font-black text-gray-400 bg-gray-100/50 px-2.5 py-1 rounded-xl">{filtered.length}</span>
+          </div>
+          <div className="relative w-full sm:max-w-[320px]">
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search connections..."
+              className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-gray-50/50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-200 focus:bg-white transition-all placeholder:text-gray-300" />
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none scale-90"><I.Search /></div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-[32px] overflow-hidden shadow-sm shadow-gray-50 divide-y divide-gray-50">
+          {filtered.map((c) => {
+            const gradMap: Record<string, string> = { 'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500', 'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400', 'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500', 'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500', 'bg-orange-500': 'from-orange-400 to-amber-500' };
+            const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
+            return (
+              <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className="flex items-center gap-5 px-6 py-4.5 hover:bg-gray-50/50 transition-all cursor-pointer group">
+                <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-100 group-hover:scale-105 transition-transform overflow-hidden`}>
+                  {c.avatar?.startsWith('http') ? <img src={c.avatar} className="w-full h-full object-cover" alt="" /> : c.initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 mb-0.5">
+                    <p className="text-[15px] font-bold text-gray-900">{c.name}</p>
+                    {c.role && <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">{c.role}</span>}
+                  </div>
+                  <p className="text-[13px] text-gray-400 line-clamp-1 group-hover:text-gray-500 transition-colors font-medium">{c.bio}</p>
+                </div>
+                <button onClick={(e) => handleMessage(e, c.id)} className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl text-[12px] font-bold text-gray-400 hover:text-gray-900 hover:bg-white hover:border border-transparent hover:border-gray-100 hover:shadow-sm transition-all opacity-0 group-hover:opacity-100">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                  Message
+                </button>
+              </div>
+            );
+          })}
+          {(!filtered || filtered.length === 0) && !loading && (
+            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+              <svg className="w-16 h-16 text-gray-200 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
+              <p className="text-[14px] text-gray-400 font-medium tracking-tight">No connections found in your network</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Section: Suggested for You (At Bottom - Horizontal Long Cards) ── */}
+      {suggestions.length > 0 && (
+        <div className="mt-16 pt-10 border-t border-gray-100 animate-slideUp">
+          <div className="flex flex-col mb-6 px-1">
+            <h2 className="text-[14px] font-bold text-gray-900 uppercase tracking-widest opacity-80">People you may know</h2>
+            <p className="text-[11px] text-gray-400 mt-1.5 font-bold flex items-center gap-1.5 opacity-60">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Suggestions based on your mutual network
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {suggestions.slice(0, 6).map(s => {
+              const isFollowed = followedUp.has(s.id);
+              return (
+                <div key={s.id} className="relative bg-white border border-gray-100 rounded-[28px] p-5 flex items-center gap-4 hover:shadow-xl hover:shadow-gray-100/40 hover:-translate-y-1.5 hover:border-gray-200 transition-all group active:scale-[0.98]">
+                  {/* Dismiss X */}
+                  <button onClick={() => setDismissed(prev => { const n = new Set(prev); n.add(s.id); return n; })}
+                    className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-gray-200 hover:text-gray-900 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                  
+                  {/* Avatar Left */}
+                  <div className={`w-14 h-14 rounded-[20px] bg-gradient-to-br ${s.grad} flex items-center justify-center text-[20px] font-black text-white shrink-0 shadow-sm ring-4 ring-gray-50/50 group-hover:scale-110 transition-transform`}>
+                    {s.initials}
+                  </div>
+                  
+                  {/* Content Right */}
+                  <div className="flex-1 min-w-0 pr-2">
+                    <p className="text-[14px] font-bold text-gray-900 leading-tight mb-0.5 truncate">{s.name}</p>
+                    <p className="text-[11px] text-gray-400 font-bold mb-3 truncate italic opacity-80">{s.role}</p>
+                    
+                    <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-50 mt-1">
+                       <p className="text-[11px] text-gray-400 font-black">
+                        <span className="text-gray-900 underline decoration-blue-500/30 underline-offset-2">{s.mutual}</span> MUTUALS
+                      </p>
+                      {isFollowed ? (
+                        <span className="px-3.5 py-1.5 rounded-2xl text-[11px] font-black text-emerald-600 bg-emerald-50/50 border border-emerald-100 flex items-center gap-1.5 animate-bounceIn">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
+                          SENT
+                        </span>
+                      ) : (
+                        <button onClick={() => setFollowedUp(prev => { const n = new Set(prev); n.add(s.id); return n; })}
+                          className="px-4 py-2 rounded-2xl text-[11px] font-black text-white bg-gray-900 hover:bg-black shadow-lg shadow-gray-100 transition-all active:scale-90">
+                          ADD
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -2299,37 +2420,6 @@ const ContactsPage: React.FC = () => {
         </div>
       )}
 
-      <div className="relative mb-5">
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search contacts..."
-          className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 placeholder:text-gray-400"
-        />
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><I.Search /></div>
-      </div>
-      <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-        {filtered.map((c, idx) => {
-          return (
-            <div key={c.id} className={`flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer group ${idx !== 0 ? 'border-t border-gray-50' : ''}`}>
-              {/* Avatar */}
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0 overflow-hidden bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((c.name || c.email?.split('@')[0] || 'U').charCodeAt(0)) % 5]}-500`}>
-                {c.avatar?.startsWith('http') ? <img src={c.avatar} className="w-full h-full object-cover" alt="" /> : c.initials}
-              </div>
-              {/* Name + email */}
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
-                {c.email && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{c.email}</p>}
-              </div>
-              {/* Message button */}
-              <button onClick={(e) => handleMessage(e, c.id)} className="shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 hover:text-gray-900 transition-colors opacity-0 group-hover:opacity-100">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                Message
-              </button>
-            </div>
-          );
-        })}
-        {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-10">No contacts found</p>}
-      </div>
       </div>
     </div>
   );
