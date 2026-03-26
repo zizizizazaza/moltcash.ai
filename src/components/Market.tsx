@@ -929,6 +929,51 @@ const Market: React.FC = () => {
     return list;
   }, [filterStatus, filterApyMin, filterApyMax, filterAmountMin, filterAmountMax, sortBy, assets]);
 
+  const filteredStartups = useMemo(() => {
+    return [...trustmrrStartups]
+      .filter(s => {
+        // Category filter — compare lowercase slugs
+        if (potCat !== 'All') {
+          const sCat = (s.category || '').toLowerCase().replace(/\s+/g, '-');
+          if (sCat !== potCat.toLowerCase()) return false;
+        }
+        // Revenue (30d) filter
+        const rev30 = s.revenue?.last30Days ?? 0;
+        if (potRevMin && rev30 < Number(potRevMin)) return false;
+        if (potRevMax && rev30 > Number(potRevMax)) return false;
+        // MRR filter
+        const mrrVal = s.revenue?.mrr ?? 0;
+        if (potMrrMin && mrrVal < Number(potMrrMin)) return false;
+        if (potMrrMax && mrrVal > Number(potMrrMax)) return false;
+        // Growth filter
+        const growth = s.growth30d;
+        if (potGrowthMin && (growth == null || growth < Number(potGrowthMin))) return false;
+        if (potGrowthMax && (growth == null || growth > Number(potGrowthMax))) return false;
+        // Profit Margin filter
+        const margin = s.profitMarginLast30Days;
+        if (potMarginMin && (margin == null || margin < Number(potMarginMin))) return false;
+        if (potMarginMax && (margin == null || margin > Number(potMarginMax))) return false;
+        // Audience filter
+        if (potAudience !== 'Any' && (s.targetAudience || '').toUpperCase() !== potAudience.toUpperCase()) return false;
+        // Founded filter
+        if (potFoundedFrom || potFoundedTo) {
+          const fd = s.foundedDate ? new Date(s.foundedDate).getFullYear() : null;
+          if (potFoundedFrom && (fd == null || fd < Number(potFoundedFrom))) return false;
+          if (potFoundedTo && (fd == null || fd > Number(potFoundedTo))) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (potSort === 'rev-desc') return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
+        if (potSort === 'rev-asc') return (a.revenue?.last30Days ?? 0) - (b.revenue?.last30Days ?? 0);
+        if (potSort === 'growth-desc') return (b.growth30d ?? -999) - (a.growth30d ?? -999);
+        if (potSort === 'growth-asc') return (a.growth30d ?? 999) - (b.growth30d ?? 999);
+        if (potSort === 'founded-desc') return new Date(b.foundedDate || '1970').getTime() - new Date(a.foundedDate || '1970').getTime();
+        if (potSort === 'founded-asc') return new Date(a.foundedDate || '2099').getTime() - new Date(b.foundedDate || '2099').getTime();
+        return 0;
+      });
+  }, [trustmrrStartups, potCat, potRevMin, potRevMax, potMrrMin, potMrrMax, potGrowthMin, potGrowthMax, potMarginMin, potMarginMax, potAudience, potFoundedFrom, potFoundedTo, potSort]);
+
   useEffect(() => {
     const handleOpenAsset = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -1390,49 +1435,7 @@ const Market: React.FC = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...trustmrrStartups]
-              .filter(s => {
-                // Category filter — compare lowercase slugs
-                if (potCat !== 'All') {
-                  const sCat = (s.category || '').toLowerCase().replace(/\s+/g, '-');
-                  const filterCat = potCat.toLowerCase();
-                  if (sCat !== filterCat) return false;
-                }
-                // Revenue (30d) filter
-                const rev30 = s.revenue?.last30Days ?? 0;
-                if (potRevMin && rev30 < Number(potRevMin)) return false;
-                if (potRevMax && rev30 > Number(potRevMax)) return false;
-                // MRR filter
-                const mrrVal = s.revenue?.mrr ?? 0;
-                if (potMrrMin && mrrVal < Number(potMrrMin)) return false;
-                if (potMrrMax && mrrVal > Number(potMrrMax)) return false;
-                // Growth filter
-                const growth = s.growth30d;
-                if (potGrowthMin && (growth == null || growth < Number(potGrowthMin))) return false;
-                if (potGrowthMax && (growth == null || growth > Number(potGrowthMax))) return false;
-                // Profit Margin filter
-                const margin = s.profitMarginLast30Days;
-                if (potMarginMin && (margin == null || margin < Number(potMarginMin))) return false;
-                if (potMarginMax && (margin == null || margin > Number(potMarginMax))) return false;
-                // Audience filter
-                if (potAudience !== 'Any' && (s.targetAudience || '').toUpperCase() !== potAudience.toUpperCase()) return false;
-                // Founded filter
-                if (potFoundedFrom || potFoundedTo) {
-                  const fd = s.foundedDate ? new Date(s.foundedDate).getFullYear() : null;
-                  if (potFoundedFrom && (fd == null || fd < Number(potFoundedFrom))) return false;
-                  if (potFoundedTo && (fd == null || fd > Number(potFoundedTo))) return false;
-                }
-                return true;
-              })
-              .sort((a, b) => {
-                if (potSort === 'rev-desc') return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
-                if (potSort === 'rev-asc') return (a.revenue?.last30Days ?? 0) - (b.revenue?.last30Days ?? 0);
-                if (potSort === 'growth-desc') return (b.growth30d ?? -999) - (a.growth30d ?? -999);
-                if (potSort === 'growth-asc') return (a.growth30d ?? 999) - (b.growth30d ?? 999);
-                if (potSort === 'founded-desc') return new Date(b.foundedDate || '1970').getTime() - new Date(a.foundedDate || '1970').getTime();
-                if (potSort === 'founded-asc') return new Date(a.foundedDate || '2099').getTime() - new Date(b.foundedDate || '2099').getTime();
-                return 0;
-              })
+            {filteredStartups
               .slice(0, displayLimit)
               .map((s, i) => {
                 // Derive display properties from API data
@@ -1602,8 +1605,17 @@ const Market: React.FC = () => {
               })}
           </div>
           {/* Intersection Observer target for infinite scrolling */}
-          {!trustmrrLoading && trustmrrStartups.length > 0 && (
-            <div ref={loadMoreRef} className="h-10 w-full" />
+          {!trustmrrLoading && filteredStartups.length > 0 && (
+            <div ref={loadMoreRef} className="py-8 flex justify-center items-center w-full">
+              {displayLimit < filteredStartups.length ? (
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-full font-bold text-[11px] shadow-sm">
+                  <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  Loading more...
+                </div>
+              ) : (
+                <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase border-t border-gray-100 pt-6 mt-2 w-full text-center">End of results</p>
+              )}
+            </div>
           )}
         </>
       )}
