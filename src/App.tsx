@@ -1934,8 +1934,8 @@ const CreateGroupModal: React.FC<{
   const [loadingContacts, setLoadingContacts] = useState(true);
 
   useEffect(() => {
-    api.searchUsers('').then(res => {
-      setContacts(res);
+    api.getFriends().then((res: any[]) => {
+      setContacts(res.map((f: any) => ({ id: f.user.id, name: f.user.name, avatar: f.user.avatar })));
       setLoadingContacts(false);
     }).catch(err => {
       console.error(err);
