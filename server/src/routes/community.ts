@@ -527,6 +527,8 @@ router.get('/conversations/:id/messages', authRequired, async (req: AuthRequest,
           conversationId: convId,
           senderId: m.userId,
           content: m.content,
+          attachmentUrl: m.attachmentUrl,
+          attachmentType: m.attachmentType,
           createdAt: m.createdAt,
           sender: m.user,
         })),
@@ -579,7 +581,13 @@ router.post('/conversations/:id/messages', authRequired, async (req: AuthRequest
   try {
     const convId = req.params.id as string;
     const me = req.userId!;
-    const { content } = z.object({ content: z.string().min(1).max(5000) }).parse(req.body);
+    const { content, attachmentUrl, attachmentType } = z.object({ 
+      content: z.string().max(5000),
+      attachmentUrl: z.string().optional(),
+      attachmentType: z.string().optional(),
+    }).refine(data => data.content.trim() !== '' || !!data.attachmentUrl, {
+      message: 'Message must contain either text or an attachment'
+    }).parse(req.body);
 
     // Try DM first
     const dmParticipant = await prisma.conversationParticipant.findUnique({
@@ -588,7 +596,7 @@ router.post('/conversations/:id/messages', authRequired, async (req: AuthRequest
 
     if (dmParticipant) {
       const message = await prisma.directMessage.create({
-        data: { conversationId: convId, senderId: me, content },
+        data: { conversationId: convId, senderId: me, content, attachmentUrl, attachmentType },
         include: { sender: { select: { id: true, name: true, avatar: true } } },
       });
 
@@ -617,7 +625,7 @@ router.post('/conversations/:id/messages', authRequired, async (req: AuthRequest
 
     if (groupMember) {
       const message = await prisma.groupMessage.create({
-        data: { groupId: convId, userId: me, content, role: groupMember.role },
+        data: { groupId: convId, userId: me, content, attachmentUrl, attachmentType, role: groupMember.role },
         include: { user: { select: { id: true, name: true, avatar: true, role: true } } },
       });
 
@@ -630,6 +638,8 @@ router.post('/conversations/:id/messages', authRequired, async (req: AuthRequest
         conversationId: convId,
         senderId: me,
         content: message.content,
+        attachmentUrl: message.attachmentUrl,
+        attachmentType: message.attachmentType,
         createdAt: message.createdAt,
         sender: message.user,
       });
@@ -690,6 +700,177 @@ router.get('/unread-count', authRequired, async (req: AuthRequest, res, next) =>
     });
 
     res.json({ unread: dmUnread + friendReqs, dmUnread, friendRequests: friendReqs });
+  } catch (err) { next(err); }
+});
+
+// ── Create Poll (group only) ──
+router.post('/groups/:groupId/polls', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const groupId = req.params.groupId as string;
+    const me = req.userId!;
+
+    // Verify membership
+    const member = await prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId: me } },
+    });
+    if (!member) throw new AppError('Not a member of this group', 403);
+
+    const { question, options, duration } = z.object({
+      question: z.string().min(1),
+      options: z.array(z.string().min(1)).min(2),
+      duration: z.string().default('1 day'),
+    }).parse(req.body);
+
+    // Calculate expiry
+    const durationMs: Record<string, number> = {
+      '1h': 3600000, '12h': 43200000, '1 day': 86400000, '3 days': 259200000
+    };
+    const expiresAt = new Date(Date.now() + (durationMs[duration] || 86400000));
+
+    const poll = await prisma.poll.create({
+      data: {
+        groupId,
+        userId: me,
+        question,
+        duration,
+        expiresAt,
+        options: {
+          create: options.map((text, i) => ({ text, order: i })),
+        },
+      },
+      include: {
+        creator: { select: { id: true, name: true, avatar: true } },
+        options: { orderBy: { order: 'asc' } },
+        votes: true,
+      },
+    });
+
+    const payload = {
+      id: poll.id,
+      groupId: poll.groupId,
+      question: poll.question,
+      duration: poll.duration,
+      expiresAt: poll.expiresAt,
+      createdAt: poll.createdAt,
+      creator: poll.creator,
+      options: poll.options.map(o => ({ id: o.id, text: o.text, votes: 0 })),
+      total: 0,
+    };
+
+    // Also create a GroupMessage so the poll appears in conversation history & sidebar preview
+    const message = await prisma.groupMessage.create({
+      data: {
+        groupId,
+        userId: me,
+        content: `📊 Poll: ${question}`,
+        attachmentType: 'poll',
+        role: member.role,
+      },
+      include: { user: { select: { id: true, name: true, avatar: true, role: true } } },
+    });
+
+    // Broadcast both the message (for sidebar/history) and the poll (for poll UI)
+    const { emitToGroup } = await import('../socket/index.js');
+    emitToGroup(groupId, 'group:message', message);
+    emitToGroup(groupId, 'group:poll', payload);
+
+    res.status(201).json(payload);
+  } catch (err) { next(err); }
+});
+
+// ── Vote on a Poll ──
+router.post('/polls/:pollId/vote', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const pollId = req.params.pollId as string;
+    const me = req.userId!;
+    const { optionId } = z.object({ optionId: z.string() }).parse(req.body);
+
+    const poll = await prisma.poll.findUnique({
+      where: { id: pollId },
+      include: { options: true },
+    });
+    if (!poll) throw new AppError('Poll not found', 404);
+
+    // Verify membership
+    const member = await prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId: poll.groupId, userId: me } },
+    });
+    if (!member) throw new AppError('Not a member of this group', 403);
+
+    // Check expiry
+    if (new Date() > poll.expiresAt) throw new AppError('Poll has expired', 400);
+
+    // Check if option belongs to this poll
+    if (!poll.options.some(o => o.id === optionId)) throw new AppError('Invalid option', 400);
+
+    // Upsert vote (ensures one vote per user)
+    await prisma.pollVote.upsert({
+      where: { pollId_userId: { pollId, userId: me } },
+      create: { pollId, optionId, userId: me },
+      update: { optionId },
+    });
+
+    // Fetch updated vote counts
+    const updatedOptions = await prisma.pollOption.findMany({
+      where: { pollId },
+      orderBy: { order: 'asc' },
+      include: { votes: true },
+    });
+    const totalVotes = await prisma.pollVote.count({ where: { pollId } });
+
+    const payload = {
+      pollId,
+      groupId: poll.groupId,
+      options: updatedOptions.map(o => ({ id: o.id, text: o.text, votes: o.votes.length })),
+      total: totalVotes,
+      voterId: me,
+      votedOptionId: optionId,
+    };
+
+    // Broadcast updated results to group
+    const { emitToGroup } = await import('../socket/index.js');
+    emitToGroup(poll.groupId, 'group:poll-vote', payload);
+
+    res.json(payload);
+  } catch (err) { next(err); }
+});
+
+// ── Get Polls for a group ──
+router.get('/groups/:groupId/polls', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const groupId = req.params.groupId as string;
+    const me = req.userId!;
+
+    const member = await prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId: me } },
+    });
+    if (!member) throw new AppError('Not a member of this group', 403);
+
+    const polls = await prisma.poll.findMany({
+      where: { groupId },
+      include: {
+        creator: { select: { id: true, name: true, avatar: true } },
+        options: {
+          orderBy: { order: 'asc' },
+          include: { votes: true },
+        },
+        votes: { where: { userId: me } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(polls.map(p => ({
+      id: p.id,
+      groupId: p.groupId,
+      question: p.question,
+      duration: p.duration,
+      expiresAt: p.expiresAt,
+      createdAt: p.createdAt,
+      creator: p.creator,
+      options: p.options.map(o => ({ id: o.id, text: o.text, votes: o.votes.length })),
+      total: p.options.reduce((sum, o) => sum + o.votes.length, 0),
+      voted: p.votes[0]?.optionId || null,
+    })));
   } catch (err) { next(err); }
 });
 

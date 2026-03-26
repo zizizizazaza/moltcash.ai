@@ -31,7 +31,7 @@ class ApiClient {
     return Boolean(this.token || this.tokenGetter);
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}, _isRetry = false): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
@@ -48,10 +48,26 @@ class ApiClient {
       headers,
     });
 
+    // Auto-retry on 401: refresh token from Privy and try once more
+    if (response.status === 401 && !_isRetry && this.tokenGetter) {
+      console.warn('[API] 401 received, refreshing token and retrying...');
+      try {
+        const freshToken = await this.tokenGetter();
+        if (freshToken) {
+          this.token = freshToken;
+          sessionStorage.setItem('loka_token', freshToken);
+          return this.request<T>(path, options, true);
+        }
+      } catch (refreshErr) {
+        console.error('[API] Token refresh failed:', refreshErr);
+      }
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
       throw new Error(error.error || `HTTP ${response.status}`);
     }
+
 
     return response.json() as Promise<T>;
   }
@@ -438,11 +454,29 @@ class ApiClient {
       `/community/conversations/${convId}/messages${qs ? `?${qs}` : ''}`
     );
   }
-  async sendConversationMessage(convId: string, content: string) {
+  async sendConversationMessage(convId: string, content: string, attachmentUrl?: string, attachmentType?: string) {
     return this.request<any>(`/community/conversations/${convId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, attachmentUrl, attachmentType }),
     });
+  }
+  
+  async uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const activeToken = this.tokenGetter ? await this.tokenGetter() : this.token;
+    const headers: Record<string, string> = {};
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`;
+
+    const response = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) throw new Error('Upload failed');
+    return response.json() as Promise<{ url: string; type: string }>;
   }
   async markConversationAsRead(convId: string) {
     return this.request<{ success: boolean }>(`/community/conversations/${convId}/read`, { method: 'POST' });
@@ -479,7 +513,16 @@ class ApiClient {
     return this.request<{ unread: number; dmUnread: number; friendRequests: number }>('/community/unread-count');
   }
 
-
+  // Polls
+  async createPoll(groupId: string, data: { question: string; options: string[]; duration: string }) {
+    return this.request<any>(`/community/groups/${groupId}/polls`, { method: 'POST', body: JSON.stringify(data) });
+  }
+  async votePoll(pollId: string, optionId: string) {
+    return this.request<any>(`/community/polls/${pollId}/vote`, { method: 'POST', body: JSON.stringify({ optionId }) });
+  }
+  async getGroupPolls(groupId: string) {
+    return this.request<any[]>(`/community/groups/${groupId}/polls`);
+  }
 
 }
 

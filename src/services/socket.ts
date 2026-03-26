@@ -42,6 +42,9 @@ class SocketClient {
     this.socket = io(SOCKET_URL, {
       path: SOCKET_PATH,
       auth: { token: this.token },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     });
 
     this.socket.on('connect', () => {
@@ -50,6 +53,10 @@ class SocketClient {
 
     this.socket.on('disconnect', () => {
       console.log('🔴 WebSocket Disconnected');
+    });
+
+    this.socket.on('connect_error', (err) => {
+      console.error('Socket connect error:', err.message);
     });
 
     this.socket.on('error', (err) => {
@@ -62,6 +69,17 @@ class SocketClient {
         this.listeners[event].forEach(cb => cb(...args));
       }
     });
+  }
+
+  /** Reconnect with a fresh token (e.g. after Privy refreshes it) */
+  reconnectWithToken(token: string) {
+    this.token = token;
+    if (this.socket) {
+      (this.socket.auth as any).token = token;
+      this.socket.disconnect().connect();
+    } else {
+      this.connect();
+    }
   }
 
   private disconnect() {
