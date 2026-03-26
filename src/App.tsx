@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { usePrivy, useLogout } from '@privy-io/react-auth';
-import { Capacitor } from '@capacitor/core';
-import { SplashScreen } from '@capacitor/splash-screen';
 import { Page } from './types';
 import { api } from './services/api';
 import { socket } from './services/socket';
@@ -701,8 +699,14 @@ const AddMemberModal: React.FC<{
   const [loadingContacts, setLoadingContacts] = useState(true);
 
   useEffect(() => {
-    api.searchUsers('').then(res => {
-      setContacts(res.filter(u => !existingIds.includes(u.id)));
+    api.getFriends().then((res: any[]) => {
+      const friends = res.map((f: any) => ({
+        id: f.user.id,
+        name: f.user.name,
+        avatar: f.user.avatar,
+        email: f.user.email
+      }));
+      setContacts(friends.filter((u: any) => !existingIds.includes(u.id)));
       setLoadingContacts(false);
     }).catch(err => {
       console.error(err);
@@ -2631,13 +2635,6 @@ const App: React.FC = () => {
     onSuccess: () => navigate('/'),
   });
   const isLoggedIn = ready && authenticated;
-
-  // Hide splash screen once Privy is ready
-  useEffect(() => {
-    if (ready && Capacitor.isNativePlatform()) {
-      SplashScreen.hide().catch(console.error);
-    }
-  }, [ready]);
 
   // Sync Privy access token to API client and socket and sync user to DB
   useEffect(() => {
