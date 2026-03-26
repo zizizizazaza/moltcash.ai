@@ -12,7 +12,7 @@ const onlineUsers = new Set<string>();
 export function setupSocket(server: HttpServer) {
   io = new Server(server, {
     cors: {
-      origin: [config.frontendUrl, 'https://www.loka.cash', 'https://loka.cash', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
+      origin: [config.frontendUrl, 'https://www.loka.cash', 'https://loka.cash', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'https://localhost', 'capacitor://localhost'],
       methods: ['GET', 'POST'],
       credentials: true,
     },
