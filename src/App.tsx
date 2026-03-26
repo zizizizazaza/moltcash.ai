@@ -2281,7 +2281,7 @@ const ContactsPage: React.FC = () => {
             {requests.map((r) => {
               const isAccepted = accepted.has(r.id);
               return (
-                <div key={r.id} className={`flex items-center gap-4 px-6 py-4.5 transition-all ${isAccepted ? 'bg-emerald-50/40' : 'hover:bg-gray-50/50'}`}>
+                <div key={r.id} className={`flex items-center gap-4 px-6 py-5 transition-all ${isAccepted ? 'bg-emerald-50/40' : 'hover:bg-gray-50/50'}`}>
                   <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${r.grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-200 overflow-hidden`}>
                     {r.avatar?.startsWith('http') ? <img src={r.avatar} className="w-full h-full object-cover" alt="" /> : r.initials}
                   </div>
@@ -2337,7 +2337,7 @@ const ContactsPage: React.FC = () => {
             const gradMap: Record<string, string> = { 'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500', 'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400', 'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500', 'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500', 'bg-orange-500': 'from-orange-400 to-amber-500' };
             const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
             return (
-              <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className="flex items-center gap-5 px-6 py-4.5 hover:bg-gray-50/50 transition-all cursor-pointer group">
+              <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className="flex items-center gap-5 px-6 py-5 hover:bg-gray-50/50 transition-all cursor-pointer group">
                 <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-100 group-hover:scale-105 transition-transform overflow-hidden`}>
                   {c.avatar?.startsWith('http') ? <img src={c.avatar} className="w-full h-full object-cover" alt="" /> : c.initials}
                 </div>
