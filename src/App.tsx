@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Page } from './types';
+import { api } from './services/api';
+import { socket } from './services/socket';
 import Market from './components/Market';
 import ApiLanding from './components/ApiLanding';
 import SuperAgentChat from './components/SuperAgentChat';
@@ -136,7 +138,8 @@ const UserMenu: React.FC<{
   isDark: boolean; onToggleDark: () => void; onLogout?: () => void;
   userName?: string;
   userInitial?: string;
-}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial }) => {
+  userAvatar?: string;
+}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial, userAvatar }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -175,7 +178,9 @@ const UserMenu: React.FC<{
       {/* User header */}
       <div className={`px-3.5 py-2.5 border-b ${headerBorder}`}>
         <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white`}>{userInitial || 'U'}</div>
+          <div className={`w-8 h-8 ${userName ? `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs(userName.charCodeAt(0)) % 5]}-500` : 'bg-gray-200'} rounded-full flex items-center justify-center text-[11px] font-bold text-white overflow-hidden`}>
+            {userAvatar ? <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" /> : (userInitial || 'U')}
+          </div>
           <div>
             <p className={`text-[13px] font-semibold ${nameColor}`}>{userName || 'User'}</p>
             <p className={`text-[11px] ${subColor}`}>@user</p>
@@ -204,8 +209,8 @@ const Sidebar: React.FC<{
   expanded: boolean; onToggle: () => void; page: Page; go: (p: Page) => void;
   isDark: boolean; onToggleDark: () => void;
   isLoggedIn: boolean; onLogin: () => void; onLogout: () => void;
-  userName?: string; userInitial?: string;
-}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial }) => {
+  userName?: string; userInitial?: string; userAvatar?: string;
+}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial, userAvatar }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   /* theme classes */
@@ -241,8 +246,10 @@ const Sidebar: React.FC<{
         ))}
       </div>
       <div className="relative">
-        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all`}>{userInitial || 'U'}</div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
+        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((userName || 'a').charCodeAt(0)) % 5]}-500 text-white` : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>
+          {isLoggedIn && userAvatar ? <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" /> : (userInitial || 'U')}
+        </div>
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </nav>
   );
@@ -289,11 +296,13 @@ const Sidebar: React.FC<{
       {/* User */}
       <div className="px-3 py-3 relative">
         <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${hoverBg} transition-all cursor-pointer group/user`}>
-          <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold`}>{userInitial || 'U'}</div>
+          <div className={`w-7 h-7 ${isLoggedIn ? `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((userName || 'a').charCodeAt(0)) % 5]}-500 text-white` : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold overflow-hidden`}>
+            {isLoggedIn && userAvatar ? <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" /> : (userInitial || 'U')}
+          </div>
           <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </aside>
   );
@@ -505,7 +514,7 @@ type PollData = {
   total: number;
   voted?: string; // option id the user voted for
 };
-type LocalMsg = { id: string; type: 'text' | 'image' | 'file' | 'poll'; content: string; poll?: PollData };
+type LocalMsg = { id: string; type: 'text' | 'image' | 'file' | 'poll'; content: string; poll?: PollData; file?: File };
 
 const POLL_DURATIONS = ['1h', '12h', '1 day', '3 days'];
 
@@ -597,17 +606,42 @@ const PollModal: React.FC<{ onClose: () => void; onSubmit: (p: PollData) => void
   );
 };
 
-const PollCard: React.FC<{ poll: PollData }> = ({ poll: initialPoll }) => {
-  const [poll, setPoll] = useState(initialPoll);
+const PollCard: React.FC<{ poll: PollData; onVote?: (pollId: string, optId: string) => void }> = ({ poll: parentPoll, onVote }) => {
+  const [poll, setPoll] = useState(parentPoll);
 
-  const vote = (optId: string) => {
+  // Sync with parent when data updates (e.g. from WebSocket)
+  useEffect(() => {
+    setPoll(prev => ({
+      ...parentPoll,
+      voted: parentPoll.voted || prev.voted,
+    }));
+  }, [parentPoll]);
+
+  const vote = async (optId: string) => {
     if (poll.voted) return;
+    // Optimistic update
     setPoll(p => ({
       ...p,
       voted: optId,
       total: p.total + 1,
       options: p.options.map(o => o.id === optId ? { ...o, votes: o.votes + 1 } : o),
     }));
+    // Call API
+    if (onVote) {
+      onVote(poll.id, optId);
+    } else {
+      try {
+        await api.votePoll(poll.id, optId);
+      } catch (err) {
+        console.error('Vote failed:', err);
+        setPoll(p => ({
+          ...p,
+          voted: undefined,
+          total: p.total - 1,
+          options: p.options.map(o => o.id === optId ? { ...o, votes: o.votes - 1 } : o),
+        }));
+      }
+    }
   };
 
   const totalVotes = poll.total;
@@ -639,8 +673,8 @@ const PollCard: React.FC<{ poll: PollData }> = ({ poll: initialPoll }) => {
                     style={{ width: `${pct}%`, borderRadius: 'inherit', opacity: 0.15 }} />
                 )}
                 <div className="relative flex items-center justify-between">
-                  <span className={`text-[13px] font-semibold ${poll.voted ? (isVoted ? 'text-gray-900' : 'text-gray-600') : 'text-gray-800'}`}>{opt.text}</span>
-                  {poll.voted && <span className="text-[11px] font-bold text-gray-400">{pct}%</span>}
+                  <span className={`text-[13px] font-semibold ${poll.voted ? (isVoted ? 'text-white' : 'text-gray-600') : 'text-gray-800'}`}>{opt.text}</span>
+                  {poll.voted && <span className={`text-[11px] font-bold ${isVoted ? 'text-gray-300' : 'text-gray-400'}`}>{pct}%</span>}
                 </div>
               </div>
             </button>
@@ -656,19 +690,39 @@ const PollCard: React.FC<{ poll: PollData }> = ({ poll: initialPoll }) => {
 };
 
 const AddMemberModal: React.FC<{
-  existingNames: string[];
+  existingIds: string[];
   onClose: () => void;
-  onConfirm: (names: string[]) => void;
-}> = ({ existingNames, onClose, onConfirm }) => {
-  const [picked, setPicked] = useState<Set<number>>(new Set());
-  const available = DISCOVER_CONTACTS.filter(c => !existingNames.includes(c.name));
+  onConfirm: (userIds: string[]) => void;
+}> = ({ existingIds, onClose, onConfirm }) => {
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(true);
 
-  const toggle = (id: number) =>
+  useEffect(() => {
+    api.searchUsers('').then(res => {
+      setContacts(res.filter(u => !existingIds.includes(u.id)));
+      setLoadingContacts(false);
+    }).catch(err => {
+      console.error(err);
+      setLoadingContacts(false);
+    });
+  }, [existingIds]);
+
+  const toggle = (id: string) =>
     setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const handleConfirm = () => {
-    const names = available.filter(c => picked.has(c.id)).map(c => c.name);
-    onConfirm(names);
+    const ids = contacts.filter(c => picked.has(c.id)).map(c => c.id);
+    onConfirm(ids);
+  };
+
+  const GRAD_MAP: Record<string, string> = {
+    'bg-blue-500': 'from-blue-400 to-blue-500',
+    'bg-violet-500': 'from-violet-400 to-violet-500',
+    'bg-emerald-500': 'from-emerald-400 to-emerald-500',
+    'bg-amber-500': 'from-amber-400 to-amber-500',
+    'bg-rose-500': 'from-rose-400 to-rose-500',
+    'bg-cyan-500': 'from-cyan-400 to-cyan-500',
   };
 
   return (
@@ -686,17 +740,27 @@ const AddMemberModal: React.FC<{
         </div>
         {/* List */}
         <div className="overflow-y-auto flex-1 py-2">
-          {available.length === 0 ? (
-            <p className="text-[13px] text-gray-400 text-center py-8">All friends are already in this group</p>
-          ) : available.map(c => {
+          {loadingContacts ? (
+            <div className="flex justify-center py-6">
+              <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+            </div>
+          ) : contacts.length === 0 ? (
+            <p className="text-[13px] text-gray-400 text-center py-8">All valid friends are already in this group</p>
+          ) : contacts.map(c => {
+            const userColor = `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((c.name || 'a').charCodeAt(0)) % 5]}-500`;
             const isSel = picked.has(c.id);
+            const initials = (c.name || c.email || 'U').substring(0, 2).toUpperCase();
             return (
               <div key={c.id} onClick={() => toggle(c.id)}
                 className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
-                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">{c.initials}</div>
+                {c.avatar && c.avatar.startsWith('http') ? (
+                  <img src={c.avatar} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />
+                ) : (
+                  <div className={`w-8 h-8 rounded-full ${userColor} text-white flex items-center justify-center text-[11px] font-black shrink-0`}>{initials}</div>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-gray-800 truncate">{c.name}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{c.bio}</p>
+                  <p className="text-[13px] font-semibold text-gray-800 truncate">{c.name || c.email?.split('@')[0]}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{c.email}</p>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${isSel ? 'bg-gray-900 border-gray-900' : 'border-gray-200'}`}>
                   {isSel && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
@@ -721,7 +785,19 @@ const AddMemberModal: React.FC<{
 const ChatsPage: React.FC = () => {
   const [filter, setFilter] = useState<'All' | 'People' | 'Groups'>('All');
   const [selected, setSelected] = useState<string | null>(null);
-  const [conversations, setConversations] = useState(MOCK_MESSAGES);
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const convId = params.get('convId');
+    if (convId) {
+      setSelected(convId);
+      // Optional: clear the url without refreshing so it doesn't get stuck if user closes chat
+      window.history.replaceState({}, '', '/chat');
+    }
+  }, [location.search]);
+
+  const [conversations, setConversations] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [localMsgs, setLocalMsgs] = useState<LocalMsg[]>([]);
   const [showPoll, setShowPoll] = useState(false);
@@ -732,6 +808,271 @@ const ChatsPage: React.FC = () => {
   const [mktCat, setMktCat] = useState('All');
   const [plusMenu, setPlusMenu] = useState(false);
   const [plusModal, setPlusModal] = useState<'friend' | 'group' | null>(null);
+  const [memberMenuOpts, setMemberMenuOpts] = useState<string | null>(null);
+  const [memberToKick, setMemberToKick] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [groupPolls, setGroupPolls] = useState<any[]>([]);
+  const [loadingConvs, setLoadingConvs] = useState(true);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [sendingMsg, setSendingMsg] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dbUserId = localStorage.getItem('dbUserId') || '';
+  const dbUserName = localStorage.getItem('dbUserName') || 'You';
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Immediate scroll
+    scrollToBottom();
+    // Delayed scrolls to handle async image/video loading which changes container height
+    const t1 = setTimeout(scrollToBottom, 150);
+    const t2 = setTimeout(scrollToBottom, 500);
+    const t3 = setTimeout(scrollToBottom, 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [chatMessages, localMsgs, groupPolls]);
+
+  // Extract API call so we can reuse it when unknown chats ping us via WS
+  const loadConvs = useCallback(() => {
+    api.getCommunityConversations()
+      .then(data => {
+        setConversations(data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        avatar: c.avatar || c.name?.charAt(0) || '?',
+        role: c.type === 'group' ? 'group' : 'human',
+        lastMsg: c.lastMsg || '',
+        time: c.lastMsgAt ? new Date(c.lastMsgAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        unread: c.unread || 0,
+        isGroup: c.isGroup,
+        color: c.isGroup
+          ? `bg-${['blue', 'emerald', 'violet', 'amber', 'rose', 'cyan'][Math.abs(c.name.charCodeAt(0)) % 6]}-100 text-${['blue', 'emerald', 'violet', 'amber', 'rose', 'cyan'][Math.abs(c.name.charCodeAt(0)) % 6]}-600`
+          : `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((c.name || 'a').charCodeAt(0)) % 5]}-500 text-white`,
+        groupMembers: c.groupMembers || [],
+      })));
+      setTimeout(() => {
+        data.forEach((c: any) => {
+          if (c.isGroup) {
+            socket.emit('join-group', c.id);
+          }
+        });
+      }, 500);
+    }).catch((err) => {
+      console.error('[loadConvs] Failed to load conversations:', err.message);
+      // Only clear if we have no existing data (first load). Keep stale data on refresh failures.
+      setConversations(prev => prev.length > 0 ? prev : []);
+    });
+  }, []);
+
+  // Load conversations from API on mount
+  useEffect(() => {
+    setLoadingConvs(true);
+    loadConvs();
+    setLoadingConvs(false);
+  }, [loadConvs]);
+
+  // Real-time WebSocket listener for new messages
+  useEffect(() => {
+    const handleNewMsg = (payload: any) => {
+      // Backend sends { conversationId, message: { id, content, sender, ... } }
+      // Or for groups: message directly with groupId
+      const msg = payload.message || payload;
+      const convId = payload.conversationId || msg.groupId;
+      const formattedMsg = {
+        id: msg.id,
+        senderId: msg.senderId || msg.userId,
+        content: msg.content,
+        attachmentUrl: msg.attachmentUrl || null,
+        attachmentType: msg.attachmentType || null,
+        createdAt: msg.createdAt,
+        sender: msg.sender || msg.user || { id: msg.userId, name: 'User' },
+      };
+
+      // 1. Update the active chat log if we are currently looking at it
+      if (selected === convId) {
+        setChatMessages(prev => {
+          if (prev.some(m => m.id === formattedMsg.id)) return prev;
+          return [...prev, formattedMsg];
+        });
+        // We received a new message dynamically while targeting this window, reset read cursor
+        api.markConversationAsRead(convId).catch(console.error);
+      }
+
+      // 2. Update the left conversational menu preview snippets
+      setConversations(prev => {
+        const exists = prev.some(c => c.id === convId);
+        if (!exists) {
+          // A brand new conversation started (e.g. someone messaged us first time), we must fetch its metadata
+          loadConvs();
+          return prev;
+        }
+        return prev.map(c => c.id === convId ? {
+          ...c,
+          lastMsg: formattedMsg.content || (formattedMsg.attachmentType === 'image' ? '📷 Photo' : formattedMsg.attachmentType === 'video' ? '🎬 Video' : formattedMsg.attachmentType === 'file' ? '📎 File' : ''),
+          time: new Date(formattedMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          unread: selected === convId ? 0 : (c.unread || 0) + 1
+        } : c).sort((a, b) => {
+          // Bring updated conversation to top
+          if (a.id === convId) return -1;
+          if (b.id === convId) return 1;
+          return 0;
+        });
+      });
+    };
+
+    socket.on('dm:message', handleNewMsg);
+    socket.on('group:message', handleNewMsg);
+    socket.on('group:joined', loadConvs);
+    socket.on('group:removed', loadConvs);
+    const handleDissolved = (data: any) => {
+      setConversations(prev => prev.filter(c => c.id !== data.groupId));
+      if (selected === data.groupId) setSelected(null);
+    };
+    socket.on('group:dissolved', handleDissolved);
+
+    // Poll events
+    const handleNewPoll = (poll: any) => {
+      if (selected === poll.groupId) {
+        setGroupPolls(prev => {
+          if (prev.some(p => p.id === poll.id)) return prev;
+          return [...prev, poll];
+        });
+      }
+      // Update sidebar preview for all group members
+      setConversations(prev => prev.map(c => c.id === poll.groupId ? {
+        ...c,
+        lastMsg: `📊 Poll: ${poll.question}`,
+        time: new Date(poll.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      } : c));
+    };
+    const handlePollVote = (data: any) => {
+      setGroupPolls(prev => prev.map(p => p.id === data.pollId ? {
+        ...p, options: data.options, total: data.total,
+      } : p));
+    };
+    socket.on('group:poll', handleNewPoll);
+    socket.on('group:poll-vote', handlePollVote);
+
+    return () => {
+      socket.off('dm:message', handleNewMsg);
+      socket.off('group:message', handleNewMsg);
+      socket.off('group:joined', loadConvs);
+      socket.off('group:removed', loadConvs);
+      socket.off('group:dissolved', handleDissolved);
+      socket.off('group:poll', handleNewPoll);
+      socket.off('group:poll-vote', handlePollVote);
+    };
+  }, [selected, loadConvs]);
+
+  // Load messages when a conversation is selected
+  useEffect(() => {
+    if (!selected) { setChatMessages([]); return; }
+    
+    // Optimistically clear the unread badge on the sidebar
+    setConversations(prev => prev.map(c => 
+      c.id === selected ? { ...c, unread: 0 } : c
+    ));
+    
+    // Sync the read cursor with the backend database
+    api.markConversationAsRead(selected).catch(console.error);
+
+    setLoadingMsgs(true);
+    api.getConversationMessages(selected)
+      .then(data => {
+        setChatMessages(data.messages || []);
+        // Scroll to bottom after messages load
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 100);
+      })
+      .catch(() => setChatMessages([]))
+      .finally(() => setLoadingMsgs(false));
+
+    // Load polls (always attempt — API returns 403 for non-groups, which we silently ignore)
+    api.getGroupPolls(selected).then(setGroupPolls).catch(() => setGroupPolls([]));
+  }, [selected]);
+
+  // Send message handler
+  const handleSendMessage = async () => {
+    if ((!input.trim() && localMsgs.filter(m => m.type === 'file' || m.type === 'image').length === 0) || !selected || sendingMsg) return;
+    const text = input.trim();
+    const attachments = localMsgs.filter(m => m.type === 'image' || m.type === 'file');
+    setInput('');
+    setSendingMsg(true);
+
+    try {
+      // 1. Send attachments
+      for (const att of attachments) {
+        if (!att.file) continue;
+        const { url, type } = await api.uploadFile(att.file);
+        const msg = await api.sendConversationMessage(selected, '', url, type);
+        setChatMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+      
+      // 2. Send text message
+      if (text) {
+        const msg = await api.sendConversationMessage(selected, text);
+        setChatMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+
+      setLocalMsgs(prev => prev.filter(m => m.type !== 'image' && m.type !== 'file'));
+      
+      setConversations(prev => prev.map(c =>
+        c.id === selected ? { ...c, lastMsg: text || '📷 Photo', time: 'now' } : c
+      ));
+    } catch {
+      // Fallback
+    } finally {
+      setSendingMsg(false);
+    }
+  };
+
+  const handleSendFile = async (file: File, type: 'image' | 'file') => {
+    if (!selected) return;
+    setSendingMsg(true);
+
+    const tempId = Date.now().toString() + 'uploading';
+    // Add temporary uploading indicator
+    setChatMessages(prev => [...prev, {
+      id: tempId,
+      senderId: dbUserId,
+      content: `Uploading ${file.name}...`,
+      attachmentType: 'uploading',
+      createdAt: new Date().toISOString(),
+      sender: { id: dbUserId, name: dbUserName, avatar: null },
+    } as any]);
+
+    try {
+      const uploadRes = await api.uploadFile(file);
+      const msgContent = uploadRes.type === 'file' ? file.name : '';
+      const msg = await api.sendConversationMessage(selected, msgContent, uploadRes.url, uploadRes.type);
+      
+      setChatMessages(prev => {
+        const filtered = prev.filter(m => m.id !== tempId);
+        if (filtered.some(m => m.id === msg.id)) return filtered;
+        return [...filtered, msg];
+      });
+      const previewLabel = uploadRes.type === 'image' ? '📷 Photo' : uploadRes.type === 'video' ? '🎬 Video' : '📎 File';
+      setConversations(prev => prev.map(c =>
+        c.id === selected ? { ...c, lastMsg: previewLabel, time: 'now' } : c
+      ));
+    } catch (err: any) {
+      console.error('[handleSendFile] Upload failed:', err);
+      // Replace uploading with error message
+      setChatMessages(prev => prev.map(m => m.id === tempId ? {
+        ...m,
+        content: `Upload failed: ${err.message || 'Unknown error'}`,
+        attachmentType: 'error'
+      } : m));
+      // Remove error after 3 seconds
+      setTimeout(() => setChatMessages(p => p.filter(m => m.id !== tempId)), 3000);
+    } finally {
+      setSendingMsg(false);
+    }
+  };
 
   const MKT_CATS = ['All', 'Risk Management', 'Investment Analysis', 'Operations', 'DeFi & On-chain'];
   const MKT_AGENTS = [
@@ -751,31 +1092,76 @@ const ChatsPage: React.FC = () => {
       : conversations.filter(m => m.isGroup);
 
   const sel = selected ? conversations.find(m => m.id === selected) : null;
-  const msgs = selected ? (MOCK_CHAT_MESSAGES[selected] || []) : [];
-  const [groupMembersState, setGroupMembersState] = useState<Record<string, GroupMemberData>>(MOCK_GROUP_MEMBERS);
-  const members = selected ? groupMembersState[selected] : null;
+
+  // Merge polls into message timeline
+  const mergedMsgs = useMemo(() => {
+    const pollMsgs = groupPolls.map(p => ({
+      id: `poll:${p.id}`,
+      _isPoll: true,
+      _pollData: p,
+      senderId: p.creator?.id || p.userId,
+      content: '',
+      createdAt: p.createdAt,
+      sender: p.creator || { id: p.userId, name: 'User' },
+    }));
+    return [...chatMessages, ...pollMsgs].sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [chatMessages, groupPolls]);
+
+  const msgs = mergedMsgs;
+  
+  const members = sel?.isGroup && sel.groupMembers ? {
+    agents: [],
+    members: sel.groupMembers.map((m: any) => ({
+      id: m.id || m.userId,
+      name: m.name || m.id,
+      online: true,
+      avatar: m.avatar,
+      role: m.role
+    })),
+    isAdmin: sel.groupMembers.some((m: any) => m.id === dbUserId && ['creator', 'admin'].includes(m.role)),
+  } : null;
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [showDissolve, setShowDissolve] = useState(false);
 
-  const removeMember = (name: string) => selected && setGroupMembersState(prev => ({
-    ...prev,
-    [selected]: { ...prev[selected], members: prev[selected].members.filter(m => m.name !== name) }
-  }));
-  const removeAgent = (name: string) => selected && setGroupMembersState(prev => ({
-    ...prev,
-    [selected]: { ...prev[selected], agents: prev[selected].agents.filter(a => a !== name) }
-  }));
-  const addMember = (name: string) => selected && setGroupMembersState(prev => {
-    const existing = prev[selected].members.find(m => m.name === name);
-    if (existing) return prev;
-    return { ...prev, [selected]: { ...prev[selected], members: [...prev[selected].members, { name, online: false }] } };
-  });
-  const dissolveGroup = () => {
+    const removeMember = async (userId: string) => {
     if (!selected) return;
-    setConversations(prev => prev.filter(c => c.id !== selected));
-    setSelected(null);
-    setShowDissolve(false);
+    try {
+      const result = await api.removeGroupMember(selected, userId);
+      setConversations(prev => prev.map(c =>
+        c.id === selected ? { ...c, groupMembers: result.members } : c
+      ));
+    } catch (err) {
+      console.error('Failed to kick member', err);
+    }
+  };
+  const removeAgent = (name: string) => { console.log('TODO: remove agent', name); };
+  const addMembers = async (userIds: string[]) => {
+    if (!selected) return;
+    try {
+      const result = await api.addGroupMembers(selected, userIds);
+      // Update the local conversation's groupMembers with the new list from server
+      setConversations(prev => prev.map(c =>
+        c.id === selected ? { ...c, groupMembers: result.members } : c
+      ));
+    } catch (err) {
+      console.error('Failed to add members', err);
+    }
+  };
+  const dissolveGroup = async () => {
+    if (!selected) return;
+    try {
+      await api.dissolveGroup(selected);
+      setConversations(prev => prev.filter(c => c.id !== selected));
+      setSelected(null);
+      setShowDissolve(false);
+    } catch (err) {
+      console.error('Failed to dissolve group', err);
+      alert('Failed to dissolve group. Only the group creator can perform this action.');
+      setShowDissolve(false);
+    }
   };
 
   return (
@@ -785,20 +1171,29 @@ const ChatsPage: React.FC = () => {
       {plusModal === 'group' && (
         <CreateGroupModal
           onClose={() => setPlusModal(null)}
-          onCreated={(newId) => {
+          onCreated={(group: any) => {
+            const groupColor = `bg-${['blue', 'emerald', 'violet', 'amber', 'rose', 'cyan'][Math.abs(group.name.charCodeAt(0)) % 6]}-100 text-${['blue', 'emerald', 'violet', 'amber', 'rose', 'cyan'][Math.abs(group.name.charCodeAt(0)) % 6]}-600`;
             setConversations(prev => [{
-              id: newId,
-              name: 'New Group',
-              avatar: 'NG',
+              id: group.id,
+              name: group.name,
+              avatar: group.avatar || group.name.charAt(0),
               role: 'group',
               lastMsg: 'Group created',
               time: 'now',
               unread: 0,
               isGroup: true,
-              color: 'bg-blue-100 text-blue-600',
+              color: groupColor,
+              groupMembers: group.members?.map((m: any) => ({
+                id: m.user?.id || m.userId,
+                name: m.user?.name || 'Unknown',
+                avatar: m.user?.avatar,
+                role: m.role,
+              })) || [],
             }, ...prev]);
-            setSelected(newId);
+            setSelected(group.id);
             setPlusModal(null);
+            // Also join the socket room
+            socket.emit('join-group', group.id);
           }}
         />
       )}
@@ -841,11 +1236,13 @@ const ChatsPage: React.FC = () => {
           {filtered.map(m => (
             <button key={m.id} onClick={() => setSelected(m.id)}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${selected === m.id ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold ${m.color || 'bg-gray-100 text-gray-600'}`}>{m.avatar}</div>
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold overflow-hidden ${m.color || 'bg-gray-100 text-gray-600'}`}>
+                {m.avatar?.startsWith('http') ? <img src={m.avatar} className="w-full h-full object-cover" alt="" /> : m.avatar?.substring(0, 2).toUpperCase()}
+              </div>
               <div className="flex-1 text-left min-w-0">
                 <div className="flex justify-between items-center">
                   <p className="text-[13px] font-medium text-gray-900 truncate">{m.name}</p>
-                  <span className="text-[11px] text-gray-300 shrink-0 ml-2">{m.time}</span>
+                  <span className="text-[11px] text-gray-400 shrink-0 ml-2">{m.time}</span>
                 </div>
                 <p className="text-[12px] text-gray-400 truncate mt-0.5">{m.lastMsg}</p>
               </div>
@@ -865,7 +1262,9 @@ const ChatsPage: React.FC = () => {
               <button onClick={() => setSelected(null)} className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-all shrink-0">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
               </button>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${sel.color || 'bg-gray-100 text-gray-600'}`}>{sel.avatar}</div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold overflow-hidden shrink-0 ${sel.color || 'bg-gray-100 text-gray-600'}`}>
+                {sel.avatar?.startsWith('http') ? <img src={sel.avatar} className="w-full h-full object-cover" alt="" /> : sel.avatar?.substring(0, 2).toUpperCase()}
+              </div>
               <div className="flex-1">
                 <p className="text-[14px] font-semibold text-gray-900">{sel.name}</p>
                 {sel.isGroup && members && (
@@ -886,43 +1285,90 @@ const ChatsPage: React.FC = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {msgs.map((msg, i) => (
-                <div key={i}>
-                  {(msg.role === 'agent' || msg.role === 'user') && (
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600 shrink-0">
-                        {msg.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <div className="max-w-4xl mx-auto w-full space-y-4">
+              {msgs.map((msg: any, i: number) => {
+                if (!msg._isPoll && msg.attachmentType === 'poll') return null;
+                const isMe = msg.senderId === dbUserId;
+                return (
+                <div key={msg.id || i}>
+                  {msg.sender && (
+                    <div className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((msg.sender.name || 'U').charCodeAt(0)) % 5]}-500`}>
+                        {msg.sender.avatar?.startsWith('http') 
+                           ? <img src={msg.sender.avatar} className="w-full h-full object-cover" alt="" /> 
+                           : (msg.sender.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
                       <div className="max-w-[70%]">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[12px] font-semibold text-gray-800">{msg.name}</span>
-                          {msg.tag && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-violet-100 text-violet-600">{msg.tag}</span>}
-                          <span className="text-[10px] text-gray-300">{msg.time}</span>
+                        <div className={`flex items-center gap-1.5 mb-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                          <span className="text-[12px] font-semibold text-gray-800">{isMe ? 'You' : (msg.sender.name || 'User')}</span>
+                          <span className="text-[10px] text-gray-400">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                         </div>
-                        <div className="bg-white border border-gray-100 rounded-xl rounded-tl-sm px-3.5 py-2.5 text-[13px] text-gray-700 shadow-sm leading-relaxed">
-                          {msg.text}
+                        <div className={`flex flex-col gap-1.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                          {msg.attachmentUrl && msg.attachmentType === 'image' && (
+                            <img src={msg.attachmentUrl} alt="attachment" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover" onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })} />
+                          )}
+                          {msg.attachmentUrl && msg.attachmentType === 'video' && (
+                            <video
+                              src={msg.attachmentUrl}
+                              controls
+                              preload="metadata"
+                              className="max-w-[300px] rounded-xl border border-gray-100 shadow-sm"
+                              onLoadedMetadata={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                            />
+                          )}
+                          {msg.attachmentUrl && msg.attachmentType === 'file' && (
+                            <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" download className={`flex items-center gap-2.5 border border-gray-100 rounded-xl px-3.5 py-2.5 shadow-sm transition-colors ${isMe ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-white hover:bg-gray-50'}`}>
+                              <svg className={`w-7 h-7 shrink-0 ${isMe ? 'text-gray-300' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                              <div className="min-w-0">
+                                <p className="text-[12px] font-semibold truncate max-w-[200px]">{msg.content || 'Document'}</p>
+                                <p className={`text-[10px] ${isMe ? 'text-gray-400' : 'text-gray-500'}`}>Click to download</p>
+                              </div>
+                            </a>
+                          )}
+                          {msg.attachmentType === 'uploading' && (
+                            <div className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl shadow-sm ${isMe ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-500 border border-gray-100'}`}>
+                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                              <span className="text-[13px] italic">{msg.content}</span>
+                            </div>
+                          )}
+                          {msg.attachmentType === 'error' && (
+                            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl shadow-sm bg-red-50 text-red-500 border border-red-100">
+                              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              <span className="text-[13px]">{msg.content}</span>
+                            </div>
+                          )}
+                          {msg._isPoll && msg._pollData && (
+                            <PollCard poll={{ ...msg._pollData, voted: msg._pollData.voted || undefined }} />
+                          )}
+                          {!msg._isPoll && msg.content && msg.attachmentType !== 'file' && msg.attachmentType !== 'uploading' && msg.attachmentType !== 'error' && msg.attachmentType !== 'poll' && (
+                            <div className={`${isMe ? 'bg-gray-900 text-white rounded-xl rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-700 rounded-xl rounded-tl-sm'} px-3.5 py-2.5 text-[13px] shadow-sm leading-relaxed`}>
+                              {msg.content}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </div>
-                  )}
-                  {msg.role === 'system' && (
-                    <div className="flex justify-center">
-                      <div className="bg-gray-100 rounded-xl px-4 py-2 text-[12px] text-gray-500 max-w-[80%] text-center">
-                        {msg.text}
-                        <span className="ml-2 text-[10px] text-gray-300">{msg.time}</span>
                       </div>
                     </div>
                   )}
                 </div>
-              ))}
+              );
+              })}
+              {loadingMsgs && (
+                <div className="flex justify-center py-8">
+                  <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+                </div>
+              )}
+              {/* Group Polls section removed — polls are now merged into the message timeline */}
               {/* Local messages (images, polls, etc.) */}
-              {localMsgs.map((msg) => (
-                <div key={msg.id} className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-[10px] font-bold text-white shrink-0">Me</div>
+              {localMsgs.map((msg) => {
+                const myColor = `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((dbUserName || 'U').charCodeAt(0)) % 5]}-500`;
+                const myInitials = (dbUserName || 'U').substring(0, 2).toUpperCase();
+                return (
+                <div key={msg.id} className="flex items-start gap-2.5 flex-row-reverse">
+                  <div className={`w-7 h-7 rounded-full ${myColor} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>{myInitials}</div>
                   <div className="max-w-[75%]">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[12px] font-semibold text-gray-800">You</span>
+                    <div className="flex items-center gap-1.5 mb-1 flex-row-reverse">
+                      <span className="text-[12px] font-semibold text-gray-800">{dbUserName}</span>
                       <span className="text-[10px] text-gray-300">now</span>
                     </div>
                     {/* Image message */}
@@ -941,7 +1387,7 @@ const ChatsPage: React.FC = () => {
                     )}
                     {/* Text message */}
                     {msg.type === 'text' && (
-                      <div className="bg-gray-900 rounded-xl rounded-tl-sm px-3.5 py-2.5 text-[13px] text-white shadow-sm leading-relaxed">{msg.content}</div>
+                      <div className="bg-gray-900 rounded-xl rounded-tr-sm px-3.5 py-2.5 text-[13px] text-white shadow-sm leading-relaxed">{msg.content}</div>
                     )}
                     {/* Poll message */}
                     {msg.type === 'poll' && (
@@ -949,56 +1395,80 @@ const ChatsPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ))}
+              )})}
               {msgs.length === 0 && localMsgs.length === 0 && (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-[13px] text-gray-400">No messages yet</p>
                 </div>
               )}
+                <div ref={messagesEndRef} className="h-px" />
+              </div>
             </div>
 
             {/* Poll Modal */}
-            {showPoll && (
+            {showPoll && selected && (
               <PollModal
                 onClose={() => setShowPoll(false)}
-                onSubmit={(poll) => {
-                  setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'poll', content: '', poll }]);
+                onSubmit={async (pollData) => {
+                  try {
+                    const newPoll = await api.createPoll(selected, {
+                      question: pollData.question,
+                      options: pollData.options.map(o => o.text),
+                      duration: pollData.duration,
+                    });
+                    // Add poll immediately so creator sees it (WebSocket dedup prevents duplicates)
+                    setGroupPolls(prev => {
+                      if (prev.some(p => p.id === newPoll.id)) return prev;
+                      return [...prev, newPoll];
+                    });
+                    // Update sidebar conversation preview
+                    setConversations(prev => prev.map(c => c.id === selected ? {
+                      ...c,
+                      lastMsg: `📊 Poll: ${pollData.question}`,
+                      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    } : c));
+                  } catch (err) {
+                    console.error('Failed to create poll:', err);
+                  }
                   setShowPoll(false);
                 }}
               />
             )}
 
             {/* Input */}
-            <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0 relative">
-              {/* Attach popup menu */}
+            <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0">
+              <div className="max-w-4xl mx-auto w-full relative">
               {showAttachMenu && (
-                <div className="absolute bottom-[calc(100%+6px)] right-4 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden w-40 z-10 animate-fadeIn"
-                  onClick={() => setShowAttachMenu(false)}>
+                <div className="absolute bottom-[calc(100%+6px)] right-4 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden w-40 z-10 animate-fadeIn">
                   {/* Photo / Video */}
-                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors">
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={e => e.stopPropagation()}>
                     <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                       <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
                     <span className="text-[12px] font-semibold text-gray-700">Photo or Video</span>
                     <input type="file" accept="image/*,video/*" className="hidden" onChange={e => {
                       const file = e.target.files?.[0];
+                      console.log('[Attach] Photo/Video selected:', file?.name, file?.size);
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = ev => setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'image', content: ev.target?.result as string }]);
-                      reader.readAsDataURL(file);
+                      handleSendFile(file, 'image');
+                      setShowAttachMenu(false);
                       e.target.value = '';
                     }} />
                   </label>
                   {/* Document */}
-                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-t border-gray-50">
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-t border-gray-50"
+                    onClick={e => e.stopPropagation()}>
                     <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
                       <svg className="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                     </div>
                     <span className="text-[12px] font-semibold text-gray-700">Document</span>
                     <input type="file" className="hidden" onChange={e => {
                       const file = e.target.files?.[0];
+                      console.log('[Attach] Document selected:', file?.name, file?.size);
                       if (!file) return;
-                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'file', content: file.name }]);
+                      handleSendFile(file, 'file');
+                      setShowAttachMenu(false);
                       e.target.value = '';
                     }} />
                   </label>
@@ -1023,8 +1493,7 @@ const ChatsPage: React.FC = () => {
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
                       e.preventDefault();
-                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
-                      setInput('');
+                      handleSendMessage();
                     }
                   }}
                   placeholder="Message..."
@@ -1036,11 +1505,8 @@ const ChatsPage: React.FC = () => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                 </button>
                 {/* Mic / Send */}
-                {input.trim() ? (
-                  <button onClick={() => {
-                    setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
-                    setInput('');
-                  }} className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-900 text-white transition-all shrink-0 hover:bg-gray-700">
+                {input.trim() || localMsgs.some(m => m.type === 'image' || m.type === 'file') ? (
+                  <button disabled={sendingMsg} onClick={handleSendMessage} className={`w-7 h-7 rounded-lg flex items-center justify-center bg-gray-900 text-white transition-all shrink-0 hover:bg-gray-700 ${sendingMsg ? 'opacity-50' : ''}`}>
                     <I.Send />
                   </button>
                 ) : (
@@ -1049,6 +1515,7 @@ const ChatsPage: React.FC = () => {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                   </button>
                 )}
+              </div>
               </div>
             </div>
           </div>
@@ -1099,29 +1566,47 @@ const ChatsPage: React.FC = () => {
                 {/* ── Members ── */}
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Members</p>
-                  {members.members.map(m => (
-                    <div key={m.name} className="flex items-center gap-2.5 py-1.5 group">
-                      <div className="relative shrink-0">
-                        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500">{m.name[0].toUpperCase()}</div>
-                        {m.online && <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-400 border-2 border-white rounded-full" />}
-                      </div>
+                  {members.members.map(m => {
+                    const userColor = `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((m.name || 'a').charCodeAt(0)) % 5]}-500`;
+                    return (
+                      <div key={m.name} className="flex items-center gap-2.5 py-1.5 group">
+                        <div className="relative shrink-0">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white overflow-hidden ${userColor}`}>
+                            {m.avatar?.startsWith('http') ? <img src={m.avatar} className="w-full h-full object-cover" alt="" /> : m.name[0]?.toUpperCase()}
+                          </div>
+                          {m.online && <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-400 border-2 border-white rounded-full" />}
+                        </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-[12px] font-semibold text-gray-800 truncate">{m.name}</p>
-                          {m.name === members.adminName && (
+                          {['creator', 'admin'].includes(m.role) && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 shrink-0">Admin</span>
                           )}
                         </div>
                         <p className={`text-[10px] ${m.online ? 'text-emerald-500' : 'text-gray-300'}`}>{m.online ? 'Online' : 'Offline'}</p>
                       </div>
-                      {members.isAdmin && m.name !== members.adminName && (
-                        <button onClick={() => removeMember(m.name)}
-                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
+                      {members.isAdmin && m.id !== dbUserId && (
+                        <div className="relative shrink-0">
+                          <button onClick={() => setMemberMenuOpts(memberMenuOpts === m.id ? null : m.id)}
+                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                          </button>
+                          {memberMenuOpts === m.id && (
+                            <>
+                              <div className="fixed inset-0 z-10" onClick={() => setMemberMenuOpts(null)} />
+                              <div className="absolute right-0 top-7 w-36 bg-white border border-gray-100 rounded-xl shadow-[0_4px_24px_-4px_rgba(0,0,0,0.1)] z-20 py-1 animate-fadeIn">
+                                <button onClick={() => { setMemberToKick(m); setMemberMenuOpts(null); }} className="w-full text-left px-4 py-2 text-[12px] font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2">
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                  Remove User
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                   {/* Add Member button — admin only */}
                   {members.isAdmin && (
                     <button onClick={() => setShowAddMember(true)}
@@ -1149,10 +1634,28 @@ const ChatsPage: React.FC = () => {
               {/* Add Member modal */}
               {showAddMember && members && (
                 <AddMemberModal
-                  existingNames={members.members.map(m => m.name)}
+                  existingIds={members.members.map((m: any) => m.id).filter(Boolean)}
                   onClose={() => setShowAddMember(false)}
-                  onConfirm={(names) => { names.forEach(addMember); setShowAddMember(false); }}
+                  onConfirm={(userIds) => { addMembers(userIds); setShowAddMember(false); }}
                 />
+              )}
+
+              {/* Remove Member Confirmation Modal */}
+              {memberToKick && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setMemberToKick(null)} />
+                  <div className="relative bg-white w-full max-w-sm rounded-[24px] shadow-2xl overflow-hidden p-7 animate-fadeInScale">
+                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                      <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <h3 className="text-[18px] font-bold text-gray-900 mb-2">Remove Participant?</h3>
+                    <p className="text-[14px] text-gray-500 mb-8 leading-relaxed">Are you sure you want to remove <span className="font-semibold text-gray-900">{memberToKick.name}</span> from this group? They will lose all access to the chat history.</p>
+                    <div className="flex gap-3">
+                      <button onClick={() => setMemberToKick(null)} className="flex-1 py-3 px-4 rounded-xl font-bold text-[13px] text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                      <button onClick={() => { removeMember(memberToKick.id); setMemberToKick(null); }} className="flex-1 py-3 px-4 rounded-xl font-bold text-[13px] text-white bg-red-500 hover:bg-red-600 shadow-sm shadow-red-500/20 transition-all">Remove</button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Dissolve confirmation */}
@@ -1293,29 +1796,36 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [q, setQ] = useState('');
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [results, setResults] = useState<typeof STRANGER_DB>([]);
+  const [results, setResults] = useState<any[]>([]);
   const [sent, setSent] = useState<Set<string>>(new Set());
+  const [sendError, setSendError] = useState<string | null>(null);
 
-  const handleSearch = () => {
-    if (!q.trim()) return;
+  const handleSearch = async () => {
+    if (!q.trim() || q.trim().length < 2) return;
     setSearching(true);
     setSearched(false);
-    // Simulate async search
-    setTimeout(() => {
-      const lower = q.toLowerCase();
-      const found = STRANGER_DB.filter(s =>
-        s.account.toLowerCase().includes(lower) ||
-        s.name.toLowerCase().includes(lower) ||
-        s.email.toLowerCase().includes(lower)
-      );
-      setResults(found);
+    setSendError(null);
+    try {
+      const users = await api.searchUsers(q.trim());
+      setResults(users);
+    } catch {
+      setResults([]);
+    } finally {
       setSearched(true);
       setSearching(false);
-    }, 600);
+    }
   };
 
-  const sendRequest = (id: string) =>
-    setSent(prev => { const n = new Set(prev); n.add(id); return n; });
+  const sendRequest = async (userId: string) => {
+    if (sent.has(userId)) return;
+    setSendError(null);
+    try {
+      await api.sendFriendRequest(userId);
+      setSent(prev => { const n = new Set(prev); n.add(userId); return n; });
+    } catch (err: any) {
+      setSendError(err?.message || 'Failed to send request');
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
@@ -1324,7 +1834,7 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-[15px] font-bold text-gray-900">Add Friend</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">Search by account, nickname, or email</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Search by name or email</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1339,7 +1849,7 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 autoFocus value={q}
                 onChange={e => setQ(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                placeholder="@account · nickname · email"
+                placeholder="Name or email..."
                 className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder:text-gray-300"
               />
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -1349,19 +1859,11 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               Search
             </button>
           </div>
-          {/* Search hints */}
-          {!searched && !searching && (
-            <div className="flex gap-2 mt-2.5">
-              {['Account ID', 'Nickname', 'Email'].map(hint => (
-                <span key={hint} className="text-[10px] font-medium text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md">{hint}</span>
-              ))}
-            </div>
-          )}
+          {sendError && <p className="text-[11px] text-red-500 mt-2">{sendError}</p>}
         </div>
 
         {/* Results area */}
         <div className="min-h-[120px] max-h-72 overflow-y-auto px-5 pb-4">
-          {/* Loading */}
           {searching && (
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
@@ -1369,34 +1871,27 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </div>
           )}
 
-          {/* No results */}
           {searched && !searching && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 gap-1.5">
               <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               <p className="text-[13px] font-semibold text-gray-400">No users found</p>
-              <p className="text-[11px] text-gray-300">Try a different account ID or email</p>
+              <p className="text-[11px] text-gray-300">Try a different name or email</p>
             </div>
           )}
 
-          {/* Results */}
-          {!searching && results.map(s => {
+          {!searching && results.map((s: any) => {
             const isSent = sent.has(s.id);
+            const initials = (s.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
             return (
               <div key={s.id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>
-                  {s.initials}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0 overflow-hidden bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((s.name || s.email?.split('@')[0] || 'U').charCodeAt(0)) % 5]}-500`}>
+                  {s.avatar?.startsWith('http') ? <img src={s.avatar} className="w-full h-full object-cover" alt="" /> : (s.avatar || initials)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-[13px] font-semibold text-gray-900 leading-tight">{s.name}</p>
-                    <span className="text-[10px] text-gray-400 font-mono">{s.account}</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{s.role}</p>
-                  {s.mutual > 0 && (
-                    <p className="text-[10px] text-gray-300 mt-0.5">{s.mutual} mutual connection{s.mutual > 1 ? 's' : ''}</p>
-                  )}
+                  <p className="text-[13px] font-semibold text-gray-900 leading-tight">{s.name || 'Unknown'}</p>
+                  {s.email && <p className="text-[10px] text-gray-400 mt-0.5">{s.email}</p>}
                 </div>
-                <button onClick={() => !isSent && sendRequest(s.id)}
+                <button onClick={() => sendRequest(s.id)}
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${isSent ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-gray-900 text-white hover:bg-gray-700'}`}>
                   {isSent ? 'Sent ✓' : 'Add'}
                 </button>
@@ -1425,23 +1920,39 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 // ── Create Group Modal ─────────────────────────────────────────────────
 const CreateGroupModal: React.FC<{
   onClose: () => void;
-  onCreated?: (newGroupId: string) => void;
+  onCreated?: (group: any) => void;
 }> = ({ onClose, onCreated }) => {
   const [step, setStep] = useState<'members' | 'info'>('members');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Set<string | number>>(new Set());
   const [groupName, setGroupName] = useState('');
   const [groupBio, setGroupBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(true);
+
+  useEffect(() => {
+    api.searchUsers('').then(res => {
+      setContacts(res);
+      setLoadingContacts(false);
+    }).catch(err => {
+      console.error(err);
+      setLoadingContacts(false);
+    });
+  }, []);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = ev => setAvatarUrl(ev.target?.result as string);
     reader.readAsDataURL(file);
   };
 
-  const toggleMember = (id: number) =>
+  const toggleMember = (id: string | number) =>
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // Agents available to add (use negative IDs to distinguish from contacts)
@@ -1518,26 +2029,37 @@ const CreateGroupModal: React.FC<{
             <div className="px-5 pt-3 pb-1 border-t border-gray-50 mt-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contacts</p>
             </div>
-            {DISCOVER_CONTACTS.map(c => {
-              const grad = GRAD_MAP[c.bgColor] ?? 'from-gray-400 to-gray-500';
+            {loadingContacts ? (
+              <div className="flex justify-center py-6">
+                <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+              </div>
+            ) : contacts.length > 0 ? contacts.map(c => {
+              const userColor = `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((c.name || 'a').charCodeAt(0)) % 5]}-500`;
               const isSel = selected.has(c.id);
+              const initials = (c.name || c.email || 'U').substring(0, 2).toUpperCase();
               return (
                 <div key={c.id} onClick={() => toggleMember(c.id)}
                   className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>{c.initials}</div>
+                  {c.avatar && c.avatar.startsWith('http') ? (
+                    <img src={c.avatar} className="w-9 h-9 rounded-full object-cover shrink-0" alt="" />
+                  ) : (
+                    <div className={`w-9 h-9 rounded-full ${userColor} text-white flex items-center justify-center text-[12px] font-black shrink-0`}>{initials}</div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
-                      {c.role && <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">{c.role}</span>}
+                      <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name || c.email?.split('@')[0]}</p>
+                      <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">User</span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{c.bio}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{c.email}</p>
                   </div>
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${isSel ? 'bg-gray-900 border-gray-900' : 'border-gray-200'}`}>
                     {isSel && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                   </div>
                 </div>
               );
-            })}
+            }) : (
+              <div className="px-5 py-6 text-center text-[12px] text-gray-400">No contacts found</div>
+            )}
           </div>
         )}
 
@@ -1596,13 +2118,32 @@ const CreateGroupModal: React.FC<{
               </button>
             ) : (
               <button
-                onClick={() => {
-                  const newId = `g-${Date.now()}`;
-                  onCreated?.(newId);
-                  onClose();
+                disabled={loading}
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    // Upload avatar to R2 if one was selected
+                    let uploadedAvatarUrl: string | undefined;
+                    if (avatarFile) {
+                      const uploadRes = await api.uploadFile(avatarFile);
+                      uploadedAvatarUrl = uploadRes.url;
+                    }
+                    const group = await api.createCommunityGroup({
+                      name: groupName.trim() || 'New Group',
+                      bio: groupBio,
+                      avatar: uploadedAvatarUrl,
+                      memberIds: Array.from(selected).map(String)
+                    });
+                    onCreated?.(group);
+                  } catch (err) {
+                    console.error('Failed to create group:', err);
+                    alert('Failed to create group');
+                    setLoading(false);
+                  }
                 }}
-                className="px-4 py-2 rounded-xl text-[12px] font-bold bg-gray-900 text-white hover:bg-gray-700 transition-all">
-                Create Group
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-bold transition-all ${loading ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-gray-700'}`}>
+                {loading && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                {loading ? 'Creating...' : 'Create Group'}
               </button>
             )}
           </div>
@@ -1624,25 +2165,89 @@ const MOCK_REQUESTS = [
 const ContactsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<'friend' | null>(null);
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [followedUp, setFollowedUp] = useState<Set<string>>(new Set());
 
-  const handleAccept = (id: string) => {
-    setAccepted(prev => { const n = new Set(prev); n.add(id); return n; });
-    setTimeout(() => setRequests(prev => prev.filter(r => r.id !== id)), 1200);
+  const fetchLists = () => {
+    setLoading(true);
+    Promise.all([
+      api.getFriends().catch(() => []),
+      api.getFriendRequests().catch(() => [])
+    ])
+    .then(([friendsData, requestsData]) => {
+      setContacts(friendsData.map((f: any) => ({
+        id: f.user.id,
+        name: f.user.name || 'User',
+        email: f.user.email,
+        bio: f.user.email || 'LokaCash Member',
+        role: 'LokaCash User',
+        initials: (f.user.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+        avatar: f.user.avatar,
+        since: f.since,
+        bgColor: `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((f.user.name || 'a').charCodeAt(0)) % 5]}-500`
+      })));
+
+      setRequests(requestsData.map((r: any) => ({
+        id: r.id, 
+        userId: r.requester.id,
+        name: r.requester.name || 'User',
+        email: r.requester.email,
+        account: r.requester.email,
+        role: 'New Connection',
+        mutual: 0,
+        initials: (r.requester.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+        grad: `from-${['sky', 'fuchsia', 'emerald', 'amber'][Math.abs((r.requester.name || 'a').charCodeAt(0)) % 4]}-500 to-${['blue', 'pink', 'teal', 'orange'][Math.abs((r.requester.name || 'a').charCodeAt(0)) % 4]}-500`,
+        time: new Date(r.createdAt).toLocaleDateString()
+      })));
+    })
+    .finally(() => setLoading(false));
   };
-  const handleDecline = (id: string) =>
-    setRequests(prev => prev.filter(r => r.id !== id));
+
+  useEffect(() => {
+    fetchLists();
+    const unsubRequest = socket.on('friend:request', () => fetchLists());
+    const unsubAccepted = socket.on('friend:accepted', () => fetchLists());
+    return () => { unsubRequest(); unsubAccepted(); };
+  }, []);
+
+  const handleAccept = async (id: string) => {
+    try {
+      await api.acceptFriendRequest(id);
+      setAccepted(prev => new Set(prev).add(id));
+      setTimeout(() => {
+        setRequests(prev => prev.filter(r => r.id !== id));
+        fetchLists();
+      }, 1500);
+    } catch (e) { console.error('Accept fail', e); }
+  };
+  const handleDecline = async (id: string) => {
+    try {
+      await api.rejectFriendRequest(id);
+      setRequests(prev => prev.filter(r => r.id !== id));
+    } catch (e) { console.error('Decline fail', e); }
+  };
+  const filtered = contacts.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) || 
+    (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const handleMessage = async (e: React.MouseEvent, userId: string) => {
+    e.stopPropagation();
+    try {
+      const conv = await api.createDMConversation(userId);
+      navigate(`/chat?convId=${conv.id}`);
+    } catch (err) { }
+  };
 
   const suggestions = STRANGER_DB
     .filter(s => s.mutual > 0 && !dismissed.has(s.id))
     .sort((a, b) => b.mutual - a.mutual);
-
-  const filtered = DISCOVER_CONTACTS.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) || c.bio.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
@@ -1656,10 +2261,14 @@ const ContactsPage: React.FC = () => {
           <p className="text-[13px] text-gray-400 mt-1">Manage your network and professional connections</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[11px] font-bold text-gray-400">{DISCOVER_CONTACTS.length} Connections</span>
+          {loading ? (
+             <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+          ) : (
+            <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[11px] font-bold text-gray-400">{contacts.length} Connections</span>
+          )}
           <button onClick={() => setModal('friend')}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gray-900 text-white hover:bg-black hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24 group"><path className="group-hover:stroke-[3px] transition-all" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+            className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-gray-900 text-white hover:bg-black hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all group">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path className="group-hover:stroke-[3px] transition-all" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
           </button>
         </div>
       </div>
@@ -1675,9 +2284,9 @@ const ContactsPage: React.FC = () => {
             {requests.map((r) => {
               const isAccepted = accepted.has(r.id);
               return (
-                <div key={r.id} className={`flex items-center gap-4 px-6 py-4.5 transition-all ${isAccepted ? 'bg-emerald-50/40' : 'hover:bg-gray-50/50'}`}>
-                  <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${r.grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-200`}>
-                    {r.initials}
+                <div key={r.id} className={`flex items-center gap-4 px-6 py-5 transition-all ${isAccepted ? 'bg-emerald-50/40' : 'hover:bg-gray-50/50'}`}>
+                  <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${r.grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-200 overflow-hidden`}>
+                    {r.avatar?.startsWith('http') ? <img src={r.avatar} className="w-full h-full object-cover" alt="" /> : r.initials}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -1695,11 +2304,11 @@ const ContactsPage: React.FC = () => {
                     </span>
                   ) : (
                     <div className="flex items-center gap-2.5 shrink-0 ml-4">
-                      <button onClick={() => handleDecline(r.id)}
+                      <button onClick={(e) => { e.stopPropagation(); handleDecline(r.id); }}
                         className="px-5 py-2.5 rounded-2xl text-[12px] font-bold text-gray-400 bg-white hover:bg-gray-50 border border-gray-100 transition-all">
                         Decline
                       </button>
-                      <button onClick={() => handleAccept(r.id)}
+                      <button onClick={(e) => { e.stopPropagation(); handleAccept(r.id); }}
                         className="px-5 py-2.5 rounded-2xl text-[12px] font-bold text-white bg-gray-900 hover:bg-black shadow-md shadow-gray-100 transition-all active:scale-95">
                         Accept
                       </button>
@@ -1731,29 +2340,25 @@ const ContactsPage: React.FC = () => {
             const gradMap: Record<string, string> = { 'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500', 'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400', 'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500', 'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500', 'bg-orange-500': 'from-orange-400 to-amber-500' };
             const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
             return (
-              <div key={c.id} className="flex items-center gap-5 px-6 py-4.5 hover:bg-gray-50/50 transition-all cursor-pointer group">
-                <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-100 group-hover:scale-105 transition-transform`}>{c.initials}</div>
+              <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className="flex items-center gap-5 px-6 py-5 hover:bg-gray-50/50 transition-all cursor-pointer group">
+                <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-100 group-hover:scale-105 transition-transform overflow-hidden`}>
+                  {c.avatar?.startsWith('http') ? <img src={c.avatar} className="w-full h-full object-cover" alt="" /> : c.initials}
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2.5 mb-0.5">
                     <p className="text-[15px] font-bold text-gray-900">{c.name}</p>
                     {c.role && <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">{c.role}</span>}
-                    {c.twitter && (
-                      <span className="flex items-center gap-0.5 text-[11px] text-gray-300 hover:text-gray-900 transition-colors">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                        {c.twitter}
-                      </span>
-                    )}
                   </div>
                   <p className="text-[13px] text-gray-400 line-clamp-1 group-hover:text-gray-500 transition-colors font-medium">{c.bio}</p>
                 </div>
-                <button className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl text-[12px] font-bold text-gray-400 hover:text-gray-900 hover:bg-white hover:border border-transparent hover:border-gray-100 hover:shadow-sm transition-all opacity-0 group-hover:opacity-100">
+                <button onClick={(e) => handleMessage(e, c.id)} className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl text-[12px] font-bold text-gray-400 hover:text-gray-900 hover:bg-white hover:border border-transparent hover:border-gray-100 hover:shadow-sm transition-all opacity-0 group-hover:opacity-100">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                   Message
                 </button>
               </div>
             );
           })}
-          {filtered.length === 0 && (
+          {(!filtered || filtered.length === 0) && !loading && (
             <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
               <svg className="w-16 h-16 text-gray-200 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
               <p className="text-[14px] text-gray-400 font-medium tracking-tight">No connections found in your network</p>
@@ -2011,15 +2616,79 @@ const App: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, getAccessToken } = usePrivy();
   const { logout } = useLogout({
     onSuccess: () => navigate('/'),
   });
   const isLoggedIn = ready && authenticated;
 
+  // Sync Privy access token to API client and socket and sync user to DB
+  useEffect(() => {
+    if (ready && authenticated) {
+      // Check for deep-link post-login redirection
+      const redirect = sessionStorage.getItem('postLoginRedirect');
+      if (redirect) {
+        sessionStorage.removeItem('postLoginRedirect');
+        navigate(redirect, { replace: true });
+      }
+
+      // Provide dynamic token getter to ensure api always fetches a fresh, unexpired token on demand
+      api.setTokenGetter(getAccessToken);
+
+      getAccessToken().then(token => {
+        if (token) {
+          api.setToken(token);
+          socket.setToken(token);
+          // Sync user info to backend so they appear in search
+          const email = user?.google?.email || user?.twitter?.username || user?.email?.address;
+          const name = user?.google?.name || user?.twitter?.name || user?.email?.address?.split('@')[0];
+          fetch(`${import.meta.env.VITE_API_BASE || '/api'}/auth/sync`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+             body: JSON.stringify({ email, name, avatar: (user?.google as any)?.picture || (user?.twitter as any)?.profilePictureUrl })
+          }).then(r => r.json()).then(data => {
+            if (data?.id) localStorage.setItem('dbUserId', data.id);
+          }).catch(console.error);
+        }
+      });
+    } else if (ready && !authenticated) {
+      api.clearToken();
+      socket.clearToken();
+    }
+  }, [ready, authenticated, getAccessToken, user]);
+
+  // Real unread count for Community badge
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  
+  const fetchUnread = useCallback(() => {
+    if (!isLoggedIn) return;
+    api.getUnreadCount()
+      .then(data => setChatUnreadCount(data.unread || 0))
+      .catch(() => {});
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, [fetchUnread]);
+
+  // Live update badge over WebSocket
+  useEffect(() => {
+    const unsubRequest = socket.on('friend:request', () => fetchUnread());
+    const unsubAccepted = socket.on('friend:accepted', () => fetchUnread());
+    const unsubMsg = socket.on('dm:message', () => fetchUnread());
+    return () => {
+      unsubRequest();
+      unsubAccepted();
+      unsubMsg();
+    };
+  }, [fetchUnread]);
+
   // Derive user display info from Privy user object
   const userName = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
   const userInitial = userName.charAt(0).toUpperCase();
+  const userAvatar = (user?.google as any)?.picture || (user?.twitter as any)?.profilePictureUrl;
 
   const toggleDark = () => {
     setIsDark(prev => {
@@ -2053,8 +2722,18 @@ const App: React.FC = () => {
       {showAuthModal && <AuthModal onLogin={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />}
 
       <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={go} isDark={isDark} onToggleDark={toggleDark}
-        isLoggedIn={isLoggedIn} onLogin={() => setShowAuthModal(true)} onLogout={logout}
-        userName={userName} userInitial={userInitial} />
+        isLoggedIn={isLoggedIn} onLogin={() => {
+          // Privy's strict OAuth callback whitelist blocks dynamic URLs like /market/startup/:id
+          // Intercept the login flow, route the user to the whitelist root, and restore after auth
+          if (location.pathname.startsWith('/market/startup/')) {
+            sessionStorage.setItem('postLoginRedirect', location.pathname);
+            navigate('/market', { replace: true });
+            setTimeout(() => setShowAuthModal(true), 50);
+          } else {
+            setShowAuthModal(true);
+          }
+        }} onLogout={logout}
+        userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
 
       <main className={`flex-1 flex flex-col overflow-hidden h-full pt-[max(env(safe-area-inset-top),32px)] md:pt-0 pb-14 md:pb-0 ${mainBg}`}>
         <div className="flex-1 overflow-y-auto flex flex-col md:m-0">
@@ -2074,7 +2753,7 @@ const App: React.FC = () => {
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-2 pt-1 z-50" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
         {navItems.map(({ key, icon: Icon, label }) => {
-          const u = key === Page.CHATS ? MOCK_MESSAGES.reduce((s, m) => s + m.unread, 0) : 0;
+          const u = key === Page.CHATS ? chatUnreadCount : 0;
           return (
             <button key={key} onClick={() => go(key)}
               className={`relative flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-all ${page === key ? 'text-gray-900' : 'text-gray-400'}`}>

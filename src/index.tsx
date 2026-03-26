@@ -25,7 +25,7 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
-  <React.StrictMode>
+  <>
     <AppUrlListener />
     <PrivyProvider
       appId={privyAppId}
@@ -42,5 +42,5 @@ root.render(
         </BrowserRouter>
       </ErrorBoundary>
     </PrivyProvider>
-  </React.StrictMode>
+  </>
 );

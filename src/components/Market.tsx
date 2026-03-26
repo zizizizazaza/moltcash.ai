@@ -842,7 +842,7 @@ const Market: React.FC = () => {
   const [potMarginMin, setPotMarginMin] = useState<string>('');
   const [potMarginMax, setPotMarginMax] = useState<string>('');
   const [potAudience, setPotAudience] = useState<string>('Any');
-  const [potSort, setPotSort] = useState<string>('rev-desc');
+  const [potSort, setPotSort] = useState<string>('default');
   const [potFoundedFrom, setPotFoundedFrom] = useState<string>('');
   const [potFoundedTo, setPotFoundedTo] = useState<string>('');
   const [potCatExpanded, setPotCatExpanded] = useState(false);
@@ -850,6 +850,24 @@ const Market: React.FC = () => {
   // TrustMRR live data
   const [trustmrrStartups, setTrustmrrStartups] = useState<any[]>([]);
   const [trustmrrLoading, setTrustmrrLoading] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(100);
+
+  // Reset infinite scroll on filter changes
+  useEffect(() => {
+    setDisplayLimit(100);
+  }, [potCat, potRevMin, potRevMax, potMrrMin, potMrrMax, potGrowthMin, potGrowthMax, potMarginMin, potMarginMax, potAudience, potFoundedFrom, potFoundedTo, potSort]);
+
+  const observerRef = React.useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = React.useCallback((node: HTMLDivElement | null) => {
+    if (trustmrrLoading) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        setDisplayLimit(prev => prev + 100);
+      }
+    });
+    if (node) observerRef.current.observe(node);
+  }, [trustmrrLoading]);
 
   const refreshAssets = () => {
     api.getProjects().then(data => {
@@ -910,6 +928,58 @@ const Market: React.FC = () => {
 
     return list;
   }, [filterStatus, filterApyMin, filterApyMax, filterAmountMin, filterAmountMax, sortBy, assets]);
+
+  const filteredStartups = useMemo(() => {
+    return [...trustmrrStartups]
+      .filter(s => {
+        // Category filter — compare lowercase slugs
+        if (potCat !== 'All') {
+          const sCat = (s.category || '').toLowerCase().replace(/\s+/g, '-');
+          if (sCat !== potCat.toLowerCase()) return false;
+        }
+        // Revenue (30d) filter
+        const rev30 = s.revenue?.last30Days ?? 0;
+        if (potRevMin && rev30 < Number(potRevMin)) return false;
+        if (potRevMax && rev30 > Number(potRevMax)) return false;
+        // MRR filter
+        const mrrVal = s.revenue?.mrr ?? 0;
+        if (potMrrMin && mrrVal < Number(potMrrMin)) return false;
+        if (potMrrMax && mrrVal > Number(potMrrMax)) return false;
+        // Growth filter
+        const growth = s.growth30d;
+        if (potGrowthMin && (growth == null || growth < Number(potGrowthMin))) return false;
+        if (potGrowthMax && (growth == null || growth > Number(potGrowthMax))) return false;
+        // Profit Margin filter
+        const margin = s.profitMarginLast30Days;
+        if (potMarginMin && (margin == null || margin < Number(potMarginMin))) return false;
+        if (potMarginMax && (margin == null || margin > Number(potMarginMax))) return false;
+        // Audience filter
+        if (potAudience !== 'Any' && (s.targetAudience || '').toUpperCase() !== potAudience.toUpperCase()) return false;
+        // Founded filter
+        if (potFoundedFrom || potFoundedTo) {
+          const fd = s.foundedDate ? new Date(s.foundedDate).getFullYear() : null;
+          if (potFoundedFrom && (fd == null || fd < Number(potFoundedFrom))) return false;
+          if (potFoundedTo && (fd == null || fd > Number(potFoundedTo))) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (potSort === 'default') return (a.rank ?? 999999) - (b.rank ?? 999999);
+        if (potSort === 'listed-desc') return new Date(b.createdAt || b.foundedDate || '1970').getTime() - new Date(a.createdAt || a.foundedDate || '1970').getTime();
+        if (potSort === 'listed-asc') return new Date(a.createdAt || a.foundedDate || '2099').getTime() - new Date(b.createdAt || b.foundedDate || '2099').getTime();
+        if (potSort === 'multiple-asc') return (a.multiple ?? 999999) - (b.multiple ?? 999999);
+        if (potSort === 'multiple-desc') return (b.multiple ?? -999999) - (a.multiple ?? -999999);
+        if (potSort === 'asking-asc') return (a.askingPrice ?? 999999999) - (b.askingPrice ?? 999999999);
+        if (potSort === 'asking-desc') return (b.askingPrice ?? -999999999) - (a.askingPrice ?? -999999999);
+        if (potSort === 'rev-desc') return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
+        if (potSort === 'rev-asc') return (a.revenue?.last30Days ?? 0) - (b.revenue?.last30Days ?? 0);
+        if (potSort === 'growth-desc') return (b.growth30d ?? -999) - (a.growth30d ?? -999);
+        if (potSort === 'growth-asc') return (a.growth30d ?? 999) - (b.growth30d ?? 999);
+        if (potSort === 'founded-desc') return new Date(b.foundedDate || '1970').getTime() - new Date(a.foundedDate || '1970').getTime();
+        if (potSort === 'founded-asc') return new Date(a.foundedDate || '2099').getTime() - new Date(b.foundedDate || '2099').getTime();
+        return 0;
+      });
+  }, [trustmrrStartups, potCat, potRevMin, potRevMax, potMrrMin, potMrrMax, potGrowthMin, potGrowthMax, potMarginMin, potMarginMax, potAudience, potFoundedFrom, potFoundedTo, potSort]);
 
   useEffect(() => {
     const handleOpenAsset = (e: Event) => {
@@ -1248,12 +1318,19 @@ const Market: React.FC = () => {
 
               <div className="ml-auto flex items-center gap-2">
                 <select value={potSort} onChange={e => setPotSort(e.target.value)} className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none hover:border-gray-300 transition-all cursor-pointer" style={{ WebkitAppearance: 'menulist', appearance: 'menulist' }}>
-                  <option value="rev-desc">Revenue: High to Low</option>
+                  <option value="default">Best deals (default)</option>
+                  <option value="listed-desc">Listed: Newest First</option>
+                  <option value="listed-asc">Listed: Oldest First</option>
+                  <option value="multiple-asc">Multiple: Low to High</option>
+                  <option value="multiple-desc">Multiple: High to Low</option>
+                  <option value="asking-asc">Asking Price: Low to High</option>
+                  <option value="asking-desc">Asking Price: High to Low</option>
                   <option value="rev-asc">Revenue: Low to High</option>
-                  <option value="growth-desc">Growth: High to Low</option>
+                  <option value="rev-desc">Revenue: High to Low</option>
                   <option value="growth-asc">Growth: Low to High</option>
-                  <option value="founded-desc">Founded: Newest First</option>
+                  <option value="growth-desc">Growth: High to Low</option>
                   <option value="founded-asc">Founded: Oldest First</option>
+                  <option value="founded-desc">Founded: Newest First</option>
                 </select>
               </div>
             </div>
@@ -1372,49 +1449,8 @@ const Market: React.FC = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...trustmrrStartups]
-              .filter(s => {
-                // Category filter — compare lowercase slugs
-                if (potCat !== 'All') {
-                  const sCat = (s.category || '').toLowerCase().replace(/\s+/g, '-');
-                  const filterCat = potCat.toLowerCase();
-                  if (sCat !== filterCat) return false;
-                }
-                // Revenue (30d) filter
-                const rev30 = s.revenue?.last30Days ?? 0;
-                if (potRevMin && rev30 < Number(potRevMin)) return false;
-                if (potRevMax && rev30 > Number(potRevMax)) return false;
-                // MRR filter
-                const mrrVal = s.revenue?.mrr ?? 0;
-                if (potMrrMin && mrrVal < Number(potMrrMin)) return false;
-                if (potMrrMax && mrrVal > Number(potMrrMax)) return false;
-                // Growth filter
-                const growth = s.growth30d;
-                if (potGrowthMin && (growth == null || growth < Number(potGrowthMin))) return false;
-                if (potGrowthMax && (growth == null || growth > Number(potGrowthMax))) return false;
-                // Profit Margin filter
-                const margin = s.profitMarginLast30Days;
-                if (potMarginMin && (margin == null || margin < Number(potMarginMin))) return false;
-                if (potMarginMax && (margin == null || margin > Number(potMarginMax))) return false;
-                // Audience filter
-                if (potAudience !== 'Any' && (s.targetAudience || '').toUpperCase() !== potAudience.toUpperCase()) return false;
-                // Founded filter
-                if (potFoundedFrom || potFoundedTo) {
-                  const fd = s.foundedDate ? new Date(s.foundedDate).getFullYear() : null;
-                  if (potFoundedFrom && (fd == null || fd < Number(potFoundedFrom))) return false;
-                  if (potFoundedTo && (fd == null || fd > Number(potFoundedTo))) return false;
-                }
-                return true;
-              })
-              .sort((a, b) => {
-                if (potSort === 'rev-desc') return (b.revenue?.last30Days ?? 0) - (a.revenue?.last30Days ?? 0);
-                if (potSort === 'rev-asc') return (a.revenue?.last30Days ?? 0) - (b.revenue?.last30Days ?? 0);
-                if (potSort === 'growth-desc') return (b.growth30d ?? -999) - (a.growth30d ?? -999);
-                if (potSort === 'growth-asc') return (a.growth30d ?? 999) - (b.growth30d ?? 999);
-                if (potSort === 'founded-desc') return new Date(b.foundedDate || '1970').getTime() - new Date(a.foundedDate || '1970').getTime();
-                if (potSort === 'founded-asc') return new Date(a.foundedDate || '2099').getTime() - new Date(b.foundedDate || '2099').getTime();
-                return 0;
-              })
+            {filteredStartups
+              .slice(0, displayLimit)
               .map((s, i) => {
                 // Derive display properties from API data
                 const catColors: Record<string, string> = {
@@ -1535,7 +1571,7 @@ const Market: React.FC = () => {
                         </div>
                         {/* Views count */}
                         {s.visitorsLast30Days != null && s.visitorsLast30Days > 0 && (
-                          <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 shrink-0 mt-0.5">
+                          <span title="Product Website Visitors (30d)" className="text-[10px] text-gray-400 font-medium flex items-center gap-1 shrink-0 mt-0.5 cursor-help">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                             {formatNum(s.visitorsLast30Days)}
                           </span>
@@ -1582,6 +1618,19 @@ const Market: React.FC = () => {
                 );
               })}
           </div>
+          {/* Intersection Observer target for infinite scrolling */}
+          {!trustmrrLoading && filteredStartups.length > 0 && (
+            <div ref={loadMoreRef} className="py-8 flex justify-center items-center w-full">
+              {displayLimit < filteredStartups.length ? (
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-full font-bold text-[11px] shadow-sm">
+                  <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  Loading more...
+                </div>
+              ) : (
+                <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase border-t border-gray-100 pt-6 mt-2 w-full text-center">End of results</p>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

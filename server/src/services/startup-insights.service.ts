@@ -42,37 +42,51 @@ ${info.revenue ? `- MRR: $${info.revenue.mrr.toLocaleString()}, Total Revenue: $
 Respond with ONLY valid JSON, no markdown, no explanation:
 {"valueProposition": "...", "problemSolved": "..."}`;
 
-async function callAI(prompt: string): Promise<string> {
+async function callAI(prompt: string, retries = 2): Promise<string> {
   const { apiKey, baseUrl, model } = config.lokaAi;
 
   if (!apiKey || !baseUrl) {
     throw new Error('AI service not configured');
   }
 
-  const response = await fetch(baseUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 200,
-      temperature: 0.3,
-    }),
-  });
+  let lastError: any;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 200,
+          temperature: 0.3,
+        }),
+      });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`AI API error (${response.status}): ${err}`);
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`AI API error (${response.status}): ${err}`);
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+
+      return data.choices?.[0]?.message?.content || '';
+    } catch (err) {
+      lastError = err;
+      console.warn(`[StartupInsights] AI request failed (attempt ${i + 1}/${retries + 1}):`, err instanceof Error ? err.message : String(err));
+      if (i < retries) {
+        // exponential backoff
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+      }
+    }
   }
-
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  return data.choices?.[0]?.message?.content || '';
+  
+  throw lastError;
 }
 
 function parseInsight(raw: string): StartupInsight | null {
