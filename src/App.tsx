@@ -821,13 +821,14 @@ const ChatsPage: React.FC = () => {
 
   // Auto-scroll to latest message
   useEffect(() => {
+    const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     // Immediate scroll
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    // Delayed scroll to handle async image loading
-    const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 300);
-    return () => clearTimeout(timer);
+    scrollToBottom();
+    // Delayed scrolls to handle async image/video loading which changes container height
+    const t1 = setTimeout(scrollToBottom, 150);
+    const t2 = setTimeout(scrollToBottom, 500);
+    const t3 = setTimeout(scrollToBottom, 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [chatMessages, localMsgs, groupPolls]);
 
   // Extract API call so we can reuse it when unknown chats ping us via WS
@@ -906,7 +907,7 @@ const ChatsPage: React.FC = () => {
         }
         return prev.map(c => c.id === convId ? {
           ...c,
-          lastMsg: formattedMsg.content,
+          lastMsg: formattedMsg.content || (formattedMsg.attachmentType === 'image' ? '📷 Photo' : formattedMsg.attachmentType === 'video' ? '🎬 Video' : formattedMsg.attachmentType === 'file' ? '📎 File' : ''),
           time: new Date(formattedMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           unread: selected === convId ? 0 : (c.unread || 0) + 1
         } : c).sort((a, b) => {
@@ -1020,7 +1021,7 @@ const ChatsPage: React.FC = () => {
       setLocalMsgs(prev => prev.filter(m => m.type !== 'image' && m.type !== 'file'));
       
       setConversations(prev => prev.map(c =>
-        c.id === selected ? { ...c, lastMsg: text || 'Attachment', time: 'now' } : c
+        c.id === selected ? { ...c, lastMsg: text || '📷 Photo', time: 'now' } : c
       ));
     } catch {
       // Fallback
@@ -1054,8 +1055,9 @@ const ChatsPage: React.FC = () => {
         if (filtered.some(m => m.id === msg.id)) return filtered;
         return [...filtered, msg];
       });
+      const previewLabel = uploadRes.type === 'image' ? '📷 Photo' : uploadRes.type === 'video' ? '🎬 Video' : '📎 File';
       setConversations(prev => prev.map(c =>
-        c.id === selected ? { ...c, lastMsg: 'Attachment', time: 'now' } : c
+        c.id === selected ? { ...c, lastMsg: previewLabel, time: 'now' } : c
       ));
     } catch (err: any) {
       console.error('[handleSendFile] Upload failed:', err);
@@ -1304,7 +1306,7 @@ const ChatsPage: React.FC = () => {
                         </div>
                         <div className={`flex flex-col gap-1.5 ${isMe ? 'items-end' : 'items-start'}`}>
                           {msg.attachmentUrl && msg.attachmentType === 'image' && (
-                            <img src={msg.attachmentUrl} alt="attachment" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover" />
+                            <img src={msg.attachmentUrl} alt="attachment" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover" onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })} />
                           )}
                           {msg.attachmentUrl && msg.attachmentType === 'video' && (
                             <video
@@ -1312,6 +1314,7 @@ const ChatsPage: React.FC = () => {
                               controls
                               preload="metadata"
                               className="max-w-[300px] rounded-xl border border-gray-100 shadow-sm"
+                              onLoadedMetadata={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
                             />
                           )}
                           {msg.attachmentUrl && msg.attachmentType === 'file' && (

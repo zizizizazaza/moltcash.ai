@@ -145,7 +145,8 @@ async function fetchStartupList(): Promise<TrustMRRStartup[]> {
       }
 
       await acquireToken(0); // low priority list fetch
-      const url = `${TMRR.baseUrl}/startups?sort=revenue-desc&limit=50&onSale=true&page=${page}`;
+      // Omit 'sort' to receive TrustMRR's proprietary "Best Deals" default order
+      const url = `${TMRR.baseUrl}/startups?limit=50&onSale=true&page=${page}`;
       const res = await fetch(url, { headers: HEADERS });
 
       if (!res.ok) {
@@ -154,7 +155,12 @@ async function fetchStartupList(): Promise<TrustMRRStartup[]> {
       }
 
       const json = await res.json() as { data: any[]; meta: any };
-      const startups = json.data.map(normalizeMoney);
+      const startups = json.data.map((s, idx) => {
+        const normed = normalizeMoney(s);
+        // Persist true sequential ranking across pages for frontend's "Best Deals" sorting
+        normed.rank = (page - 1) * 50 + idx + 1;
+        return normed;
+      });
       allStartups = [...allStartups, ...startups];
 
       // Progressive chunk rendering: stream partial data immediately to frontend during the first 2-minute cold boot
