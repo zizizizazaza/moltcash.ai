@@ -9,6 +9,7 @@ import ApiLanding from './components/ApiLanding';
 import SuperAgentChat from './components/SuperAgentChat';
 import AuthModal from './components/AuthModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
+import Portfolio from './components/Portfolio';
 
 /* ────────────────────────────────────────────────────────────
    Icons — richer, hand-crafted 18×18 with fills & details
@@ -816,7 +817,7 @@ const ChatsPage: React.FC = () => {
   const [localMsgs, setLocalMsgs] = useState<LocalMsg[]>([]);
   const [showPoll, setShowPoll] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [showMembers, setShowMembers] = useState(true);
+  const [showMembers, setShowMembers] = useState(window.innerWidth >= 768);
   const [showMarketplace, setShowMarketplace] = useState(false);
   const [mktSearch, setMktSearch] = useState('');
   const [mktCat, setMktCat] = useState('All');
@@ -824,6 +825,7 @@ const ChatsPage: React.FC = () => {
   const [plusModal, setPlusModal] = useState<'friend' | 'group' | null>(null);
   const [memberMenuOpts, setMemberMenuOpts] = useState<string | null>(null);
   const [memberToKick, setMemberToKick] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [groupPolls, setGroupPolls] = useState<any[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(true);
@@ -1255,20 +1257,36 @@ const ChatsPage: React.FC = () => {
           ))}
         </div>
         <div className="flex-1 overflow-y-auto px-2">
-          {filtered.map(m => (
+          {loadingConvs && conversations.length === 0 ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={`sk-${i}`} className="w-full flex items-start gap-3 px-3 py-3 rounded-lg mb-1 animate-pulse">
+                <div className="w-9 h-9 rounded-full bg-gray-100 shrink-0"></div>
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-2 bg-gray-100 rounded w-3/4"></div>
+                </div>
+              </div>
+            ))
+          ) : filtered.map(m => (
             <button key={m.id} onClick={() => setSelected(m.id)}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${selected === m.id ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
               <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold overflow-hidden ${m.color || 'bg-gray-100 text-gray-600'}`}>
                 {m.avatar?.startsWith('http') ? <img src={m.avatar} className="w-full h-full object-cover" alt="" /> : m.avatar?.substring(0, 2).toUpperCase()}
               </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="flex justify-between items-center">
-                  <p className="text-[13px] font-medium text-gray-900 truncate">{m.name}</p>
-                  <span className="text-[11px] text-gray-400 shrink-0 ml-2">{m.time}</span>
-                </div>
-                <p className="text-[12px] text-gray-400 truncate mt-0.5">{m.lastMsg}</p>
+              <div className="flex-1 text-left min-w-0 flex flex-col justify-center">
+                <p className="text-[14px] font-medium text-gray-900 truncate leading-none mb-1.5">{m.name}</p>
+                <p className="text-[12.5px] text-gray-400 truncate leading-none">{m.lastMsg}</p>
               </div>
-              {m.unread > 0 && <span className="min-w-[18px] h-[18px] bg-gray-900 text-white text-[9px] font-semibold rounded-full flex items-center justify-center px-1 shrink-0">{m.unread}</span>}
+              <div className="flex flex-col items-end justify-center shrink-0 ml-2 gap-1.5 h-full">
+                <span className="text-[11px] text-gray-400 leading-none">{m.time}</span>
+                {m.unread > 0 ? (
+                  <span className="min-w-[18px] h-[18px] bg-gray-900 text-white text-[10px] font-semibold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
+                    {m.unread}
+                  </span>
+                ) : (
+                  <div className="min-w-[18px] h-[18px]" />
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -1309,7 +1327,19 @@ const ChatsPage: React.FC = () => {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-5 py-4">
               <div className="max-w-4xl mx-auto w-full space-y-4">
-              {msgs.map((msg: any, i: number) => {
+              {loadingMsgs && msgs.length === 0 ? (
+                <div className="space-y-6 animate-pulse pt-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className={`flex items-start gap-3 ${i % 2 === 0 ? 'flex-row-reverse' : ''}`}>
+                      <div className="w-7 h-7 rounded-full bg-gray-100 shrink-0"></div>
+                      <div className={`flex-1 flex flex-col gap-2 ${i % 2 === 0 ? 'items-end' : 'items-start'}`}>
+                        <div className="h-2.5 bg-gray-200 rounded w-16"></div>
+                        <div className={`h-12 bg-gray-100 rounded-xl ${i % 2 === 0 ? 'rounded-tr-sm' : 'rounded-tl-sm'} ${i === 3 ? 'w-3/4 max-w-[300px] h-20' : 'w-1/2 max-w-[200px]'}`}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : msgs.map((msg: any, i: number) => {
                 if (!msg._isPoll && msg.attachmentType === 'poll') return null;
                 const isMe = msg.senderId === dbUserId;
                 return (
@@ -1328,7 +1358,7 @@ const ChatsPage: React.FC = () => {
                         </div>
                         <div className={`flex flex-col gap-1.5 ${isMe ? 'items-end' : 'items-start'}`}>
                           {msg.attachmentUrl && msg.attachmentType === 'image' && (
-                            <img src={msg.attachmentUrl} alt="attachment" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover" onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })} />
+                            <img src={msg.attachmentUrl} alt="attachment" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setPreviewImage(msg.attachmentUrl)} onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })} />
                           )}
                           {msg.attachmentUrl && msg.attachmentType === 'video' && (
                             <video
@@ -1375,7 +1405,7 @@ const ChatsPage: React.FC = () => {
                 </div>
               );
               })}
-              {loadingMsgs && (
+              {loadingMsgs && msgs.length > 0 && (
                 <div className="flex justify-center py-8">
                   <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
                 </div>
@@ -1395,7 +1425,7 @@ const ChatsPage: React.FC = () => {
                     </div>
                     {/* Image message */}
                     {msg.type === 'image' && (
-                      <img src={msg.content} alt="upload" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover" />
+                      <img src={msg.content} alt="upload" className="max-w-[260px] rounded-xl border border-gray-100 shadow-sm object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setPreviewImage(msg.content)} />
                     )}
                     {/* File message */}
                     {msg.type === 'file' && (
@@ -1542,7 +1572,137 @@ const ChatsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ── Right: members sidebar (groups only, desktop only) ── */}
+          {/* ── Right: members sidebar (groups only) ── */}
+          {/* Mobile: right-sliding drawer with backdrop */}
+          {sel.isGroup && members && showMembers && (
+            <div className="md:hidden fixed inset-0 z-50 flex justify-end">
+              {/* Backdrop */}
+              <div 
+                className="absolute inset-0 bg-black/20 backdrop-blur-sm" 
+                onClick={() => setShowMembers(false)}
+                style={{ animation: 'fadeIn 0.25s ease' }}
+              />
+              <style>{`
+                @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+              `}</style>
+              {/* Drawer Container */}
+              <div 
+                className="relative w-[260px] bg-white h-full flex flex-col shadow-2xl rounded-l-2xl overflow-hidden"
+                style={{ animation: 'slideInRight 0.3s cubic-bezier(0.16,1,0.3,1)' }}
+              >
+                <div className="flex items-center justify-between px-4 pt-6 pb-4 border-b border-gray-100 bg-white z-10">
+                  <div>
+                    <p className="text-[15px] font-bold text-gray-900">Members</p>
+                    <p className="text-[11px] text-gray-400 font-medium">{members.agents.length + members.members.length} total</p>
+                  </div>
+                  <button onClick={() => setShowMembers(false)} className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 pb-20">
+                  {/* ── AI Agents ── */}
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">AI Agents</p>
+                    {members.agents.map(a => (
+                      <div key={a} className="flex items-center gap-2.5 py-2 group">
+                        <div className="relative shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-[12px] font-bold text-violet-600">{a[0]}</div>
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-gray-800 truncate">{a}</p>
+                          <p className="text-[10px] text-emerald-500">Always online</p>
+                        </div>
+                        {members.isAdmin && (
+                          <button onClick={() => removeAgent(a)}
+                            className="w-8 h-8 rounded flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all active:bg-red-100">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {/* Add Agent button — admin only */}
+                    {members.isAdmin && (
+                      <button onClick={() => { setShowMembers(false); setShowMarketplace(true); }}
+                        className="flex items-center gap-3 mt-2 py-2 w-full text-left active:opacity-70">
+                        <div className="w-9 h-9 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
+                        </div>
+                        <span className="text-[13px] font-semibold text-gray-400">Add agent</span>
+                      </button>
+                    )}
+                  </div>
+                  {/* ── Members ── */}
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">Members</p>
+                    {members.members.map(m => {
+                      const userColor = `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((m.name || 'a').charCodeAt(0)) % 5]}-500`;
+                      return (
+                        <div key={m.name} className="flex items-center gap-2.5 py-2 group">
+                          <div className="relative shrink-0">
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white overflow-hidden ${userColor}`}>
+                              {m.avatar?.startsWith('http') ? <img src={m.avatar} className="w-full h-full object-cover" alt="" /> : m.name[0]?.toUpperCase()}
+                            </div>
+                            {m.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" /> }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[13px] font-semibold text-gray-800 truncate">{m.name}</p>
+                              {['creator', 'admin'].includes(m.role) && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 shrink-0">Admin</span>
+                              )}
+                            </div>
+                            <p className={`text-[10px] ${m.online ? 'text-emerald-500' : 'text-gray-300'}`}>{m.online ? 'Online' : 'Offline'}</p>
+                          </div>
+                          {members.isAdmin && m.id !== dbUserId && (
+                            <div className="relative shrink-0">
+                              <button onClick={() => setMemberMenuOpts(memberMenuOpts === m.id ? null : m.id)}
+                                className="w-8 h-8 rounded flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all active:bg-gray-200">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                              </button>
+                              {memberMenuOpts === m.id && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={() => setMemberMenuOpts(null)} />
+                                  <div className="absolute right-0 top-9 w-40 bg-white border border-gray-100 rounded-xl shadow-[0_4px_24px_-4px_rgba(0,0,0,0.1)] z-20 py-1 animate-fadeIn">
+                                    <button onClick={() => { setMemberToKick(m); setMemberMenuOpts(null); }} className="w-full text-left px-4 py-3 text-[14px] font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                      Remove User
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {/* Add Member button — admin only */}
+                    {members.isAdmin && (
+                      <button onClick={() => { setShowMembers(false); setShowAddMember(true); }}
+                        className="flex items-center gap-3 mt-2 py-2 w-full text-left active:opacity-70">
+                        <div className="w-9 h-9 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
+                        </div>
+                        <span className="text-[13px] font-semibold text-gray-400">Add member</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Admin: Dissolve group */}
+                {members.isAdmin && (
+                  <div className="px-5 pt-4 pb-24 border-t border-gray-100 bg-gray-50/50 mt-auto shrink-0 z-10">
+                    <button onClick={() => setShowDissolve(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-bold text-red-500 bg-white border border-red-100 shadow-sm transition-all active:scale-[0.98]">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                      Dissolve Group
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {/* Desktop: sidebar */}
           {sel.isGroup && members && showMembers && (
             <div className="hidden md:flex w-60 border-l border-gray-100 bg-white flex-col shrink-0 overflow-y-auto">
               {/* Header */}
@@ -1653,51 +1813,52 @@ const ChatsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Add Member modal */}
-              {showAddMember && members && (
-                <AddMemberModal
-                  existingIds={members.members.map((m: any) => m.id).filter(Boolean)}
-                  onClose={() => setShowAddMember(false)}
-                  onConfirm={(userIds) => { addMembers(userIds); setShowAddMember(false); }}
-                />
-              )}
+            </div>
+          )}
 
-              {/* Remove Member Confirmation Modal */}
-              {memberToKick && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                  <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setMemberToKick(null)} />
-                  <div className="relative bg-white w-full max-w-sm rounded-[24px] shadow-2xl overflow-hidden p-7 animate-fadeInScale">
-                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-                      <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    </div>
-                    <h3 className="text-[18px] font-bold text-gray-900 mb-2">Remove Participant?</h3>
-                    <p className="text-[14px] text-gray-500 mb-8 leading-relaxed">Are you sure you want to remove <span className="font-semibold text-gray-900">{memberToKick.name}</span> from this group? They will lose all access to the chat history.</p>
-                    <div className="flex gap-3">
-                      <button onClick={() => setMemberToKick(null)} className="flex-1 py-3 px-4 rounded-xl font-bold text-[13px] text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
-                      <button onClick={() => { removeMember(memberToKick.id); setMemberToKick(null); }} className="flex-1 py-3 px-4 rounded-xl font-bold text-[13px] text-white bg-red-500 hover:bg-red-600 shadow-sm shadow-red-500/20 transition-all">Remove</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+          {/* Add Member modal */}
+          {showAddMember && members && (
+            <AddMemberModal
+              existingIds={members.members.map((m: any) => m.id).filter(Boolean)}
+              onClose={() => setShowAddMember(false)}
+              onConfirm={(userIds) => { addMembers(userIds); setShowAddMember(false); }}
+            />
+          )}
 
-              {/* Dissolve confirmation */}
-              {showDissolve && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowDissolve(false)}>
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4 p-6" onClick={e => e.stopPropagation()}>
-                    <div className="w-11 h-11 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    </div>
-                    <p className="text-[15px] font-bold text-gray-900 text-center mb-1">Dissolve Group?</p>
-                    <p className="text-[12px] text-gray-400 text-center mb-5">This action cannot be undone. All members will be removed and the group chat will be permanently deleted.</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => setShowDissolve(false)}
-                        className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
-                      <button onClick={dissolveGroup}
-                        className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-red-500 hover:bg-red-600 transition-all">Dissolve</button>
-                    </div>
-                  </div>
+          {/* Remove Member Confirmation Modal */}
+          {memberToKick && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setMemberToKick(null)} />
+              <div className="relative bg-white w-full max-w-sm rounded-[24px] shadow-2xl overflow-hidden p-7 animate-fadeInScale">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                 </div>
-              )}
+                <h3 className="text-[18px] font-bold text-gray-900 mb-2">Remove Participant?</h3>
+                <p className="text-[14px] text-gray-500 mb-8 leading-relaxed">Are you sure you want to remove <span className="font-semibold text-gray-900">{memberToKick.name}</span> from this group? They will lose all access to the chat history.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setMemberToKick(null)} className="flex-1 py-3 px-4 rounded-xl font-bold text-[13px] text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                  <button onClick={() => { removeMember(memberToKick.id); setMemberToKick(null); }} className="flex-1 py-3 px-4 rounded-xl font-bold text-[13px] text-white bg-red-500 hover:bg-red-600 shadow-sm shadow-red-500/20 transition-all">Remove</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Dissolve confirmation */}
+          {showDissolve && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowDissolve(false)}>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4 p-6" onClick={e => e.stopPropagation()}>
+                <div className="w-11 h-11 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <p className="text-[15px] font-bold text-gray-900 text-center mb-1">Dissolve Group?</p>
+                <p className="text-[12px] text-gray-400 text-center mb-5">This action cannot be undone. All members will be removed and the group chat will be permanently deleted.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowDissolve(false)}
+                    className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
+                  <button onClick={dissolveGroup}
+                    className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-red-500 hover:bg-red-600 transition-all">Dissolve</button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1758,6 +1919,16 @@ const ChatsPage: React.FC = () => {
       ) : (
         <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50/50">
           <p className="text-[14px] text-gray-400">Select a conversation</p>
+        </div>
+      )}
+
+      {/* ── Image Preview Modal ── */}
+      {previewImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 transition-opacity animate-fadeIn" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-4 sm:top-6 right-4 sm:right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all z-50">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          <img src={previewImage} className="max-w-full max-h-full object-contain animate-fadeInScale" alt="Preview" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>
@@ -2382,11 +2553,11 @@ const ContactsPage: React.FC = () => {
                   {c.avatar?.startsWith('http') ? <img src={c.avatar} className="w-full h-full object-cover" alt="" /> : c.initials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 sm:gap-2.5 mb-0.5 min-w-0 pr-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2.5 mb-0.5 min-w-0 pr-2">
                     <p className="text-[14px] sm:text-[15px] font-bold text-gray-900 truncate">{c.name}</p>
-                    {c.role && <span className="shrink-0 whitespace-nowrap text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-gray-50 px-1.5 sm:px-2 py-0.5 rounded-lg border border-gray-100">{c.role}</span>}
+                    {c.role && <span className="shrink-0 whitespace-nowrap text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-gray-50 px-1.5 sm:px-2 py-0.5 rounded-lg border border-gray-100 self-start">{c.role}</span>}
                   </div>
-                  <p className="text-[13px] text-gray-400 line-clamp-1 group-hover:text-gray-500 transition-colors font-medium">{c.bio}</p>
+                  <p className="text-[13px] text-gray-400 truncate group-hover:text-gray-500 transition-colors font-medium">{c.bio}</p>
                 </div>
                 <button onClick={(e) => handleMessage(e, c.id)} className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl text-[12px] font-bold text-gray-400 hover:text-gray-900 hover:bg-white hover:border border-transparent hover:border-gray-100 hover:shadow-sm transition-all opacity-0 group-hover:opacity-100">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
@@ -2812,6 +2983,7 @@ const App: React.FC = () => {
             <Route path="/market/*" element={<Market />} />
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/portfolio" element={<Portfolio isWalletConnected={isLoggedIn} onConnect={() => setShowAuthModal(true)} onLogout={logout} />} />
             <Route path="/api" element={<ApiLanding />} />
             <Route path="*" element={<SuperAgentHome />} />
           </Routes>
@@ -2819,18 +2991,34 @@ const App: React.FC = () => {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-2 pt-1 z-50" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-1 pt-1 z-50" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
         {navItems.map(({ key, icon: Icon, label }) => {
           const u = key === Page.CHATS ? chatUnreadCount : 0;
           return (
             <button key={key} onClick={() => go(key)}
-              className={`relative flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-all ${page === key ? 'text-gray-900' : 'text-gray-400'}`}>
+              className={`relative flex flex-col items-center gap-0.5 py-1.5 px-1.5 rounded-lg transition-all ${page === key ? 'text-gray-900' : 'text-gray-400'}`}>
               <Icon />
               <span className="text-[9px] font-medium">{label}</span>
               {u > 0 && <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-gray-900 text-white text-[7px] font-bold rounded-full flex items-center justify-center">{u > 9 ? '9+' : u}</span>}
             </button>
           );
         })}
+        {/* User / Sign-in button */}
+        <button
+          onClick={() => isLoggedIn ? navigate('/portfolio') : setShowAuthModal(true)}
+          className={`relative flex flex-col items-center gap-0.5 py-1.5 px-1.5 rounded-lg transition-all ${location.pathname === '/portfolio' ? 'text-gray-900' : 'text-gray-400'}`}>
+          {isLoggedIn ? (
+            <div className="w-[18px] h-[18px] rounded-full bg-gray-900 flex items-center justify-center text-[8px] font-bold text-white overflow-hidden">
+              {userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : userInitial}
+            </div>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          )}
+          <span className="text-[9px] font-medium">{isLoggedIn ? 'Me' : 'Sign in'}</span>
+        </button>
       </nav>
     </div>
   );
