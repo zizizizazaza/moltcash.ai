@@ -877,12 +877,20 @@ const ChatsPage: React.FC = () => {
     });
   }, []);
 
-  // Load conversations from API on mount
+  // Load conversations from API on mount (guarded by auth to prevent 401 race)
+  const { ready: chatsReady, authenticated: chatsAuthenticated, getAccessToken: chatsGetAccessToken } = usePrivy();
   useEffect(() => {
+    if (!(chatsReady && chatsAuthenticated)) return;
     setLoadingConvs(true);
-    loadConvs();
-    setLoadingConvs(false);
-  }, [loadConvs]);
+    // Ensure token is set before fetching (child effects fire before parent effects)
+    chatsGetAccessToken().then(token => {
+      if (token) {
+        api.setToken(token);
+        api.setTokenGetter(chatsGetAccessToken);
+      }
+      loadConvs();
+    }).catch(() => loadConvs()).finally(() => setLoadingConvs(false));
+  }, [loadConvs, chatsReady, chatsAuthenticated, chatsGetAccessToken]);
 
   // Real-time WebSocket listener for new messages
   useEffect(() => {
@@ -2183,12 +2191,21 @@ const ContactsPage: React.FC = () => {
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { ready, authenticated, getAccessToken } = usePrivy();
 
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [followedUp, setFollowedUp] = useState<Set<string>>(new Set());
 
-  const fetchLists = () => {
+  const fetchLists = useCallback(async () => {
+    // Self-sufficiently ensure token is set before fetching
+    try {
+      const token = await getAccessToken();
+      if (token) {
+        api.setToken(token);
+        api.setTokenGetter(getAccessToken);
+      }
+    } catch {}
     setLoading(true);
     Promise.all([
       api.getFriends().catch(() => []),
@@ -2221,14 +2238,20 @@ const ContactsPage: React.FC = () => {
       })));
     })
     .finally(() => setLoading(false));
-  };
+  }, [getAccessToken]);
 
+  // Re-run when auth state changes (e.g. user logs in while on this page)
   useEffect(() => {
+    if (!(ready && authenticated)) {
+      // Not logged in — stop the spinner, show empty state
+      if (ready) setLoading(false);
+      return;
+    }
     fetchLists();
     const unsubRequest = socket.on('friend:request', () => fetchLists());
     const unsubAccepted = socket.on('friend:accepted', () => fetchLists());
     return () => { unsubRequest(); unsubAccepted(); };
-  }, []);
+  }, [ready, authenticated, fetchLists]);
 
   const handleAccept = async (id: string) => {
     try {
@@ -2278,7 +2301,7 @@ const ContactsPage: React.FC = () => {
           {loading ? (
              <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
           ) : (
-            <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[11px] font-bold text-gray-400">{contacts.length} Connections</span>
+            <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[11px] text-center leading-tight sm:leading-normal font-bold text-gray-400">{contacts.length} Connections</span>
           )}
           <button onClick={() => setModal('friend')}
             className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-gray-900 text-white hover:bg-black hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all group">
@@ -2354,14 +2377,14 @@ const ContactsPage: React.FC = () => {
             const gradMap: Record<string, string> = { 'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500', 'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400', 'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500', 'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500', 'bg-orange-500': 'from-orange-400 to-amber-500' };
             const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
             return (
-              <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className="flex items-center gap-5 px-6 py-5 hover:bg-gray-50/50 transition-all cursor-pointer group">
+              <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className="flex items-center gap-3 sm:gap-5 px-4 sm:px-6 py-4 sm:py-5 hover:bg-gray-50/50 transition-all cursor-pointer group">
                 <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm shadow-gray-100 group-hover:scale-105 transition-transform overflow-hidden`}>
                   {c.avatar?.startsWith('http') ? <img src={c.avatar} className="w-full h-full object-cover" alt="" /> : c.initials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2.5 mb-0.5">
-                    <p className="text-[15px] font-bold text-gray-900">{c.name}</p>
-                    {c.role && <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">{c.role}</span>}
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 mb-0.5 min-w-0 pr-2">
+                    <p className="text-[14px] sm:text-[15px] font-bold text-gray-900 truncate">{c.name}</p>
+                    {c.role && <span className="shrink-0 whitespace-nowrap text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-gray-50 px-1.5 sm:px-2 py-0.5 rounded-lg border border-gray-100">{c.role}</span>}
                   </div>
                   <p className="text-[13px] text-gray-400 line-clamp-1 group-hover:text-gray-500 transition-colors font-medium">{c.bio}</p>
                 </div>
@@ -2396,7 +2419,7 @@ const ContactsPage: React.FC = () => {
             {suggestions.slice(0, 6).map(s => {
               const isFollowed = followedUp.has(s.id);
               return (
-                <div key={s.id} className="relative bg-white border border-gray-100 rounded-[28px] p-5 flex items-center gap-4 hover:shadow-xl hover:shadow-gray-100/40 hover:-translate-y-1.5 hover:border-gray-200 transition-all group active:scale-[0.98]">
+                <div key={s.id} className="relative bg-white border border-gray-100 rounded-[28px] p-3.5 sm:p-5 flex items-center gap-3 sm:gap-4 hover:shadow-xl hover:shadow-gray-100/40 hover:-translate-y-1.5 hover:border-gray-200 transition-all group active:scale-[0.98]">
                   {/* Dismiss X */}
                   <button onClick={() => setDismissed(prev => { const n = new Set(prev); n.add(s.id); return n; })}
                     className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-gray-200 hover:text-gray-900 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100">
@@ -2646,8 +2669,9 @@ const App: React.FC = () => {
         navigate(redirect, { replace: true });
       }
 
-      // Provide dynamic token getter to ensure api always fetches a fresh, unexpired token on demand
+      // Provide dynamic token getter to ensure api & socket always fetch fresh tokens on demand
       api.setTokenGetter(getAccessToken);
+      socket.setTokenGetter(getAccessToken);
 
       getAccessToken().then(token => {
         if (token) {
@@ -2665,6 +2689,36 @@ const App: React.FC = () => {
           }).catch(console.error);
         }
       });
+
+      // ── Telegram-grade: proactive token refresh on wake / tab re-focus ──
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          console.log('[Auth] Page visible — refreshing token proactively');
+          getAccessToken().then(freshToken => {
+            if (freshToken) {
+              api.setToken(freshToken);
+              socket.reconnectWithToken(freshToken);
+            }
+          }).catch(err => console.warn('[Auth] Visibility refresh failed:', err));
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      // ── Telegram-grade: periodic keep-alive token refresh (every 5 min) ──
+      const keepAliveInterval = setInterval(() => {
+        getAccessToken().then(freshToken => {
+          if (freshToken) {
+            api.setToken(freshToken);
+            // Only update socket auth, don't force reconnect if already connected
+            socket.reconnectWithToken(freshToken);
+          }
+        }).catch(() => {});
+      }, 5 * 60 * 1000);
+
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        clearInterval(keepAliveInterval);
+      };
     } else if (ready && !authenticated) {
       api.clearToken();
       socket.clearToken();

@@ -19,7 +19,9 @@ if (API_BASE.startsWith('http')) {
 class SocketClient {
   private socket: Socket | null = null;
   private token: string | null = null;
+  private tokenGetter: (() => Promise<string | null>) | null = null;
   private listeners: Record<string, Function[]> = {};
+  private isRefreshing = false; // Prevent concurrent refresh loops
 
   setToken(token: string) {
     if (this.token === token) return;
@@ -27,8 +29,14 @@ class SocketClient {
     this.connect();
   }
 
+  /** Register a dynamic token getter (e.g. Privy getAccessToken) for auto-refresh */
+  setTokenGetter(getter: () => Promise<string | null>) {
+    this.tokenGetter = getter;
+  }
+
   clearToken() {
     this.token = null;
+    this.tokenGetter = null;
     this.disconnect();
   }
 
@@ -43,20 +51,43 @@ class SocketClient {
       path: SOCKET_PATH,
       auth: { token: this.token },
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,  // Never give up (Telegram-style)
       reconnectionDelay: 2000,
+      reconnectionDelayMax: 30000,     // Cap at 30s with exponential backoff
     });
 
     this.socket.on('connect', () => {
       console.log('✅ WebSocket Connected');
+      this.isRefreshing = false; // Reset on successful connect
     });
 
     this.socket.on('disconnect', () => {
       console.log('🔴 WebSocket Disconnected');
     });
 
-    this.socket.on('connect_error', (err) => {
+    this.socket.on('connect_error', async (err) => {
       console.error('Socket connect error:', err.message);
+
+      // If the error is auth-related and we have a tokenGetter, refresh and retry
+      const isAuthError = /expired|invalid|auth|unauthorized|jwt/i.test(err.message);
+      if (isAuthError && this.tokenGetter && !this.isRefreshing) {
+        this.isRefreshing = true;
+        console.warn('[Socket] Auth error detected, refreshing token...');
+        try {
+          const freshToken = await this.tokenGetter();
+          if (freshToken && this.socket) {
+            this.token = freshToken;
+            (this.socket.auth as any).token = freshToken;
+            // socket.io will auto-retry with the updated auth on next reconnection attempt
+            console.log('[Socket] Token refreshed, reconnecting...');
+          }
+        } catch (refreshErr) {
+          console.error('[Socket] Token refresh failed:', refreshErr);
+        } finally {
+          // Allow another refresh attempt after a cooldown
+          setTimeout(() => { this.isRefreshing = false; }, 5000);
+        }
+      }
     });
 
     this.socket.on('error', (err) => {
@@ -71,7 +102,7 @@ class SocketClient {
     });
   }
 
-  /** Reconnect with a fresh token (e.g. after Privy refreshes it) */
+  /** Reconnect with a fresh token (e.g. after Privy refreshes it or on visibility change) */
   reconnectWithToken(token: string) {
     this.token = token;
     if (this.socket) {
