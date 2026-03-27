@@ -121,11 +121,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose, initialStep = '
     const isLoading = oauthLoading || emailState.status === 'sending-code' || emailState.status === 'submitting-code';
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.3s ease' }}>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-4" style={{ animation: 'fadeIn 0.3s ease' }}>
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={step === 'invite' ? undefined : onClose} />
+            <style>{`
+                @keyframes slideUpSheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
+                @keyframes slideUpCenter { from { opacity: 0; transform: translateY(24px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+            `}</style>
             <div
-                className="relative bg-white w-full max-w-[380px] overflow-hidden rounded-[32px] shadow-2xl border border-gray-100"
-                style={{ animation: 'slideUp 0.35s cubic-bezier(0.16,1,0.3,1)' }}
+                className="relative bg-white w-full max-h-[92vh] overflow-y-auto rounded-t-[28px] md:rounded-[32px] md:max-w-[380px] shadow-2xl border border-gray-100"
+                style={{ animation: window.matchMedia('(max-width: 767px)').matches ? 'slideUpSheet 0.35s cubic-bezier(0.16,1,0.3,1)' : 'slideUpCenter 0.35s cubic-bezier(0.16,1,0.3,1)' }}
             >
                 {step === 'login' ? (
                     /* ========== STEP 1: Login ========== */
