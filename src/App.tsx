@@ -10,6 +10,7 @@ import SuperAgentChat from './components/SuperAgentChat';
 import AuthModal from './components/AuthModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
 import Portfolio from './components/Portfolio';
+import TxModal from './components/TxModal';
 
 /* ────────────────────────────────────────────────────────────
    Icons — richer, hand-crafted 18×18 with fills & details
@@ -2959,6 +2960,7 @@ const App: React.FC = () => {
       <AnimStyles />
       <OAuthCallbackHandler />
       {showAuthModal && <AuthModal onLogin={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />}
+      <TxModal />
 
       <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={go} isDark={isDark} onToggleDark={toggleDark}
         isLoggedIn={isLoggedIn} onLogin={() => {
