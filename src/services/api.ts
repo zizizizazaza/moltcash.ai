@@ -497,24 +497,7 @@ class ApiClient {
       body: JSON.stringify({ content, attachmentUrl, attachmentType }),
     });
   }
-  
-  async uploadFile(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const activeToken = this.tokenGetter ? await this.tokenGetter() : this.token;
-    const headers: Record<string, string> = {};
-    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`;
 
-    const response = await fetch(`${API_BASE}/upload`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-
-    if (!response.ok) throw new Error('Upload failed');
-    return response.json() as Promise<{ url: string; type: string }>;
-  }
   async markConversationAsRead(convId: string) {
     return this.request<{ success: boolean }>(`/community/conversations/${convId}/read`, { method: 'POST' });
   }

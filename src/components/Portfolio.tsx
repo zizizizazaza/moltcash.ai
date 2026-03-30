@@ -1127,26 +1127,6 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 </section>
               )}
             </>}
-
-            {/* Footer */}
-            {!verifyDone && (
-              <div className="px-6 pb-6 flex gap-3">
-                {verifyStep > 0 && (
-                  <button
-                    onClick={() => setVerifyStep(s => s - 1)}
-                    className="flex-1 py-3 text-[13px] font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-                  >
-                    Back
-                  </button>
-                )}
-                <button
-                  onClick={handleNextStep}
-                  className="flex-1 py-3 bg-gray-900 text-white text-[13px] font-semibold rounded-xl hover:bg-gray-800 transition-all active:scale-95"
-                >
-                  {verifyStep === VERIFY_TOTAL - 1 ? 'Activate Badge' : verifyStep === 3 && !stripeConnected ? 'Skip for now' : 'Continue'}
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
