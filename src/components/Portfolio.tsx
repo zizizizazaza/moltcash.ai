@@ -6,24 +6,12 @@ import { Icons } from '../constants';
 import { api } from '../services/api';
 import type { RepaymentSchedule } from '../types';
 
-// Generate 90 days of dummy data
-const generateChartData = () => {
-  const data = [];
-  let currentTotal = 11000;
-  const now = new Date();
-  for (let i = 90; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    currentTotal = currentTotal + (Math.random() * 200 - 90); // Random walk
-    data.push({
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      timestamp: d.getTime(),
-      total: currentTotal
-    });
-  }
-  return data;
+// Helper: deterministic avatar color from wallet address (matches sidebar logic)
+const getAvatarHex = (addr: string) => {
+  const colors = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E']; // blue, violet, emerald, amber, rose
+  const code = Math.abs(addr.charCodeAt(0));
+  return colors[code % colors.length];
 };
-
-const chartData = generateChartData();
 
 interface PortfolioProps {
   isWalletConnected?: boolean;
@@ -34,18 +22,22 @@ interface PortfolioProps {
 }
 
 const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConnect, onSettingsClick, onLogout, defaultTab = 'personal' }) => {
-  const [balance, setBalance] = useState(12450.88);
-  const [yieldAccumulated, setYieldAccumulated] = useState(0.00012);
+  const [balance, setBalance] = useState(0);
+  const [yieldAccumulated, setYieldAccumulated] = useState(0);
   const [isHidden, setIsHidden] = useState(false);
   const [greeting, setGreeting] = useState('Good Morning');
   const [apiHoldings, setApiHoldings] = useState<any[]>([]);
   const [apiInvestments, setApiInvestments] = useState<any[]>([]);
   const [apiHistory, setApiHistory] = useState<any[]>([]);
+  const [apiChartData, setApiChartData] = useState<any[]>([]);
+  const [isChartLoading, setIsChartLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'holdings' | 'activity'>('holdings');
   const [enterpriseDeductions, setEnterpriseDeductions] = useState<Record<string, { schedule: RepaymentSchedule[]; project: any }>>({});
   const enterpriseFetched = useRef(false);
 
-  const { user } = usePrivy();
+  const { user, ready, authenticated } = usePrivy();
+  const avatarUserName = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
+  
   const linkedWallets = (user?.linkedAccounts ?? []).filter(
     (acc) => (acc.type === 'wallet' || acc.type === 'smart_wallet') && 'address' in acc
   ) as Array<{ address: string; walletClientType?: string }>;
@@ -69,15 +61,18 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const [verifyDone, setVerifyDone] = useState(false);
   const [stripeConnected, setStripeConnected] = useState(false);
   const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [verifyData, setVerifyData] = useState({ companyName: 'Loka Technologies Pte Ltd', country: 'Singapore' });
   const VERIFY_TOTAL = 5;
   const [userProfile, setUserProfile] = useState({
     name: '',
+    avatar: '',
     bio: '',
     twitter: '',
     linkedin: '',
-    otherUrl: '',
+    personalWebsite: '',
     isPublic: true
   });
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayAddress);
@@ -94,22 +89,70 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
 
   useEffect(() => {
     if (!isWalletConnected || !api.isAuthenticated) return;
+    setIsChartLoading(true);
+    
+    // Fetch profile and enterprise status
+    api.getProfile().then(p => {
+      if (p) setUserProfile(prev => ({ ...prev, name: p.name || '', avatar: p.avatar || '', bio: p.bio || '', twitter: p.twitter || '', linkedin: p.linkedin || '', personalWebsite: p.personalWebsite || '', isPublic: p.isPublic ?? true }));
+      setIsProfileLoading(false);
+    }).catch(() => setIsProfileLoading(false));
+
+    api.getEnterpriseVerificationStatus().then(status => {
+      if (status && status.step > 0) {
+        setIsVerified(status.status === 'verified');
+        setVerifyStep(status.step);
+      }
+    }).catch(console.error);
+
     Promise.all([
       api.getHoldings().catch(() => []),
       api.getInvestments().catch(() => []),
       api.getHistory().catch(() => []),
-    ]).then(([h, inv, hist]) => {
+      api.getHistoricalBalance().catch(() => []),
+    ]).then(([h, inv, hist, chart]) => {
+      if (Array.isArray(chart) && chart.length > 0) {
+        setApiChartData(chart);
+      }
+      setIsChartLoading(false);
+
       if (Array.isArray(h) && h.length > 0) {
         setApiHoldings(h);
-        const total = h.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-        if (total > 0) setBalance(total);
+        const total = h.reduce((sum: number, item: any) => sum + ((item.amount || 0) * (item.currentPrice || 1.0)), 0);
+        setBalance(total);
+        const yTotal = h.reduce((sum: number, item: any) => sum + (item.earnedYield || 0), 0);
+        setYieldAccumulated(yTotal);
+      } else {
+        setBalance(0);
+        setYieldAccumulated(0);
       }
-      if (Array.isArray(inv) && inv.length > 0) setApiInvestments(inv);
+      if (Array.isArray(inv) && inv.length > 0) {
+        setApiInvestments(inv);
+        const invYield = inv.reduce((sum: number, item: any) => sum + (item.earnedYield || 0), 0);
+        setYieldAccumulated(prev => prev + invYield);
+      }
       if (Array.isArray(hist) && hist.length > 0) setApiHistory(hist);
     });
   }, [isWalletConnected]);
 
-  // Fetch enterprise deduction data when enterprise tab is active
+  const handleNextStep = async () => {
+    try {
+      if (verifyStep === 3 && !stripeConnected) {
+        // Skip stripe
+        await api.updateEnterpriseVerificationStep({ step: verifyStep + 1 });
+        setVerifyStep(s => s + 1);
+      } else if (verifyStep < VERIFY_TOTAL - 1) {
+        await api.updateEnterpriseVerificationStep({ step: verifyStep + 1, ...verifyData });
+        setVerifyStep(s => s + 1);
+      } else {
+        await api.updateEnterpriseVerificationStep({ step: VERIFY_TOTAL });
+        setVerifyDone(true);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to save verification step');
+    }
+  };
+
+  // Enterprise specific stats calculation based on deductions data when enterprise tab is active
   useEffect(() => {
     if (profileTab !== 'enterprise' || !isWalletConnected) return;
     if (enterpriseFetched.current) return;
@@ -158,21 +201,44 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   }, [profileTab, isWalletConnected, enterpriseDeductions]);
 
   const getFilteredData = () => {
-    if (timeframe === '7D') return chartData.slice(-7);
-    if (timeframe === '30D') return chartData; // Currently dataset is small, so returning full data for 30D
-    if (timeframe === '3M') return chartData;
-    return chartData; // Return full data by default
+    const src = apiChartData.length > 0 ? apiChartData : [];
+    if (timeframe === '7D') return src.slice(-7);
+    if (timeframe === '30D') return src.slice(-30);
+    if (timeframe === '3M') return src;
+    return src;
   };
 
   const demoMode = !isWalletConnected;
 
   const filteredChartData = getFilteredData();
 
+  // Compute dynamic stats from real data
+  const assetCount = apiHoldings.length + apiInvestments.length;
+  const profitLoss = filteredChartData.length >= 2
+    ? filteredChartData[filteredChartData.length - 1].total - filteredChartData[0].total
+    : yieldAccumulated;
+
+  if (!ready || (authenticated && isProfileLoading)) {
+    return (
+      <div className="flex-1 w-full h-full flex flex-col items-center justify-center animate-fadeIn min-h-[500px]">
+        <svg className="w-8 h-8 text-[#00E676] animate-spin mb-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase">Syncing Profile</p>
+      </div>
+    );
+  }
+
   if (showEditProfile) {
     return (
       <EditProfilePage 
         profile={userProfile} 
-        onSave={(p) => { setUserProfile(p); setShowEditProfile(false); }} 
+        avatarUserName={avatarUserName}
+        onSave={(p) => { 
+          setUserProfile(p); 
+          api.updateProfile(p).catch(console.error);
+          // dispatch global event to reload avatar elsewhere
+          window.dispatchEvent(new CustomEvent('loka-profile-updated', { detail: p }));
+          setShowEditProfile(false); 
+        }} 
         onClose={() => setShowEditProfile(false)} 
       />
     );
@@ -211,11 +277,17 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 <div className="flex items-start justify-between w-full">
                   <div className="flex items-start gap-3 sm:gap-4">
                     {/* Gradient Avatar Mock */}
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0" />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0 overflow-hidden" style={userProfile.avatar ? {} : { backgroundColor: getAvatarHex(avatarUserName) }}>
+                      {userProfile.avatar ? (
+                        <img src={userProfile.avatar} className="w-full h-full object-cover" alt="Avatar" />
+                      ) : (
+                        <span>{avatarUserName.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
                     <div className="flex flex-col gap-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h2 className="text-base sm:text-xl font-black text-black tracking-tight truncate">
-                          {userProfile.name || `${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`}
+                          {`${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`}
                         </h2>
                         <button onClick={handleCopy} className="text-gray-400 hover:text-black transition-colors" title="Copy Address">
                           {copied ? (
@@ -227,7 +299,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       </div>
                       <p className="text-[11px] font-medium text-gray-400">Joined Nov {new Date().getFullYear()}</p>
                       {userProfile.bio && <p className="text-[11px] text-gray-600 mt-0.5 line-clamp-2">{userProfile.bio}</p>}
-                      {(userProfile.twitter || userProfile.linkedin || userProfile.otherUrl) && (
+                      {(userProfile.twitter || userProfile.linkedin || userProfile.personalWebsite) && (
                         <div className="flex flex-col gap-0.5 mt-1">
                           {userProfile.twitter && (
                             <a href={userProfile.twitter.startsWith('http') ? userProfile.twitter : `https://${userProfile.twitter}`} target="_blank" rel="noreferrer" className="text-[11px] text-gray-500 hover:text-black hover:underline truncate max-w-[200px] flex items-center gap-1">
@@ -241,10 +313,10 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                               LinkedIn
                             </a>
                           )}
-                          {userProfile.otherUrl && (
-                            <a href={userProfile.otherUrl.startsWith('http') ? userProfile.otherUrl : `https://${userProfile.otherUrl}`} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:underline truncate max-w-[200px] flex items-center gap-1">
+                          {userProfile.personalWebsite && (
+                            <a href={userProfile.personalWebsite.startsWith('http') ? userProfile.personalWebsite : `https://${userProfile.personalWebsite}`} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:underline truncate max-w-[200px] flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                              {userProfile.otherUrl.replace(/^https?:\/\//, '')}
+                              {userProfile.personalWebsite.replace(/^https?:\/\//, '')}
                             </a>
                           )}
                         </div>
@@ -265,12 +337,12 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   <div className="w-px h-8 bg-gray-100" />
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-400 font-bold tracking-widest mb-1">Total Yield</span>
-                    <span className="text-base sm:text-lg font-black text-[#00E676]">+$340.00</span>
+                    <span className="text-base sm:text-lg font-black text-[#00E676]">+${yieldAccumulated.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="w-px h-8 bg-gray-100" />
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-400 font-bold tracking-widest mb-1">Assets</span>
-                    <span className="text-base sm:text-lg font-black text-black">4</span>
+                    <span className="text-base sm:text-lg font-black text-black">{assetCount}</span>
                   </div>
                 </div>
 
@@ -307,7 +379,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       <div className="w-2.5 h-2.5 rounded-full bg-[#00E676] animate-pulse"></div>
                       <span className="text-[10px] text-gray-500 font-bold tracking-widest ">Profit / Loss</span>
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-black">+${(340.00).toFixed(2)}</h2>
+                    <h2 className="text-2xl sm:text-3xl font-black text-black">{profitLoss >= 0 ? '+' : '-'}${Math.abs(profitLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
                     <p className="text-[11px] font-bold text-gray-400 mt-1  tracking-widest">{timeframe === 'ALL' ? 'All Time' : `Past ${timeframe}`}</p>
                   </div>
 
@@ -410,50 +482,67 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
               <div className="pt-2">
                 {activeTab === 'holdings' ? (
                   <section className="space-y-4 animate-fadeIn">
-                    <div className="grid grid-cols-1 gap-4">
-                      <AllocationCard
-                        title="ComputeDAO - GPU Expansion"
-                        statusBadge={<span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-[9px] font-black">Funded</span>}
-                        apy="15.5% APY · 60d"
-                        amount="$5,000.00"
-                        earnings="+$387.50"
-                        icon={<div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center font-black text-white text-[10px]">C</div>}
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent('loka-nav-market'));
-                          setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
-                        }}
-                      />
-                    </div>
+                    {(apiHoldings.length > 0 || apiInvestments.length > 0) ? (
+                      <div className="grid grid-cols-1 gap-4">
+                        {apiInvestments.map((inv: any, i: number) => (
+                          <AllocationCard
+                            key={`inv-${i}`}
+                            title={inv.projectTitle || inv.project?.title || `Investment #${inv.id?.slice(0, 6)}`}
+                            statusBadge={<span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-[9px] font-black">{inv.status || 'active'}</span>}
+                            apy={`${inv.project?.apy || inv.apy || 0}% APY · ${inv.project?.durationDays || 0}d`}
+                            amount={`$${(inv.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                            earnings={`+$${(inv.earnedYield || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                            icon={<div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center font-black text-white text-[10px]">{(inv.projectTitle || inv.project?.title || 'P').charAt(0)}</div>}
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('loka-nav-market'));
+                            }}
+                          />
+                        ))}
+                        {apiHoldings.map((h: any, i: number) => (
+                          <AllocationCard
+                            key={`hold-${i}`}
+                            title={h.asset}
+                            apy={`${h.currentApy || 0}% APY`}
+                            amount={`$${((h.amount || 0) * (h.currentPrice || h.avgCost || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                            earnings={`+$${(h.earnedYield || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                            icon={<div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center font-black text-white text-[10px]">{(h.asset || 'A').charAt(0)}</div>}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                        </div>
+                        <p className="text-sm text-gray-400 font-medium">No holdings yet</p>
+                        <p className="text-xs text-gray-300 mt-1">Your investments will appear here</p>
+                      </div>
+                    )}
                   </section>
                 ) : (
                   <section className="space-y-4 animate-fadeIn">
-                    <div className="rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100">
-                      <ActivityItem
-                        title="Daily Interest Payout"
-                        time="Today, 08:00 AM"
-                        source="AIUSD"
-                        amount="+$5.24"
-                        type="INTEREST"
-                        onSourceClick={() => window.dispatchEvent(new CustomEvent('loka-nav-swap'))}
-                      />
-                      <ActivityItem
-                        title="USDC Deposit"
-                        time="Yesterday, 04:15 PM"
-                        amount="+$1,000.00"
-                        type="DEPOSIT"
-                      />
-                      <ActivityItem
-                        title="Daily Interest Payout"
-                        time="Jan 22, 08:00 AM"
-                        source="ComputeDAO - GPU Expansion"
-                        amount="+$5.10"
-                        type="INTEREST"
-                        onSourceClick={() => {
-                          window.dispatchEvent(new CustomEvent('loka-nav-market'));
-                          setTimeout(() => window.dispatchEvent(new CustomEvent('loka-open-asset', { detail: 'ComputeDAO' })), 100);
-                        }}
-                      />
-                    </div>
+                    {apiHistory.length > 0 ? (
+                      <div className="rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100">
+                        {apiHistory.map((tx: any, i: number) => (
+                          <ActivityItem
+                            key={`tx-${i}`}
+                            title={tx.type === 'INTEREST' ? 'Interest Payout' : tx.type === 'DEPOSIT' ? 'Deposit' : tx.type === 'MINT' ? 'Mint' : tx.type}
+                            time={new Date(tx.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            amount={`${tx.type === 'WITHDRAWAL' ? '-' : '+'}$${Math.abs(tx.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                            type={tx.type === 'INTEREST' ? 'INTEREST' : 'DEPOSIT'}
+                            source={tx.asset}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <p className="text-sm text-gray-400 font-medium">No activity yet</p>
+                        <p className="text-xs text-gray-300 mt-1">Your transactions will appear here</p>
+                      </div>
+                    )}
                   </section>
                 )}
               </div>
@@ -966,16 +1055,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   </button>
                 )}
                 <button
-                  onClick={() => {
-                    if (verifyStep === 3 && !stripeConnected) {
-                      // Allow skipping Stripe
-                      setVerifyStep(s => s + 1);
-                    } else if (verifyStep < VERIFY_TOTAL - 1) {
-                      setVerifyStep(s => s + 1);
-                    } else {
-                      setVerifyDone(true);
-                    }
-                  }}
+                  onClick={handleNextStep}
                   className="flex-1 py-3 bg-gray-900 text-white text-[13px] font-semibold rounded-xl hover:bg-gray-800 transition-all active:scale-95"
                 >
                   {verifyStep === VERIFY_TOTAL - 1 ? 'Activate Badge' : verifyStep === 3 && !stripeConnected ? 'Skip for now' : 'Continue'}
@@ -1413,11 +1493,28 @@ const InvitationCodesModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
 // ── Edit Profile Page ──
 const EditProfilePage: React.FC<{
-  profile: { name: string; bio: string; twitter: string; linkedin: string; otherUrl: string; isPublic: boolean };
+  profile: { name: string; avatar?: string; bio: string; twitter: string; linkedin: string; personalWebsite: string; isPublic: boolean };
   onSave: (p: any) => void;
   onClose: () => void;
-}> = ({ profile, onSave, onClose }) => {
+  avatarUserName: string;
+}> = ({ profile, onSave, onClose, avatarUserName }) => {
   const [data, setData] = useState(profile);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const response = await api.uploadFile(file);
+      setData(prev => ({ ...prev, avatar: response.url }));
+    } catch (err: any) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="animate-fadeIn p-4 sm:p-8 md:p-10 lg:p-12 pb-28 md:pb-24 max-w-[800px] mx-auto w-full min-h-full space-y-6 pt-10">
@@ -1437,14 +1534,28 @@ const EditProfilePage: React.FC<{
         <div className="px-8 py-8 space-y-6">
           {/* Avatar Edit Hint */}
           <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#00E676] via-blue-400 to-amber-300 opacity-90 shadow-inner flex-shrink-0 relative group cursor-pointer">
-              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-16 h-16 rounded-full ${data.avatar ? '' : 'flex items-center justify-center text-white text-xl font-bold'} relative group cursor-pointer overflow-hidden flex-shrink-0`}
+              style={data.avatar ? {} : { backgroundColor: getAvatarHex(avatarUserName) }}
+            >
+              {data.avatar ? (
+                <img src={data.avatar} className="w-full h-full object-cover" alt="Profile" />
+              ) : (
+                <span>{avatarUserName.charAt(0).toUpperCase()}</span>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all">
+                {uploading ? (
+                  <svg className="w-5 h-5 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                ) : (
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                )}
               </div>
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-black">Profile Avatar</span>
-              <span className="text-xs text-gray-400 font-medium">Click to upload new image</span>
+              <span className="text-xs text-gray-400 font-medium">Click to upload new image (max 5MB)</span>
             </div>
           </div>
 
@@ -1497,8 +1608,8 @@ const EditProfilePage: React.FC<{
             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Other Website <span className="text-[9px] text-gray-400 lowercase">(Optional)</span></label>
             <input 
               type="text" 
-              value={data.otherUrl} 
-              onChange={e => setData({ ...data, otherUrl: e.target.value })}
+              value={data.personalWebsite} 
+              onChange={e => setData({ ...data, personalWebsite: e.target.value })}
               placeholder="https://your-website.com"
               className="w-full py-3.5 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-black placeholder-gray-400 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all font-medium"
             />

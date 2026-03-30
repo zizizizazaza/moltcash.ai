@@ -3344,6 +3344,24 @@ const App: React.FC = () => {
     }
   }, [ready, authenticated, getAccessToken, user]);
 
+  // Load custom backend profile
+  const [customProfile, setCustomProfile] = useState<{ name?: string; avatar?: string } | null>(null);
+  
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    api.getProfile().then(data => {
+      setCustomProfile({ name: data.name, avatar: data.avatar });
+    }).catch(() => {});
+
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail) {
+        setCustomProfile(prev => ({ ...prev, ...e.detail }));
+      }
+    };
+    window.addEventListener('loka-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('loka-profile-updated', handleProfileUpdate);
+  }, [isLoggedIn]);
+
   // Real unread count for Community badge
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   
@@ -3372,10 +3390,10 @@ const App: React.FC = () => {
     };
   }, [fetchUnread]);
 
-  // Derive user display info from Privy user object
-  const userName = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
+  // Derive user display info from Privy user object (overriden by custom backend profile)
+  const userName = customProfile?.name || user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
   const userInitial = userName.charAt(0).toUpperCase();
-  const userAvatar = (user?.google as any)?.picture || (user?.twitter as any)?.profilePictureUrl;
+  const userAvatar = customProfile?.avatar || (user?.google as any)?.picture || (user?.twitter as any)?.profilePictureUrl;
 
   const toggleDark = () => {
     setIsDark(prev => {

@@ -276,17 +276,35 @@ class ApiClient {
     return this.request<any[]>(`/groups/${encodeURIComponent(groupId)}/members`);
   }
 
-  // ============ User ============
+  // ============ Profile ============
 
-  async getUserProfile() {
+  async getProfile() {
     return this.request<any>('/users/profile');
   }
 
-  async updateProfile(data: { name?: string; avatar?: string; walletAddress?: string }) {
+  async updateProfile(data: { name?: string; avatar?: string; bio?: string; twitter?: string; linkedin?: string; personalWebsite?: string; isPublic?: boolean; }) {
     return this.request<any>('/users/profile', {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  async uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const activeToken = this.tokenGetter ? await this.tokenGetter() : this.token;
+    const headers: Record<string, string> = {};
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`;
+
+    const response = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) throw new Error('Upload failed');
+    return response.json() as Promise<{ url: string; type: string }>;
   }
 
   // ============ Credit Score ============
@@ -336,6 +354,25 @@ class ApiClient {
 
   async getApplications() {
     return this.request<any[]>('/apply/projects/applications');
+  }
+
+  // ============ Enterprise Verification ============
+
+  async getEnterpriseVerificationStatus() {
+    return this.request<any>('/enterprise/verify-status');
+  }
+
+  async updateEnterpriseVerificationStep(data: { step: number; companyName?: string; country?: string; registrationNo?: string; licenseDoc?: string; uboName?: string; uboIdDoc?: string; stripeAccountId?: string; }) {
+    return this.request<any>('/enterprise/verify-step', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ============ Portfolio Additional ============
+
+  async getHistoricalBalance() {
+    return this.request<any[]>('/portfolio/historical-balance');
   }
 
   // ============ Governance ============

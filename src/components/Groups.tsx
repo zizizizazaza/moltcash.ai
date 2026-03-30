@@ -248,7 +248,7 @@ const Groups: React.FC = () => {
 
     // Fetch current user profile
     useEffect(() => {
-        api.getUserProfile().then(p => {
+        api.getProfile().then(p => {
             if (p?.id) setCurrentUserId(p.id);
         }).catch(() => {});
     }, []);

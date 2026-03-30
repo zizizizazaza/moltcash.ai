@@ -23,9 +23,14 @@ router.get('/profile', authRequired, async (req: AuthRequest, res, next) => {
 
 // Update user profile
 const updateProfileSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
+  name: z.string().max(100).optional(),
   avatar: z.string().url().optional(),
   walletAddress: z.string().optional(),
+  bio: z.string().max(500).optional(),
+  twitter: z.string().max(200).optional(),
+  linkedin: z.string().max(200).optional(),
+  personalWebsite: z.string().max(200).optional(),
+  isPublic: z.boolean().optional(),
 });
 
 router.patch('/profile', authRequired, async (req: AuthRequest, res, next) => {

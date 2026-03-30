@@ -18,6 +18,11 @@ model User {
   authProvider    String?  // google, apple, x, email
   authProviderId  String?
   role            String   @default("user") // user, investor, issuer, admin
+  bio             String?  // User abstract
+  twitter         String?  // Social links
+  linkedin        String?
+  personalWebsite String?
+  isPublic        Boolean  @default(true)
   kycStatus       String   @default("none") // none, pending, verified, rejected
   creditScore     Int      @default(100)
   riskAccepted    Boolean  @default(false)
