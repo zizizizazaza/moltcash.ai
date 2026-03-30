@@ -344,6 +344,11 @@ model EnterpriseVerification {
   companyName     String
   country         String
   registrationNo  String?
+  description     String?  // company description
+  website         String?  // company website
+  foundedYear     Int?     // year company was founded
+  categories      String?  // comma-separated: "SaaS,AI,Fintech"
+  companyLogo     String?  // uploaded logo URL
   licenseDoc      String?  // file URL
   uboName         String?
   uboIdDoc        String?  // file URL

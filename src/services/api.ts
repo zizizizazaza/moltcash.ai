@@ -362,7 +362,20 @@ class ApiClient {
     return this.request<any>('/enterprise/verify-status');
   }
 
-  async updateEnterpriseVerificationStep(data: { step: number; companyName?: string; country?: string; registrationNo?: string; licenseDoc?: string; uboName?: string; uboIdDoc?: string; stripeAccountId?: string; }) {
+  async updateEnterpriseVerificationStep(data: {
+    step: number;
+    companyName?: string;
+    country?: string;
+    registrationNo?: string;
+    description?: string;
+    website?: string;
+    foundedYear?: number;
+    categories?: string;
+    companyLogo?: string;
+    licenseDoc?: string;
+    uboName?: string;
+    uboIdDoc?: string;
+  }) {
     return this.request<any>('/enterprise/verify-step', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -543,6 +556,7 @@ class ApiClient {
   async getGroupPolls(groupId: string) {
     return this.request<any[]>(`/community/groups/${groupId}/polls`);
   }
+
 
 }
 

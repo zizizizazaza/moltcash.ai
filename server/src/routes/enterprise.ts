@@ -29,6 +29,11 @@ const verifyStepSchema = z.object({
   companyName: z.string().optional(),
   country: z.string().optional(),
   registrationNo: z.string().optional(),
+  description: z.string().optional(),
+  website: z.string().optional(),
+  foundedYear: z.number().int().optional(),
+  categories: z.string().optional(),
+  companyLogo: z.string().optional(),
   licenseDoc: z.string().optional(),
   uboName: z.string().optional(),
   uboIdDoc: z.string().optional(),
@@ -38,7 +43,20 @@ router.post('/verify-step', authRequired, async (req: AuthRequest, res, next) =>
   try {
     const data = verifyStepSchema.parse(req.body);
     
-    // Find absolute latest or create
+    // Build update payload from all optional fields
+    const updateFields: Record<string, any> = { step: data.step };
+    const optionalKeys = [
+      'companyName', 'country', 'registrationNo', 'description',
+      'website', 'foundedYear', 'categories', 'companyLogo',
+      'licenseDoc', 'uboName', 'uboIdDoc'
+    ] as const;
+    for (const key of optionalKeys) {
+      if (data[key] !== undefined) updateFields[key] = data[key];
+    }
+    // Auto-verify at step 3 (MVP: skip real KYB)
+    if (data.step >= 3) updateFields.status = 'verified';
+
+    // Find existing or create
     let verification = await prisma.enterpriseVerification.findFirst({
       where: { userId: req.userId },
       orderBy: { createdAt: 'desc' }
@@ -54,22 +72,20 @@ router.post('/verify-step', authRequired, async (req: AuthRequest, res, next) =>
           companyName: data.companyName,
           country: data.country,
           step: data.step,
-          status: 'pending'
+          status: 'pending',
+          ...(data.registrationNo ? { registrationNo: data.registrationNo } : {}),
+          ...(data.description ? { description: data.description } : {}),
+          ...(data.website ? { website: data.website } : {}),
+          ...(data.foundedYear ? { foundedYear: data.foundedYear } : {}),
+          ...(data.categories ? { categories: data.categories } : {}),
+          ...(data.companyLogo ? { companyLogo: data.companyLogo } : {}),
+          ...(data.licenseDoc ? { licenseDoc: data.licenseDoc } : {}),
         }
       });
     } else {
       verification = await prisma.enterpriseVerification.update({
         where: { id: verification.id },
-        data: {
-          step: data.step,
-          ...(data.companyName ? { companyName: data.companyName } : {}),
-          ...(data.country ? { country: data.country } : {}),
-          ...(data.registrationNo ? { registrationNo: data.registrationNo } : {}),
-          ...(data.licenseDoc ? { licenseDoc: data.licenseDoc } : {}),
-          ...(data.uboName ? { uboName: data.uboName } : {}),
-          ...(data.uboIdDoc ? { uboIdDoc: data.uboIdDoc } : {}),
-          ...(data.step >= 4 ? { status: 'verified' } : {}) // Auto verify for MVP demo
-        }
+        data: updateFields
       });
     }
 

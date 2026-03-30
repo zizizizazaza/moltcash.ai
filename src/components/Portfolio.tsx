@@ -63,7 +63,15 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const [verifyDone, setVerifyDone] = useState(false);
   const [stripeConnected, setStripeConnected] = useState(false);
   const [stripeConnecting, setStripeConnecting] = useState(false);
-  const [verifyData, setVerifyData] = useState({ companyName: 'Loka Technologies Pte Ltd', country: 'Singapore' });
+  const [verifyData, setVerifyData] = useState({
+    companyName: '', country: '', registrationNo: '',
+    description: '', website: '', foundedYear: '',
+    categories: [] as string[],
+    companyLogo: '', licenseDoc: '',
+    uboName: '', uboIdDoc: ''
+  });
+  const [licenseUploading, setLicenseUploading] = useState(false);
+  const licenseInputRef = useRef<HTMLInputElement>(null);
   const VERIFY_TOTAL = 3;
   const [userProfile, setUserProfile] = useState({
     name: '',
@@ -103,6 +111,22 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
       if (status && status.step > 0) {
         setIsVerified(status.status === 'verified');
         setVerifyStep(status.step);
+        // Restore form data from backend
+        setVerifyData(prev => ({
+          ...prev,
+          companyName: status.companyName || '',
+          country: status.country || '',
+          registrationNo: status.registrationNo || '',
+          description: status.description || '',
+          website: status.website || '',
+          foundedYear: status.foundedYear ? String(status.foundedYear) : '',
+          categories: status.categories ? status.categories.split(',') : [],
+          companyLogo: status.companyLogo || '',
+          licenseDoc: status.licenseDoc || '',
+          uboName: status.uboName || '',
+          uboIdDoc: status.uboIdDoc || '',
+        }));
+        if (status.status === 'verified') setVerifyDone(true);
       }
     }).catch(console.error);
 
@@ -138,20 +162,64 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
 
   const handleNextStep = async () => {
     try {
-      if (verifyStep === 3 && !stripeConnected) {
-        // Skip stripe
-        await api.updateEnterpriseVerificationStep({ step: verifyStep + 1 });
-        setVerifyStep(s => s + 1);
-      } else if (verifyStep < VERIFY_TOTAL - 1) {
-        await api.updateEnterpriseVerificationStep({ step: verifyStep + 1, ...verifyData });
+      const payload: any = {
+        step: verifyStep + 1,
+        companyName: verifyData.companyName,
+        country: verifyData.country,
+        registrationNo: verifyData.registrationNo || undefined,
+        description: verifyData.description || undefined,
+        website: verifyData.website || undefined,
+        foundedYear: verifyData.foundedYear ? parseInt(verifyData.foundedYear) : undefined,
+        categories: verifyData.categories.length > 0 ? verifyData.categories.join(',') : undefined,
+        companyLogo: verifyData.companyLogo || undefined,
+        licenseDoc: verifyData.licenseDoc || undefined,
+        uboName: verifyData.uboName || undefined,
+        uboIdDoc: verifyData.uboIdDoc || undefined,
+      };
+
+      if (verifyStep === 0) {
+        // Step 0 -> 1: require company name & country
+        if (!verifyData.companyName.trim() || !verifyData.country.trim()) {
+          alert('Company Name and Country are required');
+          return;
+        }
+      }
+
+      if (verifyStep < VERIFY_TOTAL - 1) {
+        await api.updateEnterpriseVerificationStep(payload);
         setVerifyStep(s => s + 1);
       } else {
-        await api.updateEnterpriseVerificationStep({ step: VERIFY_TOTAL });
+        // Final step
+        await api.updateEnterpriseVerificationStep({ ...payload, step: VERIFY_TOTAL });
         setVerifyDone(true);
       }
     } catch (err: any) {
       alert(err.message || 'Failed to save verification step');
     }
+  };
+
+  const handleLicenseUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLicenseUploading(true);
+    try {
+      const result = await api.uploadFile(file);
+      setVerifyData(prev => ({ ...prev, licenseDoc: result.url }));
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setLicenseUploading(false);
+    }
+  };
+
+  const toggleCategory = (tag: string) => {
+    setVerifyData(prev => ({
+      ...prev,
+      categories: prev.categories.includes(tag)
+        ? prev.categories.filter(t => t !== tag)
+        : [...prev.categories, tag]
+    }));
   };
 
   // Enterprise specific stats calculation based on deductions data when enterprise tab is active
@@ -720,77 +788,98 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       <h4 className="text-[14px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>Company Information</h4>
                       <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Business license, basic info and company profile</p>
                     </div>
-                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                      <svg className="w-6 h-6 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                      <p className="text-[12px] font-medium text-gray-400">Upload Business License</p>
-                      <p className="text-[10px] text-gray-300 mt-1">PDF, JPG, PNG up to 10MB</p>
+                    {/* License Upload */}
+                    <input type="file" ref={licenseInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleLicenseUpload} />
+                    <div
+                      onClick={() => licenseInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-xl p-5 text-center transition-colors cursor-pointer ${verifyData.licenseDoc ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-gray-400'}`}
+                    >
+                      {licenseUploading ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                          <p className="text-[12px] font-medium text-gray-500">Uploading...</p>
+                        </div>
+                      ) : verifyData.licenseDoc ? (
+                        <>
+                          <svg className="w-6 h-6 text-green-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          <p className="text-[12px] font-medium text-green-600">Business License Uploaded</p>
+                          <p className="text-[10px] text-green-500 mt-1">Click to replace</p>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-6 h-6 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                          <p className="text-[12px] font-medium text-gray-400">Upload Business License</p>
+                          <p className="text-[10px] text-gray-300 mt-1">PDF, JPG, PNG up to 10MB</p>
+                        </>
+                      )}
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Company Name</label>
-                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Loka Technologies Pte Ltd" />
+                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Company Name <span className="text-red-400">*</span></label>
+                        <input value={verifyData.companyName} onChange={e => setVerifyData(prev => ({ ...prev, companyName: e.target.value }))} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Loka Technologies Pte Ltd" />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Country / Region</label>
-                          <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Singapore" />
+                          <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Country / Region <span className="text-red-400">*</span></label>
+                          <input value={verifyData.country} onChange={e => setVerifyData(prev => ({ ...prev, country: e.target.value }))} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Singapore" />
                         </div>
                         <div>
                           <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Registration No.</label>
-                          <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="202312345A" />
+                          <input value={verifyData.registrationNo} onChange={e => setVerifyData(prev => ({ ...prev, registrationNo: e.target.value }))} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="202312345A" />
                         </div>
                       </div>
                       <div>
                         <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Description</label>
-                        <textarea rows={2} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors resize-none" placeholder="What does your company do?" />
+                        <textarea rows={2} value={verifyData.description} onChange={e => setVerifyData(prev => ({ ...prev, description: e.target.value }))} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors resize-none" placeholder="What does your company do?" />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Founded Year</label>
-                          <input type="number" min="1900" max="2026" className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="2021" />
+                          <input type="number" min="1900" max="2026" value={verifyData.foundedYear} onChange={e => setVerifyData(prev => ({ ...prev, foundedYear: e.target.value }))} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="2021" />
                         </div>
                         <div>
                           <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Website</label>
-                          <input type="url" className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="https://..." />
+                          <input type="url" value={verifyData.website} onChange={e => setVerifyData(prev => ({ ...prev, website: e.target.value }))} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="https://..." />
                         </div>
                       </div>
                       <div>
                         <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Category Tags</label>
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           {['SaaS', 'AI', 'Health', 'Marketing', 'Content', 'Education', 'E-commerce', 'Fintech'].map(tag => (
-                            <button key={tag} className="px-2.5 py-1 text-[10px] font-semibold border border-gray-200 rounded-full text-gray-500 hover:border-gray-900 hover:text-gray-900 hover:bg-gray-50 transition-all">{tag}</button>
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleCategory(tag)}
+                              className={`px-2.5 py-1 text-[10px] font-semibold border rounded-full transition-all ${
+                                verifyData.categories.includes(tag)
+                                  ? 'border-gray-900 text-white bg-gray-900'
+                                  : 'border-gray-200 text-gray-500 hover:border-gray-900 hover:text-gray-900 hover:bg-gray-50'
+                              }`}
+                            >{tag}</button>
                           ))}
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : verifyStep === 1 ? (
-                  /* ── Step 2: KYC ── */
+                  /* ── Step 2: KYC — Auto-approved in development ── */
                   <div className="space-y-4">
                     <div className="mb-2">
                       <h4 className="text-[14px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>KYC / UBO Verification</h4>
-                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Declare beneficial owners with ≥ 25% stake and upload identity documents</p>
+                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Identity verification for beneficial owners</p>
                     </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Full Legal Name</label>
-                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Your legal name" />
+                    <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-100">
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                       </div>
                       <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Nationality</label>
-                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="e.g. Singaporean" />
+                        <p className="text-[13px] font-semibold text-green-700">Auto-Approved</p>
+                        <p className="text-[11px] text-green-600 leading-relaxed">KYC verification is automatically approved in development mode. In production, this step will require identity document uploads and third-party verification.</p>
                       </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">ID Document</label>
-                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                          <p className="text-[11px] font-medium text-gray-400">Upload Passport or National ID</p>
-                          <p className="text-[10px] text-gray-300 mt-0.5">Front + back, PDF / JPG / PNG</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                        <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <p className="text-[10px] text-amber-700 leading-relaxed">All shareholders with ≥ 25% ownership must complete individual KYC. Additional owners can be added after submission.</p>
-                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                      <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <p className="text-[10px] text-amber-700 leading-relaxed">In production, all shareholders with ≥ 25% ownership will need to complete individual KYC through our verification partner.</p>
                     </div>
                   </div>
                 ) : (
@@ -848,13 +937,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       </button>
                     )}
                     <button
-                      onClick={() => {
-                        if (verifyStep < VERIFY_TOTAL - 1) {
-                          setVerifyStep(s => s + 1);
-                        } else {
-                          setVerifyDone(true);
-                        }
-                      }}
+                      onClick={handleNextStep}
                       disabled={verifyStep === 2 && !stripeConnected}
                       className="flex-1 py-3 text-white text-[13px] font-semibold rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ background: 'oklch(30% 0.03 260)' }}
