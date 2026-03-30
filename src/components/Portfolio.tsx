@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePrivy } from '@privy-io/react-auth';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid, YAxis, XAxis } from 'recharts';
 import { Icons } from '../constants';
@@ -36,8 +37,9 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const enterpriseFetched = useRef(false);
 
   const { user, ready, authenticated } = usePrivy();
+  const navigate = useNavigate();
   const avatarUserName = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
-  
+
   const linkedWallets = (user?.linkedAccounts ?? []).filter(
     (acc) => (acc.type === 'wallet' || acc.type === 'smart_wallet') && 'address' in acc
   ) as Array<{ address: string; walletClientType?: string }>;
@@ -57,12 +59,12 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   // Enterprise verification
   const [isVerified, setIsVerified] = useState(false);
   const [showVerifyWizard, setShowVerifyWizard] = useState(false);
-  const [verifyStep, setVerifyStep] = useState(0); // 0=license,1=kyc,2=profile,3=stripe,4=badge
+  const [verifyStep, setVerifyStep] = useState(0); // 0=companyInfo, 1=kyc, 2=stripe
   const [verifyDone, setVerifyDone] = useState(false);
   const [stripeConnected, setStripeConnected] = useState(false);
   const [stripeConnecting, setStripeConnecting] = useState(false);
   const [verifyData, setVerifyData] = useState({ companyName: 'Loka Technologies Pte Ltd', country: 'Singapore' });
-  const VERIFY_TOTAL = 5;
+  const VERIFY_TOTAL = 3;
   const [userProfile, setUserProfile] = useState({
     name: '',
     avatar: '',
@@ -303,13 +305,13 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                         <div className="flex flex-col gap-0.5 mt-1">
                           {userProfile.twitter && (
                             <a href={userProfile.twitter.startsWith('http') ? userProfile.twitter : `https://${userProfile.twitter}`} target="_blank" rel="noreferrer" className="text-[11px] text-gray-500 hover:text-black hover:underline truncate max-w-[200px] flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                               {userProfile.twitter.replace(/^https?:\/\/(www\.)?(twitter\.com\/|x\.com\/)?/, '@')}
                             </a>
                           )}
                           {userProfile.linkedin && (
                             <a href={userProfile.linkedin.startsWith('http') ? userProfile.linkedin : `https://${userProfile.linkedin}`} target="_blank" rel="noreferrer" className="text-[11px] text-gray-500 hover:text-blue-600 hover:underline truncate max-w-[200px] flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
                               LinkedIn
                             </a>
                           )}
@@ -556,492 +558,575 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
           <div className="space-y-6 animate-fadeIn">
 
             {/* Empty state: not verified */}
-            {!isVerified && (
-              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-                <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
-                  <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-                <h2 className="text-[17px] font-bold text-gray-900 mb-2">Verify Your Company</h2>
-                <p className="text-[13px] text-gray-400 max-w-[280px] leading-relaxed mb-8">
-                  Complete company verification to access fundraising on Loka. The process takes about 5 minutes.
+            {!isVerified && !showVerifyWizard && (
+              <div className="max-w-lg mx-auto py-20 px-6">
+                <style>{`
+                  @keyframes verifyFadeUp {
+                    from { opacity: 0; transform: translateY(12px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                  @media (prefers-reduced-motion: reduce) {
+                    .verify-animate { animation: none !important; opacity: 1 !important; }
+                  }
+                  .verify-animate {
+                    opacity: 0;
+                    animation: verifyFadeUp 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+                  }
+                  .verify-step-row {
+                    transition: background 0.2s, transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+                    border-radius: 12px;
+                    padding: 10px 12px;
+                    margin: -10px -12px;
+                  }
+                  .verify-step-row:hover {
+                    background: oklch(97% 0.005 250);
+                    transform: translateX(4px);
+                  }
+                  .verify-cta {
+                    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s;
+                  }
+                  .verify-cta:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px oklch(30% 0.03 260 / 0.25);
+                  }
+                `}</style>
+
+                <h2 className="verify-animate text-[22px] font-bold leading-snug mb-3" style={{ color: 'oklch(25% 0.02 260)', animationDelay: '0ms' }}>
+                  Complete company verification to access fundraising on Loka.
+                </h2>
+                <p className="verify-animate text-[13px] leading-relaxed mb-10" style={{ color: 'oklch(55% 0.01 250)', animationDelay: '80ms' }}>
+                  Three simple steps — takes about 5 minutes.
                 </p>
 
-                {/* Steps preview — 3 big phases */}
-                <div className="w-full max-w-sm space-y-2 mb-8 text-left">
+                <div className="space-y-2 mb-12">
                   {[
-                    {
-                      num: '1',
-                      label: 'Company Verification',
-                      desc: 'Business license upload · KYC/UBO identity check',
-                    },
-                    {
-                      num: '2',
-                      label: 'Company Profile',
-                      desc: 'Description · Founded date & location · Tags · Website',
-                    },
-                    {
-                      num: '3',
-                      label: 'Connect Revenue',
-                      desc: 'Authorize Stripe to share live MRR & revenue data',
-                    },
+                    { icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>, label: 'Company Information', desc: 'Business license, profile details & website' },
+                    { icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>, label: 'KYC Verification', desc: 'Identity documents for beneficial owners' },
+                    { icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>, label: 'Connect Stripe', desc: 'Authorize read-only access to verify revenue' },
                   ].map((s, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <div className="w-7 h-7 rounded-lg bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm">
-                        <span className="text-[11px] font-black text-gray-500">{s.num}</span>
-                      </div>
-                      <div>
-                        <p className="text-[12px] font-semibold text-gray-800">{s.label}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{s.desc}</p>
+                    <div key={i} className="verify-animate verify-step-row flex items-start gap-4" style={{ animationDelay: `${180 + i * 120}ms` }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white" style={{ background: 'oklch(30% 0.03 260)' }}>{s.icon}</div>
+                      <div className="pt-0.5">
+                        <p className="text-[13px] font-semibold mb-0.5" style={{ color: 'oklch(25% 0.02 260)' }}>{s.label}</p>
+                        <p className="text-[11px] leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>{s.desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <button
-                  onClick={() => { setVerifyStep(0); setVerifyDone(false); setStripeConnected(false); setShowVerifyWizard(true); }}
-                  className="px-6 py-3 bg-gray-900 text-white text-[13px] font-semibold rounded-xl hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
-                >
-                  Start Verification
-                </button>
+                <div className="verify-animate" style={{ animationDelay: '560ms' }}>
+                  <button
+                    onClick={() => { setVerifyStep(0); setVerifyDone(false); setStripeConnected(false); setShowVerifyWizard(true); }}
+                    className="verify-cta px-7 py-3 text-white text-[13px] font-semibold rounded-xl active:scale-[0.98] shadow-sm"
+                    style={{ background: 'oklch(30% 0.03 260)' }}
+                  >
+                    Start Verification →
+                  </button>
+                  <p className="text-[11px] mt-3" style={{ color: 'oklch(72% 0.01 250)' }}>Usually takes less than 5 minutes</p>
+                </div>
+              </div>
+            )}
+
+            {/* Inline verification wizard (replaces modal) */}
+            {!isVerified && showVerifyWizard && (
+              <div className="max-w-lg mx-auto py-8 px-6">
+                {/* Header with progress */}
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="text-[16px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>Company Verification</h3>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'oklch(58% 0.01 250)' }}>
+                      {verifyDone ? 'All done — your profile is ready' : `Step ${verifyStep + 1} of ${VERIFY_TOTAL}`}
+                    </p>
+                  </div>
+                  {!verifyDone && (
+                    <button onClick={() => setShowVerifyWizard(false)} className="text-[12px] font-medium hover:underline" style={{ color: 'oklch(55% 0.01 250)' }}>
+                      ← Back to overview
+                    </button>
+                  )}
+                </div>
+                {/* Progress bar */}
+                {!verifyDone && (
+                  <div className="h-1 bg-gray-100 rounded-full mb-8">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${((verifyStep + 1) / VERIFY_TOTAL) * 100}%`, background: 'oklch(30% 0.03 260)' }}
+                    />
+                  </div>
+                )}
+
+                {verifyDone ? (
+                  <div className="text-center py-10">
+                    <style>{`
+                      @keyframes verifyCheckPop {
+                        0% { transform: scale(0); opacity: 0; }
+                        60% { transform: scale(1.15); }
+                        100% { transform: scale(1); opacity: 1; }
+                      }
+                      @keyframes verifyFadeInUp {
+                        from { opacity: 0; transform: translateY(8px); }
+                        to { opacity: 1; transform: translateY(0); }
+                      }
+                      .done-check { animation: verifyCheckPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
+                      .done-fade { opacity: 0; animation: verifyFadeInUp 0.4s ease-out forwards; }
+                    `}</style>
+
+                    {/* Badge icon */}
+                    <div className="done-check w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: 'oklch(96% 0.02 155)' }}>
+                      <svg className="w-10 h-10" style={{ color: 'oklch(45% 0.15 155)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                    </div>
+
+                    {/* Title */}
+                    <h4 className="done-fade text-[18px] font-bold mb-1.5" style={{ color: 'oklch(25% 0.02 260)', animationDelay: '0.25s' }}>
+                      Verification Complete
+                    </h4>
+                    <p className="done-fade text-[12px] max-w-[280px] mx-auto leading-relaxed mb-8" style={{ color: 'oklch(55% 0.01 250)', animationDelay: '0.35s' }}>
+                      Your company is now a <span className="font-semibold" style={{ color: 'oklch(35% 0.02 260)' }}>Verified Issuer</span>. You can start publishing and fundraising on Loka.
+                    </p>
+
+                    {/* Verification summary card */}
+                    <div className="done-fade rounded-xl border border-gray-100 overflow-hidden mb-8" style={{ animationDelay: '0.45s' }}>
+                      {[
+                        { label: 'Company Information', status: '✓ Complete' },
+                        { label: 'KYC / UBO', status: '✓ Approved' },
+                        { label: 'Stripe Revenue', status: '✓ Connected' },
+                      ].map((item, i) => (
+                        <div key={i} className={`flex items-center justify-between px-4 py-3 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                          <span className="text-[12px]" style={{ color: 'oklch(45% 0.01 250)' }}>{item.label}</span>
+                          <span className="text-[11px] font-semibold" style={{ color: 'oklch(45% 0.12 155)' }}>{item.status}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* CTA */}
+                    <div className="done-fade" style={{ animationDelay: '0.55s' }}>
+                      <button
+                        onClick={() => { setIsVerified(true); setShowVerifyWizard(false); }}
+                        className="w-full py-3.5 text-white text-[13px] font-semibold rounded-xl transition-all active:scale-[0.98] hover:shadow-lg"
+                        style={{ background: 'oklch(30% 0.03 260)' }}
+                      >
+                        Go to Enterprise Dashboard →
+                      </button>
+                      <p className="text-[10px] text-center mt-3" style={{ color: 'oklch(68% 0.01 250)' }}>
+                        Your badge will be visible to all investors on your profile
+                      </p>
+                    </div>
+                  </div>
+                ) : verifyStep === 0 ? (
+                  /* ── Step 1: Company Information ── */
+                  <div className="space-y-4">
+                    <div className="mb-2">
+                      <h4 className="text-[14px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>Company Information</h4>
+                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Business license, basic info and company profile</p>
+                    </div>
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-gray-400 transition-colors cursor-pointer">
+                      <svg className="w-6 h-6 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                      <p className="text-[12px] font-medium text-gray-400">Upload Business License</p>
+                      <p className="text-[10px] text-gray-300 mt-1">PDF, JPG, PNG up to 10MB</p>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Company Name</label>
+                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Loka Technologies Pte Ltd" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Country / Region</label>
+                          <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Singapore" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Registration No.</label>
+                          <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="202312345A" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Description</label>
+                        <textarea rows={2} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors resize-none" placeholder="What does your company do?" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Founded Year</label>
+                          <input type="number" min="1900" max="2026" className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="2021" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Website</label>
+                          <input type="url" className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="https://..." />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Category Tags</label>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {['SaaS', 'AI', 'Health', 'Marketing', 'Content', 'Education', 'E-commerce', 'Fintech'].map(tag => (
+                            <button key={tag} className="px-2.5 py-1 text-[10px] font-semibold border border-gray-200 rounded-full text-gray-500 hover:border-gray-900 hover:text-gray-900 hover:bg-gray-50 transition-all">{tag}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : verifyStep === 1 ? (
+                  /* ── Step 2: KYC ── */
+                  <div className="space-y-4">
+                    <div className="mb-2">
+                      <h4 className="text-[14px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>KYC / UBO Verification</h4>
+                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Declare beneficial owners with ≥ 25% stake and upload identity documents</p>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Full Legal Name</label>
+                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Your legal name" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Nationality</label>
+                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="e.g. Singaporean" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">ID Document</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-gray-400 transition-colors cursor-pointer">
+                          <p className="text-[11px] font-medium text-gray-400">Upload Passport or National ID</p>
+                          <p className="text-[10px] text-gray-300 mt-0.5">Front + back, PDF / JPG / PNG</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                        <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <p className="text-[10px] text-amber-700 leading-relaxed">All shareholders with ≥ 25% ownership must complete individual KYC. Additional owners can be added after submission.</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Step 3: Connect Stripe ── */
+                  <div className="space-y-4">
+                    <div className="mb-2">
+                      <h4 className="text-[14px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>Connect Stripe</h4>
+                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Authorize read-only access to verify your revenue. Investors will see live MRR and growth data.</p>
+                    </div>
+                    {!stripeConnected ? (
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => { setStripeConnecting(true); setTimeout(() => { setStripeConnecting(false); setStripeConnected(true); }, 2000); }}
+                          disabled={stripeConnecting}
+                          className="w-full py-3 flex items-center justify-center gap-2.5 bg-[#635BFF] text-white text-[13px] font-semibold rounded-xl hover:bg-[#4F46E5] transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {stripeConnecting ? (
+                            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Connecting…</>
+                          ) : (
+                            <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.583L20 4.114A18.22 18.22 0 0 0 12.581 2c-3.099 0-5.47 1.498-6.27 3.895-.254.754-.36 1.537-.293 2.344.065.808.318 1.565.742 2.217.854 1.318 2.296 2.089 4.044 2.695 1.927.658 3.095 1.282 3.095 2.303 0 .914-.817 1.481-2.179 1.481-1.876 0-4.153-.742-5.943-1.836l-1.756 3.404C6.05 20.148 9.02 21.5 12.311 21.5c3.408 0 6.056-1.548 6.721-4.078.181-.688.24-1.393.175-2.097-.065-.706-.283-1.384-.65-1.994-.707-1.17-2.014-1.9-4.581-2.181z" /></svg>Connect with Stripe</>
+                          )}
+                        </button>
+                        <div className="flex items-start gap-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <svg className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          <p className="text-[10px] text-gray-500 leading-relaxed">OAuth read-only access. We never store your Stripe secret key. You can revoke access at any time.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-100 mb-3">
+                          <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                          <p className="text-[11px] font-semibold text-green-700">Stripe account connected successfully</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Revenue Preview</p>
+                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">MRR</span><span className="text-[12px] font-bold text-gray-900">$28,400</span></div>
+                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">Last 30d Revenue</span><span className="text-[12px] font-bold text-gray-900">$31,200</span></div>
+                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">MoM Growth</span><span className="text-[12px] font-bold text-green-600">+12.4%</span></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer buttons */}
+                {!verifyDone && (
+                  <div className="flex gap-3 mt-8">
+                    {verifyStep > 0 && (
+                      <button
+                        onClick={() => setVerifyStep(s => s - 1)}
+                        className="flex-1 py-3 text-[13px] font-semibold border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+                        style={{ color: 'oklch(40% 0.02 260)' }}
+                      >
+                        Back
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (verifyStep < VERIFY_TOTAL - 1) {
+                          setVerifyStep(s => s + 1);
+                        } else {
+                          setVerifyDone(true);
+                        }
+                      }}
+                      disabled={verifyStep === 2 && !stripeConnected}
+                      className="flex-1 py-3 text-white text-[13px] font-semibold rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: 'oklch(30% 0.03 260)' }}
+                    >
+                      {verifyStep === VERIFY_TOTAL - 1 ? 'Complete Verification' : 'Continue'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Verified: show company info + fundraising */}
             {isVerified && <>
 
-            {/* Company Info Card - Simplified */}
-            <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-black text-black">Company Information</h2>
-                <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-full border border-green-200/50 flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                  Verified Issuer
-                </span>
-              </div>
-
-              <div className="space-y-0 divide-y divide-gray-100">
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-[11px] text-gray-400 font-medium">Company Name</span>
-                  <span className="text-[13px] font-bold text-black">Loka Technologies Pte Ltd</span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-[11px] text-gray-400 font-medium">Country / Region</span>
-                  <span className="text-[13px] font-bold text-black">Singapore</span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-[11px] text-gray-400 font-medium">Registration No.</span>
-                  <span className="text-[13px] font-bold text-black">202312345A</span>
-                </div>
-                <div className="flex items-start sm:items-center justify-between py-3 gap-2">
-                  <span className="text-[11px] text-gray-400 font-medium shrink-0">Registered Address</span>
-                  <span className="text-[13px] font-bold text-black text-right">1 Raffles Place, #20-01, Singapore 048616</span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 sm:gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 rounded-full border border-violet-100">
-                  <span className="text-xs">🔗</span>
-                  <span className="text-[10px] font-bold text-violet-600">Verified Issuer</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-full border border-green-100">
-                  <span className="text-xs">🪪</span>
-                  <span className="text-[10px] font-bold text-green-600">KYC Verified</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200">
-                  <span className="text-xs">📄</span>
-                  <span className="text-[10px] font-bold text-gray-600">2 Docs</span>
-                </div>
-              </div>
-            </section>
-
-            {/* Fundraising Status — company as main entity */}
-            <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-5 gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+              {/* Company Info Card */}
+              <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
+                {/* Header with logo */}
+                <div className="flex items-start gap-4 mb-5">
+                  {/* Company Logo */}
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shrink-0 text-white text-lg font-black" style={{ background: 'oklch(30% 0.03 260)' }}>
+                    L
                   </div>
-                  <div>
-                    <h2 className="text-[15px] font-semibold text-gray-900">Fundraising</h2>
-                    <p className="text-[10px] text-gray-400 font-medium">Company fundraising status</p>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-200/50">● Active</span>
-              </div>
-
-              {/* Stats row */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 font-medium mb-1">Target</p>
-                  <p className="text-[15px] font-bold text-gray-900">$500,000</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 font-medium mb-1">Raised</p>
-                  <p className="text-[15px] font-bold text-green-600">$375,000</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 font-medium mb-1">APY / Term</p>
-                  <p className="text-[15px] font-bold text-gray-900">15.5% <span className="text-[11px] font-medium text-gray-400">60d</span></p>
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-4">
-                <div className="flex justify-between mb-1.5">
-                  <span className="text-[10px] text-gray-400 font-medium">Progress</span>
-                  <span className="text-[10px] font-bold text-gray-900">75% funded</span>
-                </div>
-                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500 rounded-full" style={{ width: '75%' }} />
-                </div>
-              </div>
-
-              <p className="text-[11px] text-gray-400">Fundraising closes in <span className="font-semibold text-gray-700">18 days</span></p>
-            </section>
-
-            {/* Platform Deductions (auto-deduction records) */}
-            <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-[15px] font-semibold text-gray-900">Repayment Records</h2>
-                  <p className="text-[10px] text-gray-400 font-medium">Auto-deducted from revenue for investor repayments</p>
-                </div>
-              </div>
-
-              {Object.keys(enterpriseDeductions).length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-gray-400 font-medium">No repayment records yet</p>
-                  <p className="text-xs text-gray-300 mt-1">Records appear once your fundraising begins repayment cycles</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {Object.entries(enterpriseDeductions).map(([projectId, { schedule, project }]) => {
-                    const paidPeriods = schedule.filter(s => s.status === 'paid');
-                    const totalDeducted = paidPeriods.reduce((sum, s) => sum + s.paidAmount, 0);
-                    const totalPeriods = schedule.length;
-                    const overduePeriods = schedule.filter(s => s.status === 'overdue');
-
-                    return (
-                      <div key={projectId} className="border border-gray-100 rounded-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="p-4 bg-gray-50/50 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center font-black text-white text-xs shrink-0">
-                              {(project.title || 'P')[0]}
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="text-xs font-bold text-black truncate">{project.title || projectId}</h4>
-                              <p className="text-[9px] text-gray-400">{paidPeriods.length}/{totalPeriods} periods deducted</p>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-black text-black">${totalDeducted.toLocaleString()}</p>
-                            <p className="text-[9px] text-gray-400">total deducted</p>
-                          </div>
-                        </div>
-
-                        {overduePeriods.length > 0 && (
-                          <div className="px-4 py-2.5 bg-red-50 border-t border-red-100 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                            <p className="text-[10px] font-bold text-red-600">
-                              {overduePeriods.length} period{overduePeriods.length > 1 ? 's' : ''} pending — revenue shortfall detected
-                            </p>
-                          </div>
-                        )}
-
-                        {paidPeriods.length > 0 && (
-                          <div className="divide-y divide-gray-50">
-                            {paidPeriods.slice(-5).reverse().map((s) => (
-                              <div key={s.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50 transition-colors">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center">
-                                    <svg className="w-3 h-3 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                  </div>
-                                  <div>
-                                    <p className="text-[11px] font-bold text-black">Period {s.periodNumber}</p>
-                                    <p className="text-[9px] text-gray-400">{s.paidAt ? new Date(s.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-[11px] font-bold text-black">-${s.paidAmount.toFixed(2)}</p>
-                                  <p className="text-[9px] text-gray-400">P: ${s.principalDue.toFixed(2)} + I: ${s.interestDue.toFixed(2)}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h2 className="text-[15px] font-bold text-black truncate">Loka Technologies Pte Ltd</h2>
+                        <span className="px-2 py-0.5 bg-green-50 text-green-600 text-[9px] font-black rounded-full border border-green-200/50 flex items-center gap-0.5 shrink-0">
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                          Verified
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-            </>}
-
-          </div>
-        )}
-      </div>
-
-      {/* ── Company Verification Wizard ── */}
-      {showVerifyWizard && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowVerifyWizard(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slideUp overflow-hidden">
-
-            {/* Header */}
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="text-[15px] font-bold text-gray-900">Company Verification</h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  {verifyDone ? 'All done — your profile is ready' : `Step ${verifyStep + 1} of ${VERIFY_TOTAL}`}
-                </p>
-              </div>
-              <button onClick={() => setShowVerifyWizard(false)} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            {/* Progress bar */}
-            {!verifyDone && (
-              <div className="h-1 bg-gray-100">
-                <div
-                  className="h-full bg-gray-900 transition-all duration-500"
-                  style={{ width: `${((verifyStep + 1) / VERIFY_TOTAL) * 100}%` }}
-                />
-              </div>
-            )}
-
-            <div className="p-6">
-              {verifyDone ? (
-                /* ── All done ── */
-                <div className="text-center py-6">
-                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                  </div>
-                  <h4 className="text-[16px] font-bold text-gray-900 mb-2">Verified!</h4>
-                  <p className="text-[12px] text-gray-400 max-w-[220px] mx-auto leading-relaxed mb-6">
-                    Your company is now a Verified Issuer. You can start fundraising on Loka.
-                  </p>
-                  <button
-                    onClick={() => { setIsVerified(true); setShowVerifyWizard(false); }}
-                    className="w-full py-3 bg-gray-900 text-white text-[13px] font-semibold rounded-xl hover:bg-gray-800 transition-all active:scale-95"
-                  >
-                    Go to Enterprise Dashboard
-                  </button>
-                </div>
-              ) : verifyStep === 0 ? (
-                /* ── Step 1: Business License ── */
-                <div className="space-y-4">
-                  <div className="text-center mb-2">
-                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    </div>
-                    <h4 className="text-[14px] font-bold text-gray-900">Upload Business License</h4>
-                    <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Company registration certificate and registered address proof</p>
-                  </div>
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                    <svg className="w-6 h-6 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                    <p className="text-[12px] font-medium text-gray-400">Click to upload or drag & drop</p>
-                    <p className="text-[10px] text-gray-300 mt-1">PDF, JPG, PNG up to 10MB</p>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Company Name</label>
-                      <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Loka Technologies Pte Ltd" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Country / Region</label>
-                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Singapore" />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Registration No.</label>
-                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="202312345A" />
+                      <div className="flex items-center gap-2">
+                        <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-gray-200 hover:bg-gray-50 transition-all shrink-0" style={{ color: 'oklch(40% 0.02 260)' }}>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => navigate('/market/startup/loka-technologies', {
+                            state: {
+                              project: {
+                                name: 'Loka Technologies Pte Ltd', cat: 'Fintech', mapped_cat: 'Fintech',
+                                tagColor: 'text-gray-700 bg-gray-50 border-gray-100', views: '—', saves: 0,
+                                desc: 'AI-powered revenue financing platform for SaaS companies in Southeast Asia.',
+                                rev: '$0', revGrow: '', waitlist: '0', tags: ['SaaS', 'Fintech', 'AI'],
+                                logo: 'L', color: 'from-gray-500 to-gray-700', cover: 'from-gray-900/10 to-transparent', label: '',
+                                allTimeRev: '$0', mrr: '$0', founder: 'Ellie Liu', founderFollowers: undefined,
+                                websiteUrl: 'https://loka.finance', founded: '2021', country: 'Singapore',
+                                slug: 'loka-technologies', profitMargin: '-',
+                              }
+                            }
+                          })}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-gray-200 hover:bg-gray-50 transition-all shrink-0"
+                          style={{ color: 'oklch(40% 0.02 260)' }}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                          View
+                        </button>
                       </div>
                     </div>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'oklch(55% 0.01 250)' }}>Singapore · Founded 2021 · SaaS</p>
                   </div>
                 </div>
-              ) : verifyStep === 1 ? (
-                /* ── Step 2: KYC / UBO ── */
-                <div className="space-y-4">
-                  <div className="text-center mb-2">
-                    <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" /></svg>
-                    </div>
-                    <h4 className="text-[14px] font-bold text-gray-900">KYC / UBO Verification</h4>
-                    <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Declare beneficial owners with ≥ 25% stake and upload identity documents</p>
+
+                <div className="h-px bg-gray-100 mb-1" />
+
+                <div className="space-y-0 divide-y divide-gray-100">
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-[11px] text-gray-400 font-medium">Company Name</span>
+                    <span className="text-[13px] font-bold text-black">Loka Technologies Pte Ltd</span>
                   </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Full Legal Name</label>
-                      <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="Your legal name" />
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-[11px] text-gray-400 font-medium">Country / Region</span>
+                    <span className="text-[13px] font-bold text-black">Singapore</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-[11px] text-gray-400 font-medium">Registration No.</span>
+                    <span className="text-[13px] font-bold text-black">202312345A</span>
+                  </div>
+                  <div className="flex items-start justify-between py-3 gap-4">
+                    <span className="text-[11px] text-gray-400 font-medium shrink-0">Description</span>
+                    <span className="text-[12px] text-gray-700 text-right leading-relaxed">AI-powered revenue financing platform for SaaS companies in Southeast Asia.</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-[11px] text-gray-400 font-medium">Founded</span>
+                    <span className="text-[13px] font-bold text-black">2021</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-[11px] text-gray-400 font-medium">Website</span>
+                    <a href="#" className="text-[12px] font-semibold" style={{ color: 'oklch(40% 0.08 260)' }}>loka.finance</a>
+                  </div>
+                  <div className="flex items-start justify-between py-3 gap-4">
+                    <span className="text-[11px] text-gray-400 font-medium shrink-0">Categories</span>
+                    <div className="flex flex-wrap gap-1.5 justify-end">
+                      {['SaaS', 'Fintech', 'AI'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-[10px] font-semibold rounded-full border border-gray-200 text-gray-500">{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 sm:gap-3 flex-wrap">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 rounded-full border border-violet-100">
+                    <span className="text-xs">🔗</span>
+                    <span className="text-[10px] font-bold text-violet-600">Verified Issuer</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-full border border-green-100">
+                    <span className="text-xs">🪪</span>
+                    <span className="text-[10px] font-bold text-green-600">KYC Verified</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Fundraising Status */}
+              <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-5 gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
                     </div>
                     <div>
-                      <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Nationality</label>
-                      <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="e.g. Singaporean" />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 mb-1 block">ID Document</label>
-                      <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                        <p className="text-[11px] font-medium text-gray-400">Upload Passport or National ID</p>
-                        <p className="text-[10px] text-gray-300 mt-0.5">Front + back, PDF / JPG / PNG</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2.5 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                      <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      <p className="text-[10px] text-amber-700 leading-relaxed">All shareholders with ≥ 25% ownership must complete individual KYC. Additional owners can be added after submission.</p>
+                      <h2 className="text-[15px] font-semibold text-gray-900">Fundraising</h2>
+                      <p className="text-[10px] text-gray-400 font-medium">Company fundraising status</p>
                     </div>
                   </div>
-                </div>
-              ) : verifyStep === 2 ? (
-                /* ── Step 3: Company Profile ── */
-                <div className="space-y-4">
-                  <div className="text-center mb-2">
-                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                    </div>
-                    <h4 className="text-[14px] font-bold text-gray-900">Company Profile</h4>
-                    <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Help investors understand your company</p>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Description</label>
-                      <textarea rows={3} className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors resize-none" placeholder="What does your company do? What problem does it solve?" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Founded Year</label>
-                        <input type="number" min="1900" max="2025" className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="2021" />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">City / Location</label>
-                        <input className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="San Francisco" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Website</label>
-                      <input type="url" className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors" placeholder="https://yourcompany.com" />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Category Tags</label>
-                      <div className="flex flex-wrap gap-1.5 mt-1">
-                        {['SaaS', 'AI', 'Health', 'Marketing', 'Content', 'Education', 'E-commerce', 'Fintech'].map(tag => (
-                          <button key={tag} className="px-2.5 py-1 text-[10px] font-semibold border border-gray-200 rounded-full text-gray-500 hover:border-gray-900 hover:text-gray-900 hover:bg-gray-50 transition-all">{tag}</button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : verifyStep === 3 ? (
-                /* ── Step 4: Connect Stripe ── */
-                <div className="space-y-4">
-                  <div className="text-center mb-2">
-                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    </div>
-                    <h4 className="text-[14px] font-bold text-gray-900">Connect Stripe</h4>
-                    <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Authorize read-only access to verify your revenue. Investors will see live MRR and growth data.</p>
-                  </div>
-
-                  {!stripeConnected ? (
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => {
-                          setStripeConnecting(true);
-                          // Stripe Connect OAuth placeholder
-                          // In production: window.location.href = `/api/stripe/connect/oauth?state=...`
-                          setTimeout(() => { setStripeConnecting(false); setStripeConnected(true); }, 2000);
-                        }}
-                        disabled={stripeConnecting}
-                        className="w-full py-3 flex items-center justify-center gap-2.5 bg-[#635BFF] text-white text-[13px] font-semibold rounded-xl hover:bg-[#4F46E5] transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {stripeConnecting ? (
-                          <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Connecting…</>
-                        ) : (
-                          <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.583L20 4.114A18.22 18.22 0 0 0 12.581 2c-3.099 0-5.47 1.498-6.27 3.895-.254.754-.36 1.537-.293 2.344.065.808.318 1.565.742 2.217.854 1.318 2.296 2.089 4.044 2.695 1.927.658 3.095 1.282 3.095 2.303 0 .914-.817 1.481-2.179 1.481-1.876 0-4.153-.742-5.943-1.836l-1.756 3.404C6.05 20.148 9.02 21.5 12.311 21.5c3.408 0 6.056-1.548 6.721-4.078.181-.688.24-1.393.175-2.097-.065-.706-.283-1.384-.65-1.994-.707-1.17-2.014-1.9-4.581-2.181z"/></svg>Connect with Stripe</>
-                        )}
-                      </button>
-                      <div className="flex items-start gap-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                        <svg className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        <p className="text-[10px] text-gray-500 leading-relaxed">OAuth read-only access. We never store your Stripe secret key. You can revoke access at any time from your Stripe Dashboard.</p>
-                      </div>
-                    </div>
+                  {/* Toggle: show Active badge only when fundraising is active */}
+                  {false /* replace with fundraising state */ ? (
+                    <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-200/50">● Active</span>
                   ) : (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-100 mb-3">
-                        <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                        <p className="text-[11px] font-semibold text-green-700">Stripe account connected successfully</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Revenue Preview</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-500">MRR</span>
-                          <span className="text-[12px] font-bold text-gray-900">$28,400</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-500">Last 30d Revenue</span>
-                          <span className="text-[12px] font-bold text-gray-900">$31,200</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-500">Active Subscriptions</span>
-                          <span className="text-[12px] font-bold text-gray-900">1,247</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-500">MoM Growth</span>
-                          <span className="text-[12px] font-bold text-green-600">+12.4%</span>
-                        </div>
-                      </div>
-                    </div>
+                    <span className="px-2.5 py-1 bg-gray-50 text-gray-400 text-[10px] font-bold rounded-full border border-gray-200">Not Started</span>
                   )}
                 </div>
-              ) : (
-                /* ── Step 5: Receive Verified Badge ── */
-                <div className="space-y-4">
-                  <div className="text-center mb-2">
-                    <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>
+
+                {/* State A: Active fundraising */}
+                {false /* replace with fundraising state */ ? (
+                  <>
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-[10px] text-gray-400 font-medium mb-1">Target</p>
+                        <p className="text-[15px] font-bold text-gray-900">$500,000</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-[10px] text-gray-400 font-medium mb-1">Raised</p>
+                        <p className="text-[15px] font-bold text-green-600">$375,000</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-[10px] text-gray-400 font-medium mb-1">APY / Term</p>
+                        <p className="text-[15px] font-bold text-gray-900">15.5% <span className="text-[11px] font-medium text-gray-400">60d</span></p>
+                      </div>
                     </div>
-                    <h4 className="text-[14px] font-bold text-gray-900">Receive Verified Badge</h4>
-                    <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">All checks passed. Activate your Verified Issuer badge to start fundraising on Loka.</p>
+                    <div className="mb-4">
+                      <div className="flex justify-between mb-1.5">
+                        <span className="text-[10px] text-gray-400 font-medium">Progress</span>
+                        <span className="text-[10px] font-bold text-gray-900">75% funded</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 rounded-full" style={{ width: '75%' }} />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-400">Fundraising closes in <span className="font-semibold text-gray-700">18 days</span></p>
+                  </>
+                ) : (
+                  /* State B: No fundraising yet — empty state */
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ background: 'oklch(96% 0.01 250)' }}>
+                      <svg className="w-6 h-6" style={{ color: 'oklch(55% 0.01 250)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-[13px] font-semibold mb-1" style={{ color: 'oklch(30% 0.02 260)' }}>No active fundraising</p>
+                    <p className="text-[11px] leading-relaxed max-w-[260px] mx-auto mb-5" style={{ color: 'oklch(58% 0.01 250)' }}>
+                      Create your first fundraising round to start accepting investments from Loka's investor network.
+                    </p>
+                    <button
+                      onClick={() => {
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed top-4 right-4 z-[200] px-5 py-3 rounded-xl shadow-lg text-[13px] font-semibold text-white';
+                        toast.style.background = 'oklch(30% 0.03 260)';
+                        toast.style.transform = 'translateX(120%)';
+                        toast.style.transition = 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s';
+                        toast.textContent = '🚀 Coming Soon';
+                        document.body.appendChild(toast);
+                        requestAnimationFrame(() => { toast.style.transform = 'translateX(0)'; });
+                        setTimeout(() => { toast.style.transform = 'translateX(120%)'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2500);
+                      }}
+                      className="px-6 py-2.5 text-white text-[12px] font-semibold rounded-xl transition-all active:scale-[0.98]"
+                      style={{ background: 'oklch(30% 0.03 260)' }}
+                    >
+                      Create Fundraising Round
+                    </button>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-400">KYC Status</span>
-                      <span className="text-[11px] font-semibold text-green-600">✓ Approved</span>
+                )}
+              </section>
+
+              {/* Repayment Records — only show when data exists */}
+              {Object.keys(enterpriseDeductions).length > 0 && (
+                <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-400">Business License</span>
-                      <span className="text-[11px] font-semibold text-green-600">✓ Verified</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-400">Company Profile</span>
-                      <span className="text-[11px] font-semibold text-green-600">✓ Complete</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-400">Stripe Revenue</span>
-                      <span className="text-[11px] font-semibold text-green-600">{stripeConnected ? '✓ Connected' : '— Skipped'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-400">Badge Type</span>
-                      <span className="text-[11px] font-semibold text-gray-900">Verified Issuer</span>
+                    <div>
+                      <h2 className="text-[15px] font-semibold text-gray-900">Repayment Records</h2>
+                      <p className="text-[10px] text-gray-400 font-medium">Auto-deducted from revenue for investor repayments</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                    <svg className="w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <p className="text-[10px] text-blue-700">Your Verified badge will be displayed on your company profile and visible to all investors.</p>
+
+                  <div className="space-y-4">
+                    {Object.entries(enterpriseDeductions).map(([projectId, { schedule, project }]) => {
+                      const paidPeriods = schedule.filter(s => s.status === 'paid');
+                      const totalDeducted = paidPeriods.reduce((sum, s) => sum + s.paidAmount, 0);
+                      const totalPeriods = schedule.length;
+                      const overduePeriods = schedule.filter(s => s.status === 'overdue');
+
+                      return (
+                        <div key={projectId} className="border border-gray-100 rounded-2xl overflow-hidden">
+                          <div className="p-4 bg-gray-50/50 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center font-black text-white text-xs shrink-0">
+                                {(project.title || 'P')[0]}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-black truncate">{project.title || projectId}</h4>
+                                <p className="text-[9px] text-gray-400">{paidPeriods.length}/{totalPeriods} periods deducted</p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-black text-black">${totalDeducted.toLocaleString()}</p>
+                              <p className="text-[9px] text-gray-400">total deducted</p>
+                            </div>
+                          </div>
+
+                          {overduePeriods.length > 0 && (
+                            <div className="px-4 py-2.5 bg-red-50 border-t border-red-100 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                              <p className="text-[10px] font-bold text-red-600">
+                                {overduePeriods.length} period{overduePeriods.length > 1 ? 's' : ''} pending — revenue shortfall detected
+                              </p>
+                            </div>
+                          )}
+
+                          {paidPeriods.length > 0 && (
+                            <div className="divide-y divide-gray-50">
+                              {paidPeriods.slice(-5).reverse().map((s) => (
+                                <div key={s.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50 transition-colors">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                    </div>
+                                    <div>
+                                      <p className="text-[11px] font-bold text-black">Period {s.periodNumber}</p>
+                                      <p className="text-[9px] text-gray-400">{s.paidAt ? new Date(s.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[11px] font-bold text-black">-${s.paidAmount.toFixed(2)}</p>
+                                    <p className="text-[9px] text-gray-400">P: ${s.principalDue.toFixed(2)} + I: ${s.interestDue.toFixed(2)}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                </section>
               )}
-            </div>
+            </>}
 
             {/* Footer */}
             {!verifyDone && (
@@ -1063,8 +1148,9 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
 
       {/* ── Credit Info Modal ── */}
       {showCreditModal && (
@@ -1451,8 +1537,8 @@ const InvitationCodesModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                 <button
                   onClick={() => handleCopy(c.code)}
                   className={`px-3 py-1.5 text-[10px] font-bold rounded-xl transition-all ${copiedCode === c.code
-                      ? 'bg-[#00E676]/10 text-[#00C853] border border-[#00E676]/30'
-                      : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300 hover:text-black'
+                    ? 'bg-[#00E676]/10 text-[#00C853] border border-[#00E676]/30'
+                    : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300 hover:text-black'
                     }`}
                 >
                   {copiedCode === c.code ? '✓ Copied' : 'Copy'}
@@ -1561,9 +1647,9 @@ const EditProfilePage: React.FC<{
 
           <div>
             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Name</label>
-            <input 
-              type="text" 
-              value={data.name} 
+            <input
+              type="text"
+              value={data.name}
               onChange={e => setData({ ...data, name: e.target.value })}
               placeholder="Your display name"
               className="w-full py-3.5 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-black placeholder-gray-400 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all font-medium"
@@ -1572,8 +1658,8 @@ const EditProfilePage: React.FC<{
 
           <div>
             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Bio <span className="text-[9px] text-gray-400 lowercase">(Optional)</span></label>
-            <textarea 
-              value={data.bio} 
+            <textarea
+              value={data.bio}
               onChange={e => setData({ ...data, bio: e.target.value })}
               placeholder="A short description about yourself..."
               rows={4}
@@ -1584,9 +1670,9 @@ const EditProfilePage: React.FC<{
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Twitter / X URL <span className="text-[9px] text-gray-400 lowercase">(Optional)</span></label>
-              <input 
-                type="text" 
-                value={data.twitter} 
+              <input
+                type="text"
+                value={data.twitter}
                 onChange={e => setData({ ...data, twitter: e.target.value })}
                 placeholder="https://x.com/username"
                 className="w-full py-3.5 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-black placeholder-gray-400 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all font-medium"
@@ -1594,16 +1680,16 @@ const EditProfilePage: React.FC<{
             </div>
             <div>
               <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">LinkedIn URL <span className="text-[9px] text-gray-400 lowercase">(Optional)</span></label>
-              <input 
-                type="text" 
-                value={data.linkedin} 
+              <input
+                type="text"
+                value={data.linkedin}
                 onChange={e => setData({ ...data, linkedin: e.target.value })}
                 placeholder="https://linkedin.com/in/username"
                 className="w-full py-3.5 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-black placeholder-gray-400 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all font-medium"
               />
             </div>
           </div>
-          
+
           <div>
             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Other Website <span className="text-[9px] text-gray-400 lowercase">(Optional)</span></label>
             <input 
