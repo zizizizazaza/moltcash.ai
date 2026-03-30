@@ -1960,6 +1960,413 @@ const ChatsPage: React.FC = () => {
   );
 };
 
+// ── Create Agent Modal ──────────────────────────────────────────────────────
+const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  type AgentType = 'single' | 'multi';
+  type MultiMode = 'loka' | 'mirrorfish' | null;
+  type Visibility = 'public' | 'group' | 'private';
+  type Pricing = 'free' | 'subscription' | 'pay_per_use';
+  type Step = 'type' | 'behavior' | 'info' | 'publish';
+
+  const STEPS: Step[] = ['type', 'behavior', 'info', 'publish'];
+  const STEP_LABELS: Record<Step, string> = {
+    type: 'Agent Type',
+    behavior: 'Behavior',
+    info: 'Basic Info',
+    publish: 'Publish',
+  };
+
+  const [step, setStep] = useState<Step>('type');
+  const [agentType, setAgentType] = useState<AgentType>('single');
+  const [multiMode, setMultiMode] = useState<MultiMode>(null);
+  const [model, setModel] = useState('gpt-4o');
+  const [prompt, setPrompt] = useState('');
+  const [capabilities, setCapabilities] = useState<Set<string>>(new Set());
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  const [category, setCategory] = useState('Research');
+  const [visibility, setVisibility] = useState<Visibility>('public');
+  const [pricing, setPricing] = useState<Pricing>('free');
+  const [premiumPrice, setPremiumPrice] = useState('');
+
+  const stepIdx = STEPS.indexOf(step);
+  const canNext = step === 'type'
+    ? (agentType === 'single' || multiMode !== null)
+    : step === 'behavior'
+    ? (agentType === 'multi' && multiMode === 'mirrorfish' ? true : prompt.trim().length > 0)
+    : step === 'info'
+    ? name.trim().length > 0
+    : true;
+
+  const MODELS = [
+    { id: 'gpt-4o', label: 'GPT-4o', note: 'Smart', cost: '0.03 AIUSD/msg' },
+    { id: 'claude-3-5', label: 'Claude 3.5', note: 'Balanced', cost: '0.02 AIUSD/msg' },
+    { id: 'loka-fast', label: 'Loka Fast', note: 'Lite', cost: '0.005 AIUSD/msg' },
+  ];
+  const CATEGORIES = ['Research', 'Risk', 'DeFi', 'Portfolio', 'Macro', 'Prediction'];
+  const CAPS = ['Web Search', 'File Analysis', 'On-chain Data', 'Chart Generation'];
+
+  const toggleCap = (c: string) =>
+    setCapabilities(prev => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
+
+  const next = () => {
+    const idx = STEPS.indexOf(step);
+    if (idx < STEPS.length - 1) setStep(STEPS[idx + 1]);
+  };
+  const prev = () => {
+    const idx = STEPS.indexOf(step);
+    if (idx > 0) setStep(STEPS[idx - 1]);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            {stepIdx > 0 && (
+              <button onClick={prev} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+            )}
+            <div>
+              <h2 className="text-[15px] font-bold text-gray-900">Create Agent</h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">Step {stepIdx + 1} of 4 — {STEP_LABELS[step]}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-1.5">
+              {STEPS.map((s, i) => (
+                <div key={s} className={`w-1.5 h-1.5 rounded-full transition-all ${i <= stepIdx ? 'bg-gray-900' : 'bg-gray-200'}`} />
+              ))}
+            </div>
+            <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 max-h-[70vh] overflow-y-auto">
+
+          {/* ── Step 1: Agent Type ── */}
+          {step === 'type' && (
+            <div className="space-y-3">
+              <p className="text-[12px] text-gray-400 mb-4">Choose how your agent operates. You can always change this later.</p>
+              <button
+                onClick={() => { setAgentType('single'); setMultiMode(null); }}
+                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  agentType === 'single' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[13px] font-bold text-gray-900">Single Agent</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">A standalone AI with a custom persona, instructions, and tools. Best for focused tasks.</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 mt-1 transition-all shrink-0 ${agentType === 'single' ? 'border-gray-900 bg-gray-900' : 'border-gray-300'}`}>
+                    {agentType === 'single' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-0.5" />}
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setAgentType('multi')}
+                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  agentType === 'multi' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-bold text-gray-900">Multi-Agent</p>
+                      <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-md">Advanced</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">Multiple agents collaborate to deliver better results. Choose a collaboration mode below.</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 mt-1 transition-all shrink-0 ${agentType === 'multi' ? 'border-gray-900 bg-gray-900' : 'border-gray-300'}`}>
+                    {agentType === 'multi' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-0.5" />}
+                  </div>
+                </div>
+              </button>
+
+              {agentType === 'multi' && (
+                <div className="ml-4 space-y-2 mt-1">
+                  {([
+                    { id: 'loka' as const, icon: '🔗', label: 'Loka Collaboration', desc: 'Agents cross-verify each other to maximize accuracy and reliability.' },
+                    { id: 'mirrorfish' as const, icon: '🔭', label: 'MirrorFish Mode', desc: 'Prediction-focused reasoning. Best for trend forecasting and probability estimates.', badge: 'Prediction' },
+                  ]).map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setMultiMode(m.id)}
+                      className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
+                        multiMode === m.id ? 'border-violet-400 bg-violet-50/60' : 'border-gray-100 hover:border-gray-200 bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">{m.icon}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[12px] font-bold text-gray-800">{m.label}</p>
+                            {(m as any).badge && <span className="text-[9px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">{(m as any).badge}</span>}
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5 leading-relaxed">{m.desc}</p>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${
+                          multiMode === m.id ? 'border-violet-500 bg-violet-500' : 'border-gray-300'
+                        }`}>
+                          {multiMode === m.id && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-0.5" />}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Step 2: Behavior ── */}
+          {step === 'behavior' && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 block">Model</label>
+                <div className="space-y-2">
+                  {MODELS.map(m => (
+                    <button key={m.id} onClick={() => setModel(m.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                        model === m.id ? 'border-gray-900' : 'border-gray-100 hover:border-gray-200'
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${
+                        m.id === 'gpt-4o' ? 'bg-green-500' : m.id === 'claude-3-5' ? 'bg-violet-500' : 'bg-blue-400'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="text-[12px] font-bold text-gray-900">{m.label}</p>
+                        <p className="text-[10px] text-gray-400">{m.note}</p>
+                      </div>
+                      <span className="text-[10px] font-semibold text-gray-400">{m.cost}</span>
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${
+                        model === m.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
+                      }`}>
+                        {model === m.id && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(agentType === 'single' || multiMode === 'loka') && (
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 block">System Prompt</label>
+                  <textarea
+                    value={prompt}
+                    onChange={e => setPrompt(e.target.value)}
+                    placeholder={agentType === 'multi'
+                      ? 'Describe the primary agent role in this collaboration...'
+                      : 'You are a financial research assistant specialized in DeFi protocols. Analyze data objectively and cite sources...'}
+                    className="w-full h-32 px-3 py-2.5 rounded-xl border border-gray-200 text-[12px] text-gray-800 placeholder-gray-300 focus:outline-none focus:border-gray-400 resize-none leading-relaxed"
+                  />
+                </div>
+              )}
+
+              {agentType === 'multi' && multiMode === 'mirrorfish' && (
+                <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                  <div className="flex items-start gap-2">
+                    <span className="text-base mt-0.5">🔭</span>
+                    <div>
+                      <p className="text-[12px] font-bold text-amber-800">MirrorFish Prediction Engine</p>
+                      <p className="text-[11px] text-amber-600 mt-1 leading-relaxed">Configuration coming soon. MirrorFish agents use ensemble forecasting models — no custom prompt required.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 block">Capabilities</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CAPS.map(c => (
+                    <button key={c} onClick={() => toggleCap(c)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all ${
+                        capabilities.has(c) ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
+                    >
+                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${
+                        capabilities.has(c) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'
+                      }`}>
+                        {capabilities.has(c) && <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-700">{c}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Basic Info ── */}
+          {step === 'info' && (
+            <div className="space-y-4">
+              <div className="flex justify-center mb-2">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center text-2xl cursor-pointer hover:scale-105 transition-transform shadow-md">
+                  {name ? name[0].toUpperCase() : '🤖'}
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Name *</label>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. DeFi Research Pro"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-[13px] text-gray-800 placeholder-gray-300 focus:outline-none focus:border-gray-400" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Description</label>
+                <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="A short description to help others understand what this agent does..."
+                  className="w-full h-20 px-3 py-2.5 rounded-xl border border-gray-200 text-[12px] text-gray-800 placeholder-gray-300 focus:outline-none focus:border-gray-400 resize-none" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Category</label>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(c => (
+                    <button key={c} onClick={() => setCategory(c)}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
+                        category === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}>{c}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 4: Publish ── */}
+          {step === 'publish' && (
+            <div className="space-y-5">
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 block">Visibility</label>
+                <div className="space-y-2">
+                  {([
+                    { id: 'public' as const, icon: '🌐', label: 'Public', desc: 'Anyone on Loka can discover and use this agent.' },
+                    { id: 'group' as const, icon: '👥', label: 'Group', desc: 'Only members of your groups can access this agent.' },
+                    { id: 'private' as const, icon: '🔒', label: 'Private', desc: 'Only you can see and use this agent.' },
+                  ]).map(v => (
+                    <button key={v.id} onClick={() => setVisibility(v.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                        visibility === v.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
+                    >
+                      <span className="text-base">{v.icon}</span>
+                      <div className="flex-1">
+                        <p className="text-[12px] font-bold text-gray-900">{v.label}</p>
+                        <p className="text-[10px] text-gray-400">{v.desc}</p>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${
+                        visibility === v.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
+                      }`}>
+                        {visibility === v.id && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 block">Creator Premium</label>
+                <div className="space-y-2">
+                  <button onClick={() => setPricing('free')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                      pricing === 'free' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                    }`}>
+                    <div className="flex-1">
+                      <p className="text-[12px] font-bold text-gray-900">Free</p>
+                      <p className="text-[10px] text-gray-400">Users only pay the model base cost. No extra charge from you.</p>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${pricing === 'free' ? 'border-gray-900 bg-gray-900' : 'border-gray-200'}`}>
+                      {pricing === 'free' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
+                    </div>
+                  </button>
+                  <button onClick={() => setPricing('subscription')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                      pricing === 'subscription' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                    }`}>
+                    <div className="flex-1">
+                      <p className="text-[12px] font-bold text-gray-900">Subscription</p>
+                      <p className="text-[10px] text-gray-400">Users pay a monthly fee to access your agent.</p>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${pricing === 'subscription' ? 'border-gray-900 bg-gray-900' : 'border-gray-200'}`}>
+                      {pricing === 'subscription' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
+                    </div>
+                  </button>
+                  {pricing === 'subscription' && (
+                    <div className="ml-4 flex items-center gap-2">
+                      <input type="number" value={premiumPrice} onChange={e => setPremiumPrice(e.target.value)}
+                        placeholder="0.00" className="w-24 px-3 py-1.5 rounded-lg border border-gray-200 text-[12px] text-gray-800 focus:outline-none focus:border-gray-400" />
+                      <span className="text-[11px] text-gray-400 font-medium">AIUSD / month</span>
+                    </div>
+                  )}
+                  <button onClick={() => setPricing('pay_per_use')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                      pricing === 'pay_per_use' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                    }`}>
+                    <div className="flex-1">
+                      <p className="text-[12px] font-bold text-gray-900">Pay per use</p>
+                      <p className="text-[10px] text-gray-400">Charge an extra fee on top of model cost per message.</p>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${pricing === 'pay_per_use' ? 'border-gray-900 bg-gray-900' : 'border-gray-200'}`}>
+                      {pricing === 'pay_per_use' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
+                    </div>
+                  </button>
+                  {pricing === 'pay_per_use' && (
+                    <div className="ml-4 flex items-center gap-2">
+                      <input type="number" value={premiumPrice} onChange={e => setPremiumPrice(e.target.value)}
+                        placeholder="0.00" className="w-24 px-3 py-1.5 rounded-lg border border-gray-200 text-[12px] text-gray-800 focus:outline-none focus:border-gray-400" />
+                      <span className="text-[11px] text-gray-400 font-medium">AIUSD / message</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">User cost preview</p>
+                <p className="text-[12px] text-gray-600">
+                  ~{MODELS.find(m => m.id === model)?.cost ?? '—'}
+                  {pricing !== 'free' && premiumPrice ? ` + ${premiumPrice} AIUSD creator premium` : ''}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 flex justify-between items-center">
+          <button onClick={onClose} className="text-[12px] font-medium text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
+          {step === 'publish' ? (
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-bold transition-all active:scale-[0.98]"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+              Publish Agent
+            </button>
+          ) : (
+            <button
+              onClick={next}
+              disabled={!canNext}
+              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Continue
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ── Discover Page Data ── */
 const DISCOVER_GROUPS = [
   { id: 1, name: 'DeFi Alpha Hunters', desc: 'Find early DeFi opportunities and yield strategies', members: 1240, letter: 'D', color: 'bg-blue-100 text-blue-600' },
@@ -2664,12 +3071,15 @@ const ContactsPage: React.FC = () => {
 const DiscoverPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Agents' | 'People' | 'Groups'>('Agents');
   const [agentCat, setAgentCat] = useState('All');
+  const [showCreateAgent, setShowCreateAgent] = useState(false);
 
   const tabs = ['Agents', 'People', 'Groups'] as const;
 
   const filteredAgents = agentCat === 'All' ? DISCOVER_AGENTS : DISCOVER_AGENTS.filter(a => a.category === agentCat);
 
   return (
+    <>
+    {showCreateAgent && <CreateAgentModal onClose={() => setShowCreateAgent(false)} />}
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
       <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full min-h-full">
         {/* Header + Tabs */}
@@ -2720,6 +3130,13 @@ const DiscoverPage: React.FC = () => {
                   className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${agentCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                     }`}>{c}</button>
               ))}
+              <button
+                onClick={() => setShowCreateAgent(true)}
+                className="ml-auto px-3 py-1.5 rounded-full text-[12px] font-medium bg-gray-900 text-white hover:bg-gray-800 transition-all flex items-center gap-1.5"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
+                Create Agent
+              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {filteredAgents.map(a => {
@@ -2814,6 +3231,7 @@ const DiscoverPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
