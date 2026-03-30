@@ -332,9 +332,9 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
   const maxAmount = Math.max(...(project.monthlyData || []).map(d => d.amount), 1);
 
   return (
-    <div className="animate-fadeIn min-h-screen bg-white">
-      {/* ── HEADER ── white, clean border bottom */}
-      <div className="bg-white">
+    <div className="flex-1 flex flex-col animate-fadeIn min-h-screen bg-gray-50 md:bg-gray-100/80">
+      {/* ── HEADER ── */}
+      <div className="bg-transparent border-b-0 border-transparent">
         <div className="px-4 sm:px-8 md:px-12 pt-5 pb-6 max-w-[1100px] mx-auto">
           {/* Back Nav */}
           <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group mb-5">
@@ -382,12 +382,12 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
 
           {/* ── 4-column KPI cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+            <div className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-gray-200 hover:shadow-md transition-all">
               <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">ALL-TIME REVENUE</p>
               <p className="text-lg sm:text-xl font-black text-black truncate">{project.allTimeRev || '—'}</p>
               <p className="text-[10px] text-gray-400 font-medium mt-1">Profit margin: {project.profitMargin || '—'}</p>
             </div>
-            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+            <div className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-gray-200 hover:shadow-md transition-all">
               <div className="flex items-center gap-1 mb-1.5">
                 <p className="text-[10px] font-bold text-gray-400 tracking-widest">MRR (VERIFIED)</p>
                 <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -395,7 +395,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
               <p className="text-lg sm:text-xl font-black text-black truncate">{project.mrr && project.mrr !== '$0' ? project.mrr : '—'}</p>
               <p className="text-[10px] text-gray-400 font-medium mt-1">Stripe API</p>
             </div>
-            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+            <div className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-gray-200 hover:shadow-md transition-all">
               <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">FOUNDER</p>
               <div className="flex items-center gap-2">
                 {project.founderAvatarUrl ? (
@@ -413,7 +413,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                 </p>
               )}
             </div>
-            <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+            <div className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-gray-200 hover:shadow-md transition-all">
               <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">GROWTH (30D)</p>
               <p className={`text-lg sm:text-xl font-black ${project.revGrow ? 'text-emerald-500' : 'text-gray-300'}`}>{project.revGrow || '—'}</p>
             </div>
@@ -446,7 +446,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
         <div className="py-4">
           {/* ── Background Tab ── */}
           {activeTab === 'STORY' && (
-            <div className="space-y-8 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 md:p-10 border border-gray-100 shadow-sm animate-fadeIn space-y-8">
 
               {/* ── Company Info Tags ── */}
               <div className="flex flex-wrap items-center gap-2">
@@ -494,9 +494,9 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
               {(project.valueProposition || project.problemSolved) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {project.valueProposition && (
-                    <div className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md hover:border-gray-200 transition-all">
+                    <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-5 hover:bg-gray-50 transition-all">
                       <div className="flex items-center gap-2 mb-2.5">
-                        <div className="w-7 h-7 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center text-blue-500">
+                        <div className="w-7 h-7 bg-blue-100/50 border border-blue-100 rounded-xl flex items-center justify-center text-blue-500">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                         </div>
                         <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Value Proposition</p>
@@ -505,9 +505,9 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                     </div>
                   )}
                   {project.problemSolved && (
-                    <div className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md hover:border-gray-200 transition-all">
+                    <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-5 hover:bg-gray-50 transition-all">
                       <div className="flex items-center gap-2 mb-2.5">
-                        <div className="w-7 h-7 bg-purple-50 border border-purple-100 rounded-xl flex items-center justify-center text-purple-500">
+                        <div className="w-7 h-7 bg-purple-100/50 border border-purple-100 rounded-xl flex items-center justify-center text-purple-500">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
                         <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Problem Solved</p>
@@ -521,7 +521,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
               {/* ── Founder Card ── */}
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-3">Founder</h3>
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="bg-gray-50/50 rounded-2xl border border-gray-100/50 overflow-hidden">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-6">
                     <div className="flex items-center gap-4 min-w-0">
                       {project.founderAvatarUrl ? (
@@ -609,7 +609,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                     };
                     const ac = accentMap[item.accent] || accentMap.gray;
                     return (
-                      <div key={item.label} className="bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-md hover:border-gray-200 transition-all">
+                      <div key={item.label} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-4 hover:bg-gray-50 transition-all">
                         <div className={`w-8 h-8 ${ac.bg} ${ac.border} border rounded-xl flex items-center justify-center mb-3 ${ac.iconColor}`}>{item.icon}</div>
                         <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-1">{item.label}</p>
                         <p className={`text-sm font-black ${ac.text} leading-tight`}>{item.value}</p>
@@ -618,7 +618,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                   })}
                   {/* Tech Stack — full-width row */}
                   {project.techStack && project.techStack.length > 0 && (
-                    <div className="col-span-2 sm:col-span-3 lg:col-span-4 bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-md hover:border-gray-200 transition-all">
+                    <div className="col-span-2 sm:col-span-3 lg:col-span-4 bg-gray-50/50 border border-gray-100/50 rounded-2xl p-4 hover:bg-gray-50 transition-all">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-7 h-7 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-gray-400">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
@@ -682,7 +682,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
               title: string; value: string | undefined; growth?: string; color: string;
               gradientId: string; data: { day: number; value: number; prevValue: number }[]; label: string;
             }) => (
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 hover:shadow-md transition-all">
+              <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-5 sm:p-6 hover:shadow-md transition-all">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1">{title}</p>
@@ -725,7 +725,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
             );
 
             return (
-              <div className="space-y-6 animate-fadeIn">
+              <div className="bg-white rounded-3xl p-6 md:p-10 border border-gray-100 shadow-sm animate-fadeIn space-y-6">
                 {/* Summary row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
@@ -734,7 +734,7 @@ const PotentialProjectDetail: React.FC<{ project: PotProject; onClose: () => voi
                     { label: 'ALL-TIME', value: project.allTimeRev, sub: 'Total revenue', subColor: 'text-gray-400' },
                     { label: 'PROFIT MARGIN', value: project.profitMargin && project.profitMargin !== '-' ? project.profitMargin : undefined, sub: project.activeSubscriptions != null ? `${project.activeSubscriptions.toLocaleString()} subs` : undefined, subColor: 'text-gray-400' },
                   ].map(card => (
-                    <div key={card.label} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all">
+                    <div key={card.label} className="bg-gray-50/50 rounded-2xl border border-gray-100/50 p-4 hover:shadow-md transition-all">
                       <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-1.5">{card.label}</p>
                       <p className="text-lg sm:text-xl font-black text-black tracking-tight truncate">{card.value || '—'}</p>
                       {card.sub && <p className={`text-[10px] font-bold mt-1 ${card.subColor}`}>{card.sub}</p>}
@@ -1436,15 +1436,37 @@ const Market: React.FC = () => {
 
           {/* Loading & Empty states */}
           {trustmrrLoading && (
-            <div className="text-center py-16">
-              <div className="inline-block w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mb-3" />
-              <p className="text-sm text-gray-400 font-medium">Loading startups from TrustMRR...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 bg-gray-100 rounded-full w-3/5" />
+                      <div className="h-2.5 bg-gray-100 rounded-full w-2/5" />
+                    </div>
+                    <div className="h-5 w-14 bg-gray-100 rounded-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-2.5 bg-gray-100 rounded-full w-full" />
+                    <div className="h-2.5 bg-gray-100 rounded-full w-4/5" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map(j => (
+                      <div key={j} className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+                        <div className="h-2 bg-gray-100 rounded-full w-3/4 mx-auto" />
+                        <div className="h-3.5 bg-gray-100 rounded-full w-2/3 mx-auto" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
           {!trustmrrLoading && trustmrrStartups.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-sm text-gray-400 font-medium">No startups available. Check your connection.</p>
+              <p className="text-sm text-gray-400 font-medium">No companies available right now.</p>
             </div>
           )}
 
@@ -1824,11 +1846,11 @@ const AssetDetail: React.FC<{ asset: MarketAsset; onClose: () => void; onInveste
   };
 
   return (
-    <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full bg-white">
+    <div className="animate-fadeIn pb-32 p-4 sm:p-6 md:p-10 lg:p-12 max-w-[1100px] mx-auto w-full min-h-full">
       {/* Back Navigation */}
       <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-bold text-gray-400 hover:text-black transition-colors group mb-6 sm:mb-8">
         <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-        Invest
+        Market
       </button>
 
       {/* Header Section */}
