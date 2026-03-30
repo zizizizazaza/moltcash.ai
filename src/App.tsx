@@ -40,6 +40,7 @@ const I = {
   Moon: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>,
   Sun: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>,
   LogOut: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>,
+  Building: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M12 6h.01" /><path d="M12 10h.01" /><path d="M12 14h.01" /><path d="M16 10h.01" /><path d="M16 14h.01" /><path d="M8 10h.01" /><path d="M8 14h.01" /></svg>,
 };
 
 /* Hover micro-animations + tooltip for collapsed sidebar */
@@ -138,11 +139,11 @@ const navItems = [
 const UserMenu: React.FC<{
   open: boolean; onClose: () => void; position?: 'above' | 'right';
   isDark: boolean; onToggleDark: () => void; onLogout?: () => void;
-  onProfileClick?: () => void; onSettingsClick?: () => void;
+  onProfileClick?: () => void; onEnterpriseClick?: () => void; onSettingsClick?: () => void;
   userName?: string;
   userInitial?: string;
   userAvatar?: string;
-}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, onProfileClick, onSettingsClick, userName, userInitial, userAvatar }) => {
+}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, onProfileClick, onEnterpriseClick, onSettingsClick, userName, userInitial, userAvatar }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -160,6 +161,7 @@ const UserMenu: React.FC<{
 
   const items: (null | { icon: React.FC; label: string; action: () => void; danger?: boolean })[] = [
     { icon: I.UserIcon, label: 'Profile', action: () => { if (onProfileClick) onProfileClick(); onClose(); } },
+    { icon: I.Building, label: 'Enterprise', action: () => { if (onEnterpriseClick) onEnterpriseClick(); onClose(); } },
     { icon: I.Settings, label: 'Settings', action: () => { if (onSettingsClick) onSettingsClick(); onClose(); } },
     { icon: isDark ? I.Sun : I.Moon, label: isDark ? 'Light Mode' : 'Dark Mode', action: onToggleDark },
     null,
@@ -252,7 +254,7 @@ const Sidebar: React.FC<{
         <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((userName || 'a').charCodeAt(0)) % 5]}-500 text-white` : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>
           {isLoggedIn && userAvatar ? <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" /> : (userInitial || 'U')}
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} onProfileClick={() => { go(Page.PORTFOLIO); setUserMenuOpen(false); }} onSettingsClick={() => { go(Page.SETTINGS); setUserMenuOpen(false); }} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} onProfileClick={() => { go(Page.PORTFOLIO); setUserMenuOpen(false); }} onEnterpriseClick={() => { go(Page.ENTERPRISE); setUserMenuOpen(false); }} onSettingsClick={() => { go(Page.SETTINGS); setUserMenuOpen(false); }} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </nav>
   );
@@ -305,7 +307,7 @@ const Sidebar: React.FC<{
           <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} onProfileClick={() => { go(Page.PORTFOLIO); setUserMenuOpen(false); }} onSettingsClick={() => { go(Page.SETTINGS); setUserMenuOpen(false); }} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} onProfileClick={() => { go(Page.PORTFOLIO); setUserMenuOpen(false); }} onEnterpriseClick={() => { go(Page.ENTERPRISE); setUserMenuOpen(false); }} onSettingsClick={() => { go(Page.SETTINGS); setUserMenuOpen(false); }} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </aside>
   );
@@ -3258,6 +3260,7 @@ const PAGE_PATHS: Record<string, string> = {
   [Page.API]: '/api',
   [Page.SETTINGS]: '/settings',
   [Page.PORTFOLIO]: '/portfolio',
+  [Page.ENTERPRISE]: '/enterprise',
 };
 
 const App: React.FC = () => {
@@ -3430,6 +3433,7 @@ const App: React.FC = () => {
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/portfolio" element={<Portfolio isWalletConnected={isLoggedIn} onConnect={() => setShowAuthModal(true)} onLogout={logout} />} />
+            <Route path="/enterprise" element={<Portfolio isWalletConnected={isLoggedIn} onConnect={() => setShowAuthModal(true)} onLogout={logout} defaultTab="enterprise" />} />
             <Route path="/api" element={<ApiLanding />} />
             <Route path="*" element={<SuperAgentHome />} />
           </Routes>
