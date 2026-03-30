@@ -138,10 +138,11 @@ const navItems = [
 const UserMenu: React.FC<{
   open: boolean; onClose: () => void; position?: 'above' | 'right';
   isDark: boolean; onToggleDark: () => void; onLogout?: () => void;
+  onProfileClick?: () => void; onSettingsClick?: () => void;
   userName?: string;
   userInitial?: string;
   userAvatar?: string;
-}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial, userAvatar }) => {
+}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, onProfileClick, onSettingsClick, userName, userInitial, userAvatar }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -158,8 +159,8 @@ const UserMenu: React.FC<{
   const widthClass = position === 'right' ? 'w-56' : 'w-full';
 
   const items: (null | { icon: React.FC; label: string; action: () => void; danger?: boolean })[] = [
-    { icon: I.UserIcon, label: 'Profile', action: () => { } },
-    { icon: I.Settings, label: 'Settings', action: () => { } },
+    { icon: I.UserIcon, label: 'Profile', action: () => { if (onProfileClick) onProfileClick(); onClose(); } },
+    { icon: I.Settings, label: 'Settings', action: () => { if (onSettingsClick) onSettingsClick(); onClose(); } },
     { icon: isDark ? I.Sun : I.Moon, label: isDark ? 'Light Mode' : 'Dark Mode', action: onToggleDark },
     null,
     { icon: I.LogOut, label: 'Log out', action: () => { if (onLogout) onLogout(); onClose(); }, danger: true },
@@ -251,7 +252,7 @@ const Sidebar: React.FC<{
         <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? `bg-${['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((userName || 'a').charCodeAt(0)) % 5]}-500 text-white` : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>
           {isLoggedIn && userAvatar ? <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" /> : (userInitial || 'U')}
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} onProfileClick={() => { go(Page.PORTFOLIO); setUserMenuOpen(false); }} onSettingsClick={() => { go(Page.SETTINGS); setUserMenuOpen(false); }} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </nav>
   );
@@ -304,7 +305,7 @@ const Sidebar: React.FC<{
           <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} onProfileClick={() => { go(Page.PORTFOLIO); setUserMenuOpen(false); }} onSettingsClick={() => { go(Page.SETTINGS); setUserMenuOpen(false); }} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </aside>
   );
@@ -3256,6 +3257,7 @@ const PAGE_PATHS: Record<string, string> = {
   [Page.INVEST]: '/market',
   [Page.API]: '/api',
   [Page.SETTINGS]: '/settings',
+  [Page.PORTFOLIO]: '/portfolio',
 };
 
 const App: React.FC = () => {
