@@ -881,7 +881,7 @@ const ChatsPage: React.FC = () => {
   }, []);
 
   // Load conversations from API on mount (guarded by auth to prevent 401 race)
-  const { ready: chatsReady, authenticated: chatsAuthenticated, getAccessToken: chatsGetAccessToken } = usePrivy();
+  const { ready: chatsReady, authenticated: chatsAuthenticated, getAccessToken: chatsGetAccessToken, login: chatsLogin } = usePrivy();
   useEffect(() => {
     if (!(chatsReady && chatsAuthenticated)) return;
     setLoadingConvs(true);
@@ -1188,6 +1188,30 @@ const ChatsPage: React.FC = () => {
       setShowDissolve(false);
     }
   };
+
+  if (chatsReady && !chatsAuthenticated) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-full p-6 animate-fadeIn md:bg-gray-50/50">
+        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+          <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        </div>
+        <div className="text-center max-w-sm">
+          <h2 className="text-2xl font-black text-black mb-2">Authentication Required</h2>
+          <p className="text-sm font-medium text-gray-400 leading-relaxed mb-6">
+            Please sign in to access your private chats and community groups.
+          </p>
+          <button
+            onClick={() => chatsLogin()}
+            className="px-8 py-3 bg-black text-white rounded-full text-xs font-bold tracking-widest hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl active:scale-95"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex h-full overflow-hidden">
