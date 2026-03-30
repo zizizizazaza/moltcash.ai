@@ -73,5 +73,6 @@ export enum Page {
   DISCOVER = 'DISCOVER',
   CONTACTS = 'CONTACTS',
   SETTINGS = 'SETTINGS',
-  API = 'API'
+  API = 'API',
+  PORTFOLIO = 'PORTFOLIO'
 }
