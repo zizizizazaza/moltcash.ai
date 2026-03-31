@@ -332,8 +332,9 @@ const ChatsPage: React.FC = () => {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sendingMsg, setSendingMsg] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const dbUserId = localStorage.getItem('dbUserId') || '';
-  const dbUserName = localStorage.getItem('dbUserName') || 'You';
+  const { user: privyUser } = usePrivy();
+  const dbUserId = privyUser?.id?.replace('did:privy:', '') || '';
+  const dbUserName = privyUser?.google?.name || privyUser?.twitter?.username || privyUser?.email?.address?.split('@')[0] || 'You';
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -876,7 +877,7 @@ const ChatsPage: React.FC = () => {
                 </div>
               ) : msgs.map((msg: any, i: number) => {
                 if (!msg._isPoll && msg.attachmentType === 'poll') return null;
-                const isMe = msg.senderId === dbUserId;
+                const isMe = (msg.senderId || msg.userId || msg.sender?.id) === dbUserId;
                 return (
                 <div key={msg.id || i}>
                   {msg.sender && (
