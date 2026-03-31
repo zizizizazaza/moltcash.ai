@@ -100,6 +100,13 @@ class ApiClient {
     return this.request('/auth/accept-risk', { method: 'POST' });
   }
 
+  async syncPrivyUser(data: { email?: string; name?: string; avatar?: string }) {
+    return this.request<any>('/auth/sync', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ============ Projects ============
 
   async getProjects(filters?: { category?: string; status?: string }) {
