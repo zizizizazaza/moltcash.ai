@@ -1,6 +1,6 @@
 /**
- * SuperAgentChat — 聊天详情页
- * 类似 Surf 风格的干净聊天界面，包含 multi-agent 思考过程
+ * SuperAgentChat — Chat Detail Page
+ * Clean chat interface similar to Surf style, with multi-agent thinking process
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
@@ -576,9 +576,10 @@ const renderMarkdown = (text: string) => {
 interface SuperAgentChatProps {
     initialMessage: string;
     onBack: () => void;
+    agentCount?: number;   // how many agents to use (default 2)
 }
 
-const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack }) => {
+const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack, agentCount = 2 }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
@@ -602,7 +603,8 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack 
 
     // ─── Simulate thinking process ──────────────────────────
     const simulateThinking = useCallback(async (msgIdx: number) => {
-        const agents: AgentThought[] = AGENT_COUNCIL.map(a => ({
+        const council = AGENT_COUNCIL.slice(0, agentCount);
+        const agents: AgentThought[] = council.map(a => ({
             agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
             status: 'waiting', summary: '', steps: a.steps.map(s => ({ label: s, status: 'pending' as const })),
         }));
@@ -617,7 +619,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack 
                 return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
             });
 
-            const steps = AGENT_COUNCIL[aIdx].steps;
+            const steps = council[aIdx].steps;
             for (let sIdx = 0; sIdx < steps.length; sIdx++) {
                 await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
                 setThinkingProcesses(prev => {
@@ -678,7 +680,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack 
                 },
             },
         }));
-    }, []);
+    }, [agentCount]);
 
     // ─── Send to AI (streaming) ─────────────────────────────
     const sendToAI = useCallback(async (text: string, existingMessages?: Message[]) => {
@@ -796,7 +798,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack 
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="text-[10px] text-gray-400 font-medium">{AGENT_COUNCIL.length} Agents Online</span>
+                    <span className="text-[10px] text-gray-400 font-medium">{agentCount} Agents Online</span>
                     {currentKgData && (
                         <div className="ml-2 pl-3 border-l border-gray-200 flex items-center gap-2 cursor-pointer" onClick={() => setShowGraphPanel(g => !g)}>
                             <svg className={`w-3.5 h-3.5 transition-colors ${showGraphPanel ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
