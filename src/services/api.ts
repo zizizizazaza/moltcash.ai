@@ -276,17 +276,35 @@ class ApiClient {
     return this.request<any[]>(`/groups/${encodeURIComponent(groupId)}/members`);
   }
 
-  // ============ User ============
+  // ============ Profile ============
 
-  async getUserProfile() {
+  async getProfile() {
     return this.request<any>('/users/profile');
   }
 
-  async updateProfile(data: { name?: string; avatar?: string; walletAddress?: string }) {
+  async updateProfile(data: { name?: string; avatar?: string; bio?: string; twitter?: string; linkedin?: string; personalWebsite?: string; isPublic?: boolean; }) {
     return this.request<any>('/users/profile', {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  async uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const activeToken = this.tokenGetter ? await this.tokenGetter() : this.token;
+    const headers: Record<string, string> = {};
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`;
+
+    const response = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) throw new Error('Upload failed');
+    return response.json() as Promise<{ url: string; type: string }>;
   }
 
   // ============ Credit Score ============
@@ -336,6 +354,64 @@ class ApiClient {
 
   async getApplications() {
     return this.request<any[]>('/apply/projects/applications');
+  }
+
+  // ============ Enterprise Verification ============
+
+  async getEnterpriseVerificationStatus() {
+    return this.request<any>('/enterprise/verify-status');
+  }
+
+  async updateEnterpriseVerificationStep(data: {
+    step: number;
+    companyName?: string;
+    country?: string;
+    registrationNo?: string;
+    description?: string;
+    website?: string;
+    foundedYear?: number;
+    categories?: string;
+    companyLogo?: string;
+    licenseDoc?: string;
+    uboName?: string;
+    uboIdDoc?: string;
+  }) {
+    return this.request<any>('/enterprise/verify-step', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ============ Stripe Revenue Verification ============
+
+  async submitStripeApiKey(apiKey: string) {
+    return this.request<{ success: boolean; message: string }>('/stripe/connect-key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    });
+  }
+
+  async disconnectStripe() {
+    return this.request<{ success: boolean; message: string }>('/stripe/disconnect', {
+      method: 'DELETE',
+    });
+  }
+
+  async getStripeRevenue() {
+    return this.request<{
+      connected: boolean;
+      keyStatus: string | null;
+      mrr: number;
+      last30dRev: number;
+      momGrowth: number;
+      lastSyncAt: string | null;
+    }>('/stripe/revenue');
+  }
+
+  // ============ Portfolio Additional ============
+
+  async getHistoricalBalance() {
+    return this.request<any[]>('/portfolio/historical-balance');
   }
 
   // ============ Governance ============
@@ -460,24 +536,7 @@ class ApiClient {
       body: JSON.stringify({ content, attachmentUrl, attachmentType }),
     });
   }
-  
-  async uploadFile(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const activeToken = this.tokenGetter ? await this.tokenGetter() : this.token;
-    const headers: Record<string, string> = {};
-    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`;
 
-    const response = await fetch(`${API_BASE}/upload`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-
-    if (!response.ok) throw new Error('Upload failed');
-    return response.json() as Promise<{ url: string; type: string }>;
-  }
   async markConversationAsRead(convId: string) {
     return this.request<{ success: boolean }>(`/community/conversations/${convId}/read`, { method: 'POST' });
   }
@@ -523,6 +582,17 @@ class ApiClient {
   async getGroupPolls(groupId: string) {
     return this.request<any[]>(`/community/groups/${groupId}/polls`);
   }
+
+  // ============ Discover ============
+
+  async discoverGroups() {
+    return this.request<any[]>('/groups/discover');
+  }
+
+  async discoverUsers() {
+    return this.request<any[]>('/users/discover');
+  }
+
 
 }
 

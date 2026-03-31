@@ -14,7 +14,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
     useEffect(() => {
-        api.getUserProfile().then(data => {
+        api.getProfile().then(data => {
             setProfile(data);
             setEditName(data.name || '');
         }).catch(() => {});

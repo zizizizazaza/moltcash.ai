@@ -4,17 +4,22 @@ import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Page } from './types';
 import Market from './components/Market';
 import Portfolio from './components/Portfolio';
+import RealChatsPage from './components/ChatsPage';
+import RealContactsPage from './components/ContactsPage';
 import ApiLanding from './components/ApiLanding';
 import SuperAgentChat from './components/SuperAgentChat';
 import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
+import DiscoverPage from './components/DiscoverPage';
+import { api } from './services/api';
+import { socket } from './services/socket';
 
 /* ────────────────────────────────────────────────────────────
    Icons — richer, hand-crafted 18×18 with fills & details
    ──────────────────────────────────────────────────────────── */
 const sv = "w-[18px] h-[18px]";
-const I = {
+export const I = {
   Panel: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 3v18" /></svg>,
   Plus: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
   Search: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M21 21l-4.35-4.35" /></svg>,
@@ -194,8 +199,8 @@ const Sidebar: React.FC<{
   expanded: boolean; onToggle: () => void; page: Page; go: (p: Page) => void;
   isDark: boolean; onToggleDark: () => void;
   isLoggedIn: boolean; onLogin: () => void; onLogout: () => void;
-  userName?: string; userInitial?: string;
-}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial }) => {
+  userName?: string; userInitial?: string; userAvatar?: string | null;
+}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial, userAvatar }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   /* theme classes */
@@ -231,7 +236,7 @@ const Sidebar: React.FC<{
         ))}
       </div>
       <div className="relative">
-        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all`}>{userInitial || 'U'}</div>
+        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
         <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
       </div>
     </nav>
@@ -279,7 +284,7 @@ const Sidebar: React.FC<{
       {/* User */}
       <div className="px-3 py-3 relative">
         <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${hoverBg} transition-all cursor-pointer group/user`}>
-          <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold`}>{userInitial || 'U'}</div>
+          <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
           <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
@@ -1247,7 +1252,7 @@ const ChatsPage: React.FC = () => {
 };
 
 /* ── Discover Page Data ── */
-const DISCOVER_GROUPS = [
+export const DISCOVER_GROUPS = [
   { id: 1, name: 'Alpha Investors Network', desc: 'Find early-stage investment opportunities before everyone else. We share deal flow, term sheets, and real-time signals from top angel investors and VCs.', members: 1240, letter: 'A', color: 'bg-blue-100 text-blue-600', grad: 'from-blue-500 to-indigo-600', tag: 'Investing', activity: 'Very Active' },
   { id: 2, name: 'SaaS Founders Club', desc: 'B2B SaaS founders sharing growth metrics, fundraising war stories, and operator playbooks. Monthly revenue milestones celebrated here.', members: 890, letter: 'S', color: 'bg-emerald-100 text-emerald-600', grad: 'from-emerald-500 to-teal-600', tag: 'Startups', activity: 'Active' },
   { id: 3, name: 'AI Builders Circle', desc: 'AI-powered product builders sharing tools, demos, and launch strategies. Stay updated on the latest LLM releases and practical applications.', members: 2100, letter: 'A', color: 'bg-violet-100 text-violet-600', grad: 'from-violet-500 to-purple-700', tag: 'AI', activity: 'Very Active' },
@@ -1258,7 +1263,7 @@ const DISCOVER_GROUPS = [
   { id: 8, name: 'Portfolio Management', desc: 'Build and optimize your investment portfolio using modern portfolio theory, factor models, and AI-assisted rebalancing. Monthly performance reviews included.', members: 430, letter: 'P', color: 'bg-pink-100 text-pink-600', grad: 'from-pink-500 to-rose-600', tag: 'Portfolio', activity: 'Active' },
 ];
 
-const DISCOVER_AGENTS = [
+export const DISCOVER_AGENTS = [
   { id: 1, name: 'Finance Assistant', desc: 'Analyze financial data and generate investment insights', category: 'Finance', letter: 'F', color: 'bg-blue-500' },
   { id: 2, name: 'Risk Analyzer', desc: 'Evaluate portfolio risk and suggest hedging strategies', category: 'Finance', letter: 'R', color: 'bg-red-500' },
   { id: 3, name: 'Market Research', desc: 'Research market trends, competitors, and opportunities', category: 'Research', letter: 'M', color: 'bg-emerald-500' },
@@ -1269,7 +1274,7 @@ const DISCOVER_AGENTS = [
   { id: 8, name: 'Revenue Forecaster', desc: 'Model revenue scenarios and forecast business performance using AI', category: 'Finance', letter: 'R', color: 'bg-pink-500' },
 ];
 
-const DISCOVER_CONTACTS = [
+export const DISCOVER_CONTACTS = [
   { id: 1, name: 'Alex Chen', role: 'Founder & CEO', bio: 'Building the future of AI-driven investment research tools.', twitter: '@alexchen_ai', followers: 12400, initials: 'AC', bgColor: 'bg-blue-500' },
   { id: 2, name: 'Sarah Kim', role: 'Co-founder & CTO', bio: 'ML engineer & fintech architect. prev @Stripe, @Plaid.', twitter: '@sarahkim_dev', followers: 8900, initials: 'SK', bgColor: 'bg-violet-500' },
   { id: 3, name: 'Marcus Rivera', role: null, bio: 'Angel investor & portfolio advisor. Obsessed with capital efficiency.', twitter: null, followers: 15600, initials: 'MR', bgColor: 'bg-emerald-500' },
@@ -1281,7 +1286,7 @@ const DISCOVER_CONTACTS = [
   { id: 9, name: 'Tom Wu', role: 'CFO', bio: 'Treasury management & financial modeling for high-growth startups.', twitter: '@tomwu_fi', followers: 7800, initials: 'TW', bgColor: 'bg-orange-500' },
 ];
 
-const AGENT_CATEGORIES = ['All', 'Finance', 'Research', 'Growth'];
+export const AGENT_CATEGORIES = ['All', 'Finance', 'Research', 'Growth'];
 
 // Mock "strangers" database — not in contacts
 const STRANGER_DB = [
@@ -1430,7 +1435,7 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 };
 
 // ── Create Agent Modal ────────────────────────────────────────────────
-const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   type AgentType = 'single' | 'multi';
   type MultiMode = 'loka' | 'mirrorfish' | null;
   type Visibility = 'public' | 'group' | 'private';
@@ -2460,15 +2465,30 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 };
 
 // ── Create Group Modal ─────────────────────────────────────────────────
-const CreateGroupModal: React.FC<{
+export const CreateGroupModal: React.FC<{
   onClose: () => void;
   onCreated?: (newGroupId: string) => void;
 }> = ({ onClose, onCreated }) => {
   const [step, setStep] = useState<'members' | 'info'>('members');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<any>>(new Set());
   const [groupName, setGroupName] = useState('');
   const [groupBio, setGroupBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [realFriends, setRealFriends] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getFriends().then((data: any[]) => {
+      setRealFriends(data.map((f: any) => ({
+        id: f.user.id,
+        name: f.user.name || 'User',
+        role: 'Friend',
+        bio: f.user.email || 'LokaCash Member',
+        initials: (f.user.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+        avatar: f.user.avatar,
+        bgColor: 'bg-' + ['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((f.user.name || 'a').charCodeAt(0)) % 5] + '-500'
+      })));
+    }).catch(() => {});
+  }, []);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2555,13 +2575,22 @@ const CreateGroupModal: React.FC<{
             <div className="px-5 pt-3 pb-1 border-t border-gray-50 mt-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contacts</p>
             </div>
-            {DISCOVER_CONTACTS.map(c => {
+            {realFriends.length === 0 ? (
+              <p className="px-5 py-4 text-[12px] text-gray-400 text-center">No friends yet. Add friends from the Contacts page.</p>
+            ) : null}
+            {realFriends.map(c => {
               const grad = GRAD_MAP[c.bgColor] ?? 'from-gray-400 to-gray-500';
               const isSel = selected.has(c.id);
               return (
                 <div key={c.id} onClick={() => toggleMember(c.id)}
                   className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>{c.initials}</div>
+                  {c.avatar && typeof c.avatar === 'string' && c.avatar.startsWith('http') ? (
+                    <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0">
+                      <img src={c.avatar} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>{c.initials}</div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
@@ -2658,614 +2687,7 @@ const MOCK_REQUESTS = [
 ];
 
 // ── ContactsPage ───────────────────────────────────────────────────────
-const ContactsPage: React.FC = () => {
-  const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<'friend' | null>(null);
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
-  const [accepted, setAccepted] = useState<Set<string>>(new Set());
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [followedUp, setFollowedUp] = useState<Set<string>>(new Set());
 
-  const handleAccept = (id: string) => {
-    setAccepted(prev => { const n = new Set(prev); n.add(id); return n; });
-    setTimeout(() => setRequests(prev => prev.filter(r => r.id !== id)), 1200);
-  };
-  const handleDecline = (id: string) =>
-    setRequests(prev => prev.filter(r => r.id !== id));
-
-  const suggestions = STRANGER_DB
-    .filter(s => s.mutual > 0 && !dismissed.has(s.id))
-    .sort((a, b) => b.mutual - a.mutual);
-
-  const filtered = DISCOVER_CONTACTS.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) || c.bio.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-gray-100/80">
-      {modal === 'friend' && <AddFriendModal onClose={() => setModal(null)} />}
-      <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full min-h-full">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-[22px] font-semibold text-gray-900">Contacts</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-400">{DISCOVER_CONTACTS.length} contacts</span>
-            <button onClick={() => setModal('friend')}
-              className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-900 text-white hover:bg-gray-700 transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-            </button>
-          </div>
-        </div>
-
-        {/* ── Friend Requests ── */}
-        {requests.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-[13px] font-bold text-gray-900">Friend Requests</h2>
-              <span className="w-5 h-5 rounded-full bg-gray-900 text-white text-[10px] font-black flex items-center justify-center">{requests.length}</span>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-              {requests.map((r, idx) => {
-                const isAccepted = accepted.has(r.id);
-                return (
-                  <div key={r.id} className={`flex items-center gap-4 px-4 py-3.5 transition-all duration-300 ${idx !== 0 ? 'border-t border-gray-50' : ''} ${isAccepted ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}>
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${r.grad} flex items-center justify-center text-[13px] font-black text-white shadow-sm shrink-0`}>{r.initials}</div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-[13px] font-semibold text-gray-900 leading-tight">{r.name}</p>
-                        <span className="text-[10px] text-gray-500 font-mono bg-gray-50 px-1 py-0.5 rounded">{r.account}</span>
-                      </div>
-                      <p className="text-[11px] text-gray-400 mt-1">{r.role}{r.mutual > 0 ? ` · ${r.mutual} mutual` : ''} · {r.time}</p>
-                    </div>
-                    {isAccepted ? (
-                      <span className="text-[11px] font-bold text-emerald-600 shrink-0 flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                        Accepted
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => handleDecline(r.id)} className="px-3.5 py-1.5 rounded-lg text-[11px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-200 transition-all shadow-sm">Decline</button>
-                        <button onClick={() => handleAccept(r.id)} className="px-3.5 py-1.5 rounded-lg text-[11px] font-bold text-white bg-gray-900 hover:bg-gray-800 transition-all shadow-sm">Accept</button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── All Contacts ── */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-[13px] font-bold text-gray-900">All Contacts</h2>
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">{filtered.length}</span>
-          </div>
-          <div className="relative mb-4">
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts..."
-              className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 placeholder:text-gray-400 transition-all" />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </div>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-            {filtered.map((c, idx) => {
-              const gradMap: Record<string, string> = { 'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500', 'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400', 'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500', 'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500', 'bg-orange-500': 'from-orange-400 to-amber-500' };
-              const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
-              return (
-                <div key={c.id} className={`flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer group ${idx !== 0 ? 'border-t border-gray-50' : ''}`}>
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[13px] font-black text-white shadow-sm shrink-0`}>{c.initials}</div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
-                      {c.role && <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md leading-tight">{c.role}</span>}
-                      {c.twitter && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-mono hover:text-gray-900 transition-colors">
-                          <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                          {c.twitter}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">{c.bio}</p>
-                  </div>
-                  <button className="shrink-0 px-3 py-1.5 rounded-lg bg-gray-50 text-[11px] font-semibold text-gray-600 hover:bg-gray-900 hover:text-white transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1.5 shadow-sm">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                    Message
-                  </button>
-                </div>
-              );
-            })}
-            {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-10">No contacts found</p>}
-          </div>
-        </div>
-
-        {/* ── Suggested for You — horizontal scroll cards ── */}
-        {suggestions.length > 0 && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[13px] font-bold text-gray-900">Suggested for You</h2>
-              <span className="text-[11px] font-medium text-gray-400">Based on mutual connections</span>
-            </div>
-            <div className="flex gap-3.5 overflow-x-auto pb-4 -mx-1 px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-              {suggestions.map(s => {
-                const isFollowed = followedUp.has(s.id);
-                return (
-                  <div key={s.id} className="relative bg-white border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3.5 min-w-[260px] w-[260px] shrink-0 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 hover:border-gray-200 transition-all duration-300 ease-out cursor-pointer group">
-                    <button onClick={(e) => { e.stopPropagation(); setDismissed(prev => { const n = new Set(prev); n.add(s.id); return n; }); }}
-                      className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-all opacity-0 group-hover:opacity-100">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${s.grad} flex items-center justify-center text-[14px] font-black text-white shadow-sm shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>{s.initials}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-bold text-gray-900 leading-tight truncate pr-4 group-hover:text-blue-600 transition-colors">{s.name}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5 truncate">{s.role}</p>
-                      <div className="flex items-center justify-between mt-2.5">
-                        <p className="text-[10px] font-medium text-gray-400">
-                          {s.mutual} mutual{s.mutual !== 1 ? 's' : ''}
-                        </p>
-                        {isFollowed ? (
-                          <span className="text-[11px] font-bold text-gray-900 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                            Sent
-                          </span>
-                        ) : (
-                          <button onClick={(e) => { e.stopPropagation(); setFollowedUp(prev => { const n = new Set(prev); n.add(s.id); return n; }); }}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-white bg-gray-900 hover:bg-gray-700 transition-all shadow-sm hover:scale-110 active:scale-95">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-
-
-      </div>
-    </div>
-  );
-};
-
-const DiscoverPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'Agents' | 'Groups' | 'People'>('Agents');
-  const [agentCat, setAgentCat] = useState('All');
-  const [selectedGroup, setSelectedGroup] = useState<typeof DISCOVER_GROUPS[0] | null>(null);
-  const [joinedGroups, setJoinedGroups] = useState<Set<number>>(new Set());
-  const [joiningGroup, setJoiningGroup] = useState<number | null>(null);
-  const [joinSuccessGroup, setJoinSuccessGroup] = useState<typeof DISCOVER_GROUPS[0] | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [showCreateAgent, setShowCreateAgent] = useState(false);
-
-  const PEOPLE = [
-    { name: 'Alex Chen', role: 'Founder', org: 'ComputeDAO', score: 1200, investments: 0, raises: 3, avatar: 'A', color: 'from-violet-500 to-purple-700', followers: '12.5k', bio: 'Building decentralized compute infrastructure. Previously at Google Brain. Open-source contributor.', active: true, company: { name: 'ComputeDAO', color: 'from-violet-500 to-purple-700' } },
-    { name: 'Sarah Kim', role: 'Investor', org: 'Independent', score: 980, investments: 12, raises: 0, avatar: 'S', color: 'from-indigo-600 to-blue-700', followers: '450', bio: 'Angel investor focused on early-stage SaaS and fintech. 12 portfolio companies. Ex-Goldman Sachs.', active: false },
-    { name: 'Marcus Johnson', role: 'Investor', org: 'Alpha Capital', score: 1450, investments: 28, raises: 0, avatar: 'M', color: 'from-emerald-500 to-teal-700', followers: '2.1k', bio: 'General Partner at Alpha Capital. 28 investments across Web3 and AI infra. Focus on seed to Series A.', active: true },
-    { name: 'Lisa Wang', role: 'Founder', org: 'Rezi Inc.', score: 890, investments: 0, raises: 2, avatar: 'L', color: 'from-rose-500 to-pink-600', followers: '18.2k', bio: 'CEO at Rezi — AI resume builder with 1M+ users. Forbes 30 Under 30. YC S22.', active: true, company: { name: 'Rezi Inc.', color: 'from-rose-500 to-pink-600' } },
-    { name: 'David Park', role: 'Investor', org: 'DePhi Ventures', score: 720, investments: 5, raises: 0, avatar: 'D', color: 'from-amber-600 to-orange-600', followers: '8,900', bio: 'Crypto-native VC at DePhi Ventures. 5 investments. Former trader at Jump Crypto.', active: false },
-    { name: 'Emma Torres', role: 'Contributor', org: 'Loka DAO', score: 650, investments: 3, raises: 0, avatar: 'E', color: 'from-sky-500 to-blue-500', followers: '1,200', bio: 'Active governance contributor at Loka DAO. DeFi researcher and writer. 3 investments on platform.', active: true },
-    { name: 'James Liu', role: 'Founder', org: 'Deeptrue Corp.', score: 760, investments: 1, raises: 1, avatar: 'J', color: 'from-cyan-600 to-blue-700', followers: '34.5k', bio: 'Co-founder & CTO of Deeptrue Corp. AI-native compliance tooling for financial institutions. MIT PhD dropout.', active: false, company: { name: 'Deeptrue Corp.', color: 'from-cyan-600 to-blue-700' } },
-    { name: 'Rachel Green', role: 'Investor', org: 'Onchain Insights', score: 1100, investments: 19, raises: 0, avatar: 'R', color: 'from-fuchsia-600 to-purple-600', followers: '5,020', bio: 'Research lead at Onchain Insights. 19 on-chain investments, specializing in RWA protocols.', active: true },
-    { name: 'Sam Altman', role: 'Founder', org: 'OpenAI', score: 9990, investments: 42, raises: 5, avatar: 'S', color: 'from-gray-700 to-gray-900', followers: '3.2M', bio: 'CEO of OpenAI. Previously President of Y Combinator. Investor in 40+ companies including Stripe and Airbnb.', active: true, company: { name: 'OpenAI', color: 'from-gray-700 to-gray-900' } },
-    { name: 'Brian Armstrong', role: 'Founder', org: 'Coinbase', score: 8500, investments: 30, raises: 2, avatar: 'B', color: 'from-blue-600 to-blue-800', followers: '1.2M', bio: 'CEO & co-founder of Coinbase. 30 investments across crypto infrastructure. Airbnb alum.', active: false, company: { name: 'Coinbase', color: 'from-blue-600 to-blue-800' } },
-  ];
-  type Person = typeof PEOPLE[0];
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
-  const [peopleCat, setPeopleCat] = useState('All');
-  const PEOPLE_CATS = ['All', 'Investor', 'Founder', 'Contributor', 'Active'] as const;
-  const filteredPeople = peopleCat === 'All' ? PEOPLE
-    : peopleCat === 'Active' ? PEOPLE.filter(p => p.active)
-    : PEOPLE.filter(p => p.role === peopleCat);
-
-  const tabs = ['Agents', 'Groups', 'People'] as const;
-  const filteredAgents = agentCat === 'All' ? DISCOVER_AGENTS : DISCOVER_AGENTS.filter(a => a.category === agentCat);
-
-  const handleJoin = (group: typeof DISCOVER_GROUPS[0], e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (joinedGroups.has(group.id)) return;
-    setJoiningGroup(group.id);
-    setTimeout(() => {
-      setJoiningGroup(null);
-      setJoinedGroups(prev => new Set([...prev, group.id]));
-      setJoinSuccessGroup(group);
-      setSelectedGroup(null);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-      // Redirect to community chat after 1.5s
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('loka-nav-groups', { detail: group.name }));
-        navigate('/chat');
-      }, 1500);
-    }, 900);
-  };
-
-  const activityColor = (a: string) => a === 'Very Active' ? 'text-emerald-600 bg-emerald-50' : a === 'Active' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100';
-
-  if (showCreateAgent) {
-    return <CreateAgentModal onClose={() => setShowCreateAgent(false)} />;
-  }
-
-  return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-gray-50 md:bg-gray-100/80">
-      {/* Create Group Modal */}
-      {showCreateGroup && (
-        <CreateGroupModal
-          onClose={() => setShowCreateGroup(false)}
-          onCreated={() => setShowCreateGroup(false)}
-        />
-      )}
-      {/* Success toast */}
-      {showToast && joinSuccessGroup && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] animate-fadeIn">
-          <div className="flex items-center gap-2.5 bg-gray-900 text-white text-[13px] font-semibold px-4 py-3 rounded-2xl shadow-2xl">
-            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-            </div>
-            Joined <span className="font-bold">{joinSuccessGroup.name}</span> — redirecting to chat...
-          </div>
-        </div>
-      )}
-
-      {/* Group Detail Modal */}
-      {selectedGroup && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={() => setSelectedGroup(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn" onClick={e => e.stopPropagation()}>
-            {/* Cover */}
-            <div className={`h-36 bg-gradient-to-br ${selectedGroup.grad} relative flex items-center justify-center overflow-hidden`}>
-              {/* Abstract pattern */}
-              <div className="absolute inset-0 opacity-20">
-                <div className="absolute top-4 left-8 w-20 h-20 rounded-full border-4 border-white/50" />
-                <div className="absolute bottom-2 right-12 w-14 h-14 rounded-full border-4 border-white/30" />
-                <div className="absolute top-8 right-4 w-8 h-8 rounded-full bg-white/20" />
-              </div>
-              <span className="text-white/20 font-black text-8xl select-none">{selectedGroup.letter}</span>
-              {/* Close button */}
-              <button onClick={() => setSelectedGroup(null)} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur flex items-center justify-center text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-              {/* Member join animation */}
-              <div className="absolute bottom-3 left-4 flex -space-x-2">
-                {['from-blue-400 to-indigo-500', 'from-emerald-400 to-teal-500', 'from-rose-400 to-pink-500', 'from-amber-400 to-orange-500'].map((g, i) => (
-                  <div key={i} className={`w-7 h-7 rounded-full bg-gradient-to-br ${g} border-2 border-white shadow-sm flex items-center justify-center text-[10px] font-bold text-white`}>
-                    {['A', 'B', 'C', 'D'][i]}
-                  </div>
-                ))}
-                <div className="w-7 h-7 rounded-full bg-black/30 border-2 border-white shadow-sm flex items-center justify-center text-[9px] font-bold text-white backdrop-blur">
-                  +{(selectedGroup.members - 4).toLocaleString()}
-                </div>
-              </div>
-
-            </div>
-            {/* Content */}
-            <div className="p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h2 className="text-[18px] font-black text-gray-900 leading-tight">{selectedGroup.name}</h2>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${selectedGroup.color}`}>{selectedGroup.tag}</span>
-                  </div>
-                  <p className="text-[12px] text-gray-400 font-medium">{selectedGroup.members.toLocaleString()} members</p>
-                </div>
-              </div>
-              <p className="text-[13px] text-gray-600 leading-relaxed mb-6">{selectedGroup.desc}</p>
-              {/* Stats row */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {[
-                  { label: 'Members', value: selectedGroup.members.toLocaleString() },
-                  { label: 'Category', value: selectedGroup.tag },
-                ].map(stat => (
-                  <div key={stat.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                    <p className="text-[11px] font-black text-gray-900 leading-tight">{stat.value}</p>
-                    <p className="text-[9px] text-gray-400 font-medium mt-0.5">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-              {/* Join Button */}
-              {joinedGroups.has(selectedGroup.id) ? (
-                <div className="w-full py-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center gap-2 text-emerald-700 font-bold text-[14px]">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                  Joined
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleJoin(selectedGroup)}
-                  disabled={joiningGroup === selectedGroup.id}
-                  className="w-full py-3 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-[14px] transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
-                >
-                  {joiningGroup === selectedGroup.id ? (
-                    <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Joining...</>
-                  ) : (
-                    <>Join Group<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg></>
-                  )}
-                </button>
-              )}
-              <p className="text-[10px] text-gray-400 text-center mt-3">By joining, you agree to our community guidelines.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Person Detail Modal */}
-      {selectedPerson && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={() => setSelectedPerson(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-fadeIn" onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-50">
-              <div className="flex items-center gap-3">
-                {/* Circle avatar */}
-                <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${selectedPerson.color} flex items-center justify-center text-[20px] font-black text-white shadow-md shrink-0`}>
-                  {selectedPerson.avatar}
-                </div>
-                <div>
-                  <h2 className="text-[16px] font-black text-gray-900 leading-tight">{selectedPerson.name}</h2>
-                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">{selectedPerson.role} · {selectedPerson.org}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedPerson(null)} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            {/* Content */}
-            <div className="p-5">
-              <div className="mb-3">
-                <h2 className="text-[18px] font-black text-gray-900 leading-tight">{selectedPerson.name}</h2>
-                <p className="text-[12px] text-gray-400 font-medium mt-0.5">{selectedPerson.role} · {selectedPerson.org}</p>
-                {/* Social links */}
-                <div className="flex items-center gap-2 mt-2">
-                  <a href="#" onClick={(e) => e.preventDefault()} className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-[#0A66C2] transition-colors">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                    LinkedIn
-                  </a>
-                  <span className="text-gray-200">·</span>
-                  <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400">
-                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                    {selectedPerson.followers} followers
-                  </div>
-                </div>
-              </div>
-              <p className="text-[13px] text-gray-600 leading-relaxed mb-4">{selectedPerson.bio}</p>
-              {/* Founder company block */}
-              {selectedPerson.role === 'Founder' && selectedPerson.company && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 mb-4">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${selectedPerson.company.color} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm`}>
-                    {selectedPerson.company.name[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-gray-900 truncate">{selectedPerson.company.name}</p>
-                    <p className="text-[10px] text-gray-400">Founder</p>
-                  </div>
-                  <span className="ml-auto text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full shrink-0">Verified Issuer</span>
-                </div>
-              )}
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-2 mb-5">
-                {[
-                  { label: 'Investments', value: selectedPerson.investments },
-                  { label: 'Raises', value: selectedPerson.raises },
-                ].map(stat => (
-                  <div key={stat.label} className="bg-gray-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[13px] font-black text-gray-900">{stat.value}</p>
-                    <p className="text-[9px] text-gray-400 font-medium mt-0.5">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full py-2.5 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-[13px] transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                Add Friend
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full min-h-full">
-        {/* Header + Tabs */}
-        <h1 className="text-[22px] font-semibold text-gray-900 mb-4">Discover</h1>
-        <div className="flex items-center gap-6 border-b border-gray-100 mb-6">
-          {tabs.map(t => (
-            <button key={t}
-              onClick={() => setActiveTab(t)}
-              className={`pb-2 text-[14px] font-medium transition-all border-b-2 -mb-px flex items-center gap-1.5 ${activeTab === t
-                ? 'border-gray-900 text-gray-900'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}>{t}</button>
-          ))}
-        </div>
-
-        {/* ── Groups Tab ── */}
-        {activeTab === 'Groups' && (
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <p className="text-[12px] text-gray-400 font-medium">{DISCOVER_GROUPS.length} groups</p>
-              <button
-                onClick={() => setShowCreateGroup(true)}
-                className="flex items-center gap-1.5 text-[12px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3.5 py-1.5 rounded-xl transition-all active:scale-95">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                Create Group
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {DISCOVER_GROUPS.map(g => (
-                <div
-                  key={g.id}
-                  onClick={() => setSelectedGroup(g)}
-                  className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-lg hover:border-gray-200 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group"
-                >
-                  {/* Cover area */}
-                  <div className={`h-24 bg-gradient-to-br ${g.grad} relative overflow-hidden flex items-center justify-center`}>
-                    {/* Decorative circles */}
-                    <div className="absolute top-3 left-5 w-12 h-12 rounded-full border-2 border-white/20" />
-                    <div className="absolute bottom-1 right-8 w-8 h-8 rounded-full border-2 border-white/15" />
-                    <div className="absolute top-1 right-3 w-5 h-5 rounded-full bg-white/10" />
-                    <span className="text-white/15 font-black text-6xl select-none">{g.letter}</span>
-                    {/* Category badge */}
-                    <span className="absolute top-2.5 left-2.5 text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">{g.tag}</span>
-                    {/* Activity badge removed */}
-                  </div>
-                  {/* Card body */}
-                  <div className="p-4">
-                    <p className="text-[13px] font-bold text-gray-900 mb-1 leading-tight group-hover:text-blue-600 transition-colors">{g.name}</p>
-                    <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{g.desc}</p>
-                    {/* Footer */}
-                    <div className="flex items-center justify-between">
-                      {/* Member avatars */}
-                      <div className="flex -space-x-1.5">
-                        {['from-blue-400 to-indigo-500', 'from-emerald-400 to-teal-500', 'from-rose-400 to-pink-500'].map((grd, i) => (
-                          <div key={i} className={`w-5 h-5 rounded-full bg-gradient-to-br ${grd} border border-white shadow-sm`} />
-                        ))}
-                        <div className="w-5 h-5 rounded-full bg-gray-200 border border-white shadow-sm flex items-center justify-center text-[8px] font-bold text-gray-500">+{Math.floor(g.members / 100)}</div>
-                      </div>
-                      {/* Join / Joined */}
-                      {joinedGroups.has(g.id) ? (
-                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                          Joined
-                        </span>
-                      ) : (
-                        <button
-                          onClick={(e) => handleJoin(g, e)}
-                          disabled={joiningGroup === g.id}
-                          className="flex items-center gap-1 text-[11px] font-bold text-white bg-gray-900 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 disabled:opacity-60"
-                        >
-                          {joiningGroup === g.id ? (
-                            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                          ) : (
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                          )}
-                          Join
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Agents Tab ── */}
-        {activeTab === 'Agents' && (
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2 flex-wrap">
-                {AGENT_CATEGORIES.map(c => (
-                  <button key={c}
-                    onClick={() => setAgentCat(c)}
-                    className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${agentCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}>{c}</button>
-                ))}
-              </div>
-              <button
-                onClick={() => setShowCreateAgent(true)}
-                className="flex items-center gap-1.5 text-[12px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3.5 py-1.5 rounded-xl transition-all active:scale-95 shrink-0 ml-3">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                Create Agent
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {filteredAgents.map(a => {
-                const gradMap: Record<string, string> = {
-                  'bg-blue-500': 'from-blue-500 to-indigo-500',
-                  'bg-red-500': 'from-red-500 to-rose-500',
-                  'bg-emerald-500': 'from-emerald-500 to-teal-500',
-                  'bg-amber-500': 'from-amber-400 to-orange-400',
-                  'bg-violet-500': 'from-violet-500 to-purple-500',
-                  'bg-cyan-500': 'from-cyan-500 to-sky-500',
-                  'bg-indigo-500': 'from-indigo-500 to-blue-600',
-                  'bg-pink-500': 'from-pink-500 to-rose-500',
-                };
-                const grad = gradMap[a.color] ?? 'from-gray-400 to-gray-500';
-                return (
-                  <div key={a.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[13px] font-black text-white shadow-sm shrink-0`}>
-                        {a.letter}
-                      </div>
-                      <div className="min-w-0 pt-0.5">
-                        <p className="text-[13px] font-semibold text-gray-900 leading-tight">{a.name}</p>
-                        <p className="text-[10px] text-gray-400 font-medium mt-0.5">{a.category}</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{a.desc}</p>
-                    <button className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition-colors group-hover:underline underline-offset-2">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                      Start a chat
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── People Tab ── */}
-        {activeTab === 'People' && (
-          <div>
-            {/* Filter pills */}
-            <div className="flex items-center gap-2 mb-5 flex-wrap">
-              {PEOPLE_CATS.map(c => (
-                <button key={c}
-                  onClick={() => setPeopleCat(c)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${
-                    peopleCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredPeople.map((person, i) => (
-              <div
-                key={i}
-                onClick={() => setSelectedPerson(person)}
-                className="group cursor-pointer bg-white hover:shadow-lg hover:border-gray-200 transition-all duration-300 border border-gray-100 rounded-2xl p-5 flex flex-col items-center text-center"
-              >
-                {/* Circle avatar */}
-                <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${person.color} flex items-center justify-center text-[20px] font-black text-white shadow-md mb-3 group-hover:scale-105 transition-transform duration-300`}>
-                  {person.avatar}
-                </div>
-                {/* Name + role */}
-                <p className="text-[13px] font-bold text-gray-900 leading-tight mb-0.5 group-hover:text-blue-600 transition-colors">{person.name}</p>
-                <p className="text-[10px] text-gray-400 mb-2">{person.role} · {person.org}</p>
-                {/* Bio excerpt */}
-                <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-2 mb-3">{person.bio}</p>
-                {/* Footer: followers + LinkedIn always visible, Add on hover */}
-                <div className="flex items-center justify-between w-full mt-auto pt-3 border-t border-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <svg className="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                      <span className="text-[10px] font-semibold text-gray-500">{person.followers}</span>
-                    </div>
-                    <a href="#" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-[#0A66C2] transition-colors">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                    </a>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setSelectedPerson(person); }}
-                    className="flex items-center gap-1 text-[11px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 opacity-0 group-hover:opacity-100"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                    Add
-                  </button>
-                </div>
-              </div>
-            ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const SettingsPage: React.FC = () => (
   <div className="flex-1 flex items-center justify-center h-full">
@@ -3277,9 +2699,6 @@ const SettingsPage: React.FC = () => (
   </div>
 );
 
-/* ════════════════════════════════════════════════════════════
-   APP
-   ════════════════════════════════════════════════════════════ */
 const PAGE_PATHS: Record<string, string> = {
   [Page.SUPER_AGENT]: '/',
   [Page.CHATS]: '/chat',
@@ -3300,15 +2719,78 @@ const App: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, getAccessToken } = usePrivy();
   const { logout } = useLogout({
     onSuccess: () => navigate('/'),
   });
   const isLoggedIn = ready && authenticated;
 
+  // ── Socket + API token initialization ──
+  useEffect(() => {
+    if (ready && authenticated) {
+      getAccessToken().then(token => {
+        if (token) {
+          api.setToken(token);
+          api.setTokenGetter(getAccessToken);
+          socket.setTokenGetter(getAccessToken);
+          socket.reconnectWithToken(token);
+        }
+      }).catch(err => console.warn('[Auth] Token fetch failed:', err));
+
+
+
+      // Periodic token refresh (every 5 min)
+      const interval = setInterval(() => {
+        getAccessToken().then(freshToken => {
+          if (freshToken) {
+            api.setToken(freshToken);
+            socket.reconnectWithToken(freshToken);
+          }
+        }).catch(err => console.warn('[Auth] Refresh failed:', err));
+      }, 5 * 60 * 1000);
+
+      // Visibility-based token refresh
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          getAccessToken().then(freshToken => {
+            if (freshToken) {
+              api.setToken(freshToken);
+              socket.reconnectWithToken(freshToken);
+            }
+          }).catch(() => {});
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
+    } else if (ready && !authenticated) {
+      api.clearToken();
+      socket.clearToken();
+    }
+  }, [ready, authenticated, getAccessToken, user]);
+
   // Derive user display info from Privy user object
-  const userName = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
+  // Fetch profile from backend for accurate name/avatar
+  const [profileData, setProfileData] = useState<any>(null);
+  useEffect(() => {
+    if (!isLoggedIn) { setProfileData(null); return; }
+    api.getProfile().then(p => setProfileData(p)).catch(() => {});
+  }, [isLoggedIn]);
+  // Listen for profile updates
+  useEffect(() => {
+    const handler = () => {
+      api.getProfile().then(p => setProfileData(p)).catch(() => {});
+    };
+    window.addEventListener('loka-profile-updated', handler);
+    return () => window.removeEventListener('loka-profile-updated', handler);
+  }, []);
+
+  const userName = profileData?.name || user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
   const userInitial = userName.charAt(0).toUpperCase();
+  const userAvatar = profileData?.avatar || null;
 
   const toggleDark = () => {
     setIsDark(prev => {
@@ -3344,14 +2826,14 @@ const App: React.FC = () => {
 
       <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={go} isDark={isDark} onToggleDark={toggleDark}
         isLoggedIn={isLoggedIn} onLogin={() => setShowAuthModal(true)} onLogout={logout}
-        userName={userName} userInitial={userInitial} />
+        userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
 
       <main className={`flex-1 flex flex-col overflow-hidden h-full pt-[max(env(safe-area-inset-top),32px)] md:pt-0 pb-14 md:pb-0 ${mainBg}`}>
         <div className={`flex-1 overflow-y-auto flex flex-col md:m-0 ${location.pathname.startsWith('/market/startup/') ? 'bg-gray-50 md:bg-gray-100/80' : ''}`}>
           <Routes>
             <Route path="/" element={<SuperAgentHome />} />
-            <Route path="/chat" element={<ChatsPage />} />
-            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/chat" element={<RealChatsPage />} />
+            <Route path="/contacts" element={<RealContactsPage />} />
             <Route path="/market/*" element={<Market />} />
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/settings" element={<SettingsPage />} />

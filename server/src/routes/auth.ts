@@ -177,7 +177,7 @@ router.post('/sync', authRequired, async (req: AuthRequest, res, next) => {
           // just update the ID and provider if we found them by email
           user = await prisma.user.update({
             where: { email },
-            data: { id: userId, authProvider: 'privy', name: name || existingEmailUser.name, avatar: avatar || existingEmailUser.avatar }
+            data: { id: userId, authProvider: 'privy', name: existingEmailUser.name || name, avatar: existingEmailUser.avatar || avatar }
           });
           res.json(user);
           return;
@@ -197,8 +197,8 @@ router.post('/sync', authRequired, async (req: AuthRequest, res, next) => {
       user = await prisma.user.update({
         where: { id: userId },
         data: { 
-          name: name || user.name, 
-          avatar: avatar || user.avatar,
+          name: user.name || name, 
+          avatar: user.avatar || avatar,
           ...(email && !user.email?.includes('@privy.user') ? { email } : {}) 
         },
       });

@@ -299,13 +299,14 @@ const TxModal: React.FC = () => {
                             )}
                         </div>
 
+                        {/* <---- ONRAMPER UI COMMENTED OUT AS PER USER REQUEST ----> */}
+                        {/* 
                         {paymentMethod === 'card' && (
                             <div>
                                 <p className="text-[11px] font-semibold text-gray-400 mb-1.5 px-1">Card Provider</p>
                                 <button onClick={() => { setShowProviderPicker(!showProviderPicker); setShowMethodPicker(false); }} className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-300 transition-all group">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black ${fiatProvider === 'coinbase' ? 'bg-blue-600' : 'bg-orange-500'
-                                            }`}>
+                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black ${fiatProvider === 'coinbase' ? 'bg-blue-600' : 'bg-orange-500'}`}>
                                             {fiatProvider === 'coinbase' ? 'C' : 'O'}
                                         </div>
                                         <div className="text-left">
@@ -336,6 +337,8 @@ const TxModal: React.FC = () => {
                                 )}
                             </div>
                         )}
+                        */}
+
 
                         {modalAction === 'withdraw' && (
                             <div className="flex justify-between items-center text-[10px] px-2">
@@ -347,6 +350,7 @@ const TxModal: React.FC = () => {
                         )}
 
                         <button onClick={handleModalSubmit} disabled={!formAmount || isSubmitting} className="w-full py-3 bg-black text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all tracking-wide disabled:opacity-40 disabled:cursor-not-allowed mt-1">
+                            {/* ONRAMPER SUBMIT BUTTON LOGIC COMMENTED OUT
                             {isSubmitting
                                 ? paymentMethod === 'card' && fiatProvider === 'onramper'
                                     ? 'Opening Onramper...'
@@ -355,6 +359,12 @@ const TxModal: React.FC = () => {
                                     ? paymentMethod === 'card' && fiatProvider === 'onramper'
                                         ? 'Continue with Onramper'
                                         : 'Continue with Privy Onramp'
+                                    : 'Submit Withdrawal'}
+                            */}
+                            {isSubmitting
+                                ? 'Opening Privy onramp...'
+                                : modalAction === 'deposit'
+                                    ? 'Continue with Privy Onramp'
                                     : 'Submit Withdrawal'}
                         </button>
                         <p className="text-[9px] text-gray-400 text-center">You will be redirected to complete payment on the provider&apos;s secure page.</p>

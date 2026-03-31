@@ -6,6 +6,7 @@ import prisma from './db.js';
 import { startScheduler, stopScheduler } from './services/scheduler.service.js';
 import { startPriceService, stopPriceService } from './services/price.service.js';
 import { startTrustMRRService, stopTrustMRRService } from './services/trustmrr.service.js';
+import { startStripeRevenueService, stopStripeRevenueService } from './services/stripe-revenue.service.js';
 
 const server = createServer(app);
 
@@ -21,6 +22,7 @@ async function main() {
     startScheduler();
     startPriceService();
     await startTrustMRRService();
+    await startStripeRevenueService();
 
     server.listen(config.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.port}`);
@@ -43,6 +45,7 @@ async function shutdown(signal: string) {
   stopScheduler();
   stopPriceService();
   stopTrustMRRService();
+  stopStripeRevenueService();
 
   // Stop accepting new connections, give 10s for in-flight requests
   const forceTimeout = setTimeout(() => {
