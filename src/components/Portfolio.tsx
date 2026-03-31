@@ -62,7 +62,10 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
   const [verifyStep, setVerifyStep] = useState(0); // 0=companyInfo, 1=kyc, 2=stripe
   const [verifyDone, setVerifyDone] = useState(false);
   const [stripeConnected, setStripeConnected] = useState(false);
+  const [stripeApiKeyInput, setStripeApiKeyInput] = useState('');
   const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [stripeKeyError, setStripeKeyError] = useState<string | null>(null);
+  const [stripeRevenue, setStripeRevenue] = useState<{ mrr: number; last30dRev: number; momGrowth: number; lastSyncAt: string | null }>({ mrr: 0, last30dRev: 0, momGrowth: 0, lastSyncAt: null });
   const [verifyData, setVerifyData] = useState({
     companyName: '', country: '', registrationNo: '',
     description: '', website: '', foundedYear: '',
@@ -83,6 +86,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
     isPublic: true
   });
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [enterpriseApplications, setEnterpriseApplications] = useState<any[]>([]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayAddress);
@@ -111,6 +115,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
       if (status && status.step > 0) {
         setIsVerified(status.status === 'verified');
         setVerifyStep(status.step);
+        if (status.stripeApiKeyEncrypted && status.stripeKeyStatus === 'active') setStripeConnected(true);
         // Restore form data from backend
         setVerifyData(prev => ({
           ...prev,
@@ -130,19 +135,109 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
       }
     }).catch(console.error);
 
+    // Fetch Stripe revenue data
+    api.getStripeRevenue().then(rev => {
+      if (rev && rev.connected) {
+        setStripeConnected(true);
+        setStripeRevenue({ mrr: rev.mrr, last30dRev: rev.last30dRev, momGrowth: rev.momGrowth, lastSyncAt: rev.lastSyncAt });
+      }
+    }).catch(console.error);
+
     Promise.all([
       api.getHoldings().catch(() => []),
       api.getInvestments().catch(() => []),
       api.getHistory().catch(() => []),
       api.getHistoricalBalance().catch(() => []),
-    ]).then(([h, inv, hist, chart]) => {
+    ]).then(async ([h, inv, hist, chart]) => {
+      // dynamically fetch real on-chain USDC from Base Mainnet RPC
+      if (walletAddress) {
+        try {
+          const rawAddr = walletAddress.replace('0x', '').toLowerCase();
+          const data = '0x70a08231000000000000000000000000' + rawAddr;
+          
+          // Query both Native USDC and Bridged USDbC concurrently
+          const usdcContracts = [
+            '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Native USDC
+            '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA'  // USDbC (Bridged, e.g., Binance withdrawals)
+          ];
+          
+          const calls = usdcContracts.map(contract => 
+            fetch('https://mainnet.base.org', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'eth_call',
+                params: [{ to: contract, data }, 'latest'],
+                id: 1
+              })
+            }).then(r => r.json())
+          );
+          
+          const results = await Promise.all(calls);
+          let totalOnchainUsdc = 0;
+          
+          results.forEach(json => {
+            if (json.result && json.result !== '0x') {
+              totalOnchainUsdc += parseInt(json.result, 16) / 1e6;
+            }
+          });
+
+          if (totalOnchainUsdc > 0) {
+            const existingUsdc = h.find((item:any) => item.asset === 'USDC');
+            if (existingUsdc) {
+              existingUsdc.amount += totalOnchainUsdc;
+              existingUsdc.currentApy = 0; // Pure wallet balance
+              existingUsdc.earnedYield = 0;
+            } else {
+              h.push({ asset: 'USDC', amount: totalOnchainUsdc, currentPrice: 1, currentApy: 0, earnedYield: 0 });
+            }
+          }
+          
+          // Fetch On-chain Token Transfers (USDC) from Basescan
+          let basescanHistory: any[] = [];
+          try {
+            const bsRes = await fetch(`https://api.basescan.org/api?module=account&action=tokentx&address=${walletAddress}&page=1&offset=50&sort=desc`);
+            const bsJson = await bsRes.json();
+            if (bsJson.status === '1' && Array.isArray(bsJson.result)) {
+              const myAddr = walletAddress.toLowerCase();
+              const usdcTxs = bsJson.result.filter((tx: any) => usdcContracts.includes(tx.contractAddress?.toLowerCase()));
+              
+              basescanHistory = usdcTxs.map((tx: any) => {
+                const isDeposit = tx.to.toLowerCase() === myAddr;
+                return {
+                  id: tx.hash,
+                  type: isDeposit ? 'ONCHAIN_RECEIVED' : 'ONCHAIN_SENT',
+                  amount: parseInt(tx.value) / 1e6,
+                  asset: 'USDC',
+                  createdAt: new Date(parseInt(tx.timeStamp) * 1000).toISOString()
+                };
+              });
+            }
+          } catch (e) {
+            console.error('Failed to fetch Basescan history:', e);
+          }
+          
+          // Merge Basescan history with backend history
+          if (Array.isArray(hist)) {
+            hist.push(...basescanHistory);
+            hist.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          } else {
+            hist = basescanHistory;
+          }
+
+        } catch (e) {
+          console.error('Failed to fetch on-chain USDC data on Base:', e);
+        }
+      }
+
       if (Array.isArray(chart) && chart.length > 0) {
         setApiChartData(chart);
       }
       setIsChartLoading(false);
 
       if (Array.isArray(h) && h.length > 0) {
-        setApiHoldings(h);
+        setApiHoldings([...h]);
         const total = h.reduce((sum: number, item: any) => sum + ((item.amount || 0) * (item.currentPrice || 1.0)), 0);
         setBalance(total);
         const yTotal = h.reduce((sum: number, item: any) => sum + (item.earnedYield || 0), 0);
@@ -158,7 +253,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
       }
       if (Array.isArray(hist) && hist.length > 0) setApiHistory(hist);
     });
-  }, [isWalletConnected]);
+  }, [isWalletConnected, walletAddress]);
 
   const handleNextStep = async () => {
     try {
@@ -233,6 +328,11 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
         let hasData = false;
         if (api.isAuthenticated) {
           const apps = await api.getApplications().catch(() => []);
+          
+          if (Array.isArray(apps)) {
+            setEnterpriseApplications(apps);
+          }
+
           if (Array.isArray(apps) && apps.length > 0) {
             const results: Record<string, { schedule: RepaymentSchedule[]; project: any }> = {};
             await Promise.all(
@@ -245,25 +345,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
             );
             if (Object.keys(results).length > 0) {
               setEnterpriseDeductions(results);
-              hasData = true;
             }
-          }
-        }
-        // Fallback: use all projects that have repayment schedules
-        if (!hasData) {
-          const projects = await api.getProjects().catch(() => []);
-          if (Array.isArray(projects)) {
-            const fundedProjects = projects.filter((p: any) => p.status === 'Funded' || p.status === 'Sold Out');
-            const results: Record<string, { schedule: RepaymentSchedule[]; project: any }> = {};
-            await Promise.all(
-              fundedProjects.map(async (p: any) => {
-                const schedule = await api.getRepaymentSchedule(p.id).catch(() => []);
-                if (Array.isArray(schedule) && schedule.length > 0) {
-                  results[p.id] = { schedule, project: { id: p.id, title: p.title } };
-                }
-              })
-            );
-            setEnterpriseDeductions(results);
           }
         }
       } catch { /* ignore */ }
@@ -572,9 +654,9 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                           <AllocationCard
                             key={`hold-${i}`}
                             title={h.asset}
-                            apy={`${h.currentApy || 0}% APY`}
+                            apy={h.currentApy > 0 ? `${h.currentApy}% APY` : 'Available Balance'}
                             amount={`$${((h.amount || 0) * (h.currentPrice || h.avgCost || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                            earnings={`+$${(h.earnedYield || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                            earnings={h.earnedYield > 0 ? `+$${(h.earnedYield).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : ''}
                             icon={<div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center font-black text-white text-[10px]">{(h.asset || 'A').charAt(0)}</div>}
                           />
                         ))}
@@ -596,10 +678,10 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                         {apiHistory.map((tx: any, i: number) => (
                           <ActivityItem
                             key={`tx-${i}`}
-                            title={tx.type === 'INTEREST' ? 'Interest Payout' : tx.type === 'DEPOSIT' ? 'Deposit' : tx.type === 'MINT' ? 'Mint' : tx.type}
+                            title={tx.type === 'INTEREST' ? 'Interest Payout' : tx.type === 'DEPOSIT' ? 'Deposit' : tx.type === 'ONCHAIN_RECEIVED' ? 'USDC Received' : tx.type === 'ONCHAIN_SENT' ? 'USDC Sent' : tx.type === 'MINT' ? 'Mint' : tx.type}
                             time={new Date(tx.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            amount={`${tx.type === 'WITHDRAWAL' ? '-' : '+'}$${Math.abs(tx.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                            type={tx.type === 'INTEREST' ? 'INTEREST' : 'DEPOSIT'}
+                            amount={`${(tx.type === 'WITHDRAWAL' || tx.type === 'ONCHAIN_SENT') ? '-' : '+'}$${Math.abs(tx.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                            type={tx.type === 'INTEREST' ? 'INTEREST' : (tx.type === 'WITHDRAWAL' || tx.type === 'ONCHAIN_SENT') ? 'WITHDRAWAL' : 'DEPOSIT'}
                             source={tx.asset}
                           />
                         ))}
@@ -696,7 +778,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
             )}
 
             {/* Inline verification wizard (replaces modal) */}
-            {!isVerified && showVerifyWizard && (
+            {showVerifyWizard && (
               <div className="max-w-lg mx-auto py-8 px-6">
                 {/* Header with progress */}
                 <div className="flex items-center justify-between mb-2">
@@ -886,38 +968,113 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                   /* ── Step 3: Connect Stripe ── */
                   <div className="space-y-4">
                     <div className="mb-2">
-                      <h4 className="text-[14px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>Connect Stripe</h4>
-                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Authorize read-only access to verify your revenue. Investors will see live MRR and growth data.</p>
+                      <h4 className="text-[14px] font-bold" style={{ color: 'oklch(25% 0.02 260)' }}>Connect Stripe Revenue</h4>
+                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'oklch(58% 0.01 250)' }}>Paste your Stripe Restricted API Key to verify revenue. Investors will see live MRR and growth data.</p>
                     </div>
                     {!stripeConnected ? (
                       <div className="space-y-3">
+                        {/* How-to guide */}
+                        <a 
+                          href="https://dashboard.stripe.com/apikeys/create?name=LokaCash&permissions[0]=rak_charge_read&permissions[1]=rak_subscription_read&permissions[2]=rak_plan_read&permissions[3]=rak_bucket_connect_read&permissions[4]=rak_file_read&permissions[5]=rak_product_read" 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="block bg-blue-50/70 rounded-xl p-3.5 border border-blue-100/60 transition-all hover:bg-blue-50 hover:border-blue-200/60 group cursor-pointer shadow-sm hover:shadow-md"
+                        >
+                          <div className="flex items-center justify-between pointer-events-none">
+                            <span className="text-[12px] font-bold text-blue-800 group-hover:underline">Click here to create a read-only API key.</span>
+                            <svg className="w-3.5 h-3.5 text-blue-600 shrink-0 transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                          </div>
+                          <div className="mt-2 text-[10.5px] text-blue-700 space-y-1.5 font-medium leading-relaxed pointer-events-none">
+                            <p className="group-hover:underline">1. Scroll down and click <strong>'Create key'</strong></p>
+                            <p className="group-hover:underline">2. Don't change the permissions</p>
+                            <p className="group-hover:underline">3. Don't delete the key or we can't refresh revenue</p>
+                          </div>
+                        </a>
+
+                        {/* API Key Input */}
+                        <div>
+                          <input
+                            type="password"
+                            value={stripeApiKeyInput}
+                            onChange={e => { setStripeApiKeyInput(e.target.value); setStripeKeyError(null); }}
+                            placeholder="Paste your Restricted API Key (rk_live_... or rk_test_...)"
+                            className={`w-full px-4 py-3 text-sm bg-gray-50 border rounded-xl focus:outline-none focus:ring-1 transition-all font-mono ${
+                              stripeKeyError ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-gray-300'
+                            } placeholder:text-gray-300`}
+                          />
+                          {stripeKeyError && (
+                            <p className="text-[10px] text-red-500 mt-1.5 font-medium">{stripeKeyError}</p>
+                          )}
+                          {stripeApiKeyInput && !stripeApiKeyInput.startsWith('rk_') && (
+                            <p className="text-[10px] text-amber-500 mt-1.5 font-medium">Key must start with rk_live_ or rk_test_</p>
+                          )}
+                        </div>
+
+                        {/* Submit Button */}
                         <button
-                          onClick={() => { setStripeConnecting(true); setTimeout(() => { setStripeConnecting(false); setStripeConnected(true); }, 2000); }}
-                          disabled={stripeConnecting}
-                          className="w-full py-3 flex items-center justify-center gap-2.5 bg-[#635BFF] text-white text-[13px] font-semibold rounded-xl hover:bg-[#4F46E5] transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                          onClick={async () => {
+                            if (!stripeApiKeyInput.startsWith('rk_')) {
+                              setStripeKeyError('Must be a Stripe Restricted API Key (starts with rk_)');
+                              return;
+                            }
+                            setStripeConnecting(true);
+                            setStripeKeyError(null);
+                            try {
+                              await api.submitStripeApiKey(stripeApiKeyInput);
+                              setStripeConnected(true);
+                              setStripeApiKeyInput('');
+                              // Fetch revenue data
+                              const rev = await api.getStripeRevenue();
+                              if (rev && rev.connected) {
+                                setStripeRevenue({ mrr: rev.mrr, last30dRev: rev.last30dRev, momGrowth: rev.momGrowth, lastSyncAt: rev.lastSyncAt });
+                              }
+                            } catch (err: any) {
+                              setStripeKeyError(err?.message || 'Failed to verify API key');
+                            } finally {
+                              setStripeConnecting(false);
+                            }
+                          }}
+                          disabled={stripeConnecting || !stripeApiKeyInput.startsWith('rk_')}
+                          className="w-full py-3 flex items-center justify-center gap-2.5 bg-[#635BFF] text-white text-[13px] font-semibold rounded-xl hover:bg-[#4F46E5] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {stripeConnecting ? (
-                            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Connecting…</>
+                            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</>
                           ) : (
-                            <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.583L20 4.114A18.22 18.22 0 0 0 12.581 2c-3.099 0-5.47 1.498-6.27 3.895-.254.754-.36 1.537-.293 2.344.065.808.318 1.565.742 2.217.854 1.318 2.296 2.089 4.044 2.695 1.927.658 3.095 1.282 3.095 2.303 0 .914-.817 1.481-2.179 1.481-1.876 0-4.153-.742-5.943-1.836l-1.756 3.404C6.05 20.148 9.02 21.5 12.311 21.5c3.408 0 6.056-1.548 6.721-4.078.181-.688.24-1.393.175-2.097-.065-.706-.283-1.384-.65-1.994-.707-1.17-2.014-1.9-4.581-2.181z" /></svg>Connect with Stripe</>
+                            <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.583L20 4.114A18.22 18.22 0 0 0 12.581 2c-3.099 0-5.47 1.498-6.27 3.895-.254.754-.36 1.537-.293 2.344.065.808.318 1.565.742 2.217.854 1.318 2.296 2.089 4.044 2.695 1.927.658 3.095 1.282 3.095 2.303 0 .914-.817 1.481-2.179 1.481-1.876 0-4.153-.742-5.943-1.836l-1.756 3.404C6.05 20.148 9.02 21.5 12.311 21.5c3.408 0 6.056-1.548 6.721-4.078.181-.688.24-1.393.175-2.097-.065-.706-.283-1.384-.65-1.994-.707-1.17-2.014-1.9-4.581-2.181z" /></svg>Verify & Connect</>
                           )}
                         </button>
+
+                        {/* Security note */}
                         <div className="flex items-start gap-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
                           <svg className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                          <p className="text-[10px] text-gray-500 leading-relaxed">OAuth read-only access. We never store your Stripe secret key. You can revoke access at any time.</p>
+                          <p className="text-[10px] text-gray-500 leading-relaxed">Your key is encrypted (AES-256-GCM) before storage. We only read subscription & charge data — <strong>never modify</strong> your Stripe account. You can revoke access at any time.</p>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-100 mb-3">
-                          <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                          <p className="text-[11px] font-semibold text-green-700">Stripe account connected successfully</p>
+                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100 mb-3">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            <p className="text-[11px] font-semibold text-green-700">Stripe API key connected</p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm('Disconnect Stripe? Revenue data will be removed.')) return;
+                              try {
+                                await api.disconnectStripe();
+                                setStripeConnected(false);
+                                setStripeRevenue({ mrr: 0, last30dRev: 0, momGrowth: 0, lastSyncAt: null });
+                              } catch { }
+                            }}
+                            className="text-[10px] text-red-400 hover:text-red-600 font-semibold transition-colors"
+                          >Disconnect</button>
                         </div>
                         <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Revenue Preview</p>
-                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">MRR</span><span className="text-[12px] font-bold text-gray-900">$28,400</span></div>
-                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">Last 30d Revenue</span><span className="text-[12px] font-bold text-gray-900">$31,200</span></div>
-                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">MoM Growth</span><span className="text-[12px] font-bold text-green-600">+12.4%</span></div>
+                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">MRR</span><span className="text-[12px] font-bold text-gray-900">${stripeRevenue.mrr > 0 ? stripeRevenue.mrr.toLocaleString() : 'Syncing...'}</span></div>
+                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">Last 30d Revenue</span><span className="text-[12px] font-bold text-gray-900">${stripeRevenue.last30dRev > 0 ? stripeRevenue.last30dRev.toLocaleString() : 'Syncing...'}</span></div>
+                          <div className="flex items-center justify-between"><span className="text-[11px] text-gray-500">MoM Growth</span><span className={`text-[12px] font-bold ${stripeRevenue.momGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{stripeRevenue.momGrowth !== 0 ? `${stripeRevenue.momGrowth > 0 ? '+' : ''}${stripeRevenue.momGrowth.toFixed(1)}%` : 'Syncing...'}</span></div>
+                          {stripeRevenue.lastSyncAt && <p className="text-[9px] text-gray-400 mt-1">Last synced: {new Date(stripeRevenue.lastSyncAt).toLocaleString()}</p>}
                         </div>
                       </div>
                     )}
@@ -950,7 +1107,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
             )}
 
             {/* Verified: show company info + fundraising */}
-            {isVerified && <>
+            {isVerified && !showVerifyWizard && <>
 
               {/* Company Info Card */}
               <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
@@ -958,34 +1115,37 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 <div className="flex items-start gap-4 mb-5">
                   {/* Company Logo */}
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shrink-0 text-white text-lg font-black" style={{ background: 'oklch(30% 0.03 260)' }}>
-                    L
+                    {verifyData.companyName ? verifyData.companyName.charAt(0).toUpperCase() : 'C'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <h2 className="text-[15px] font-bold text-black truncate">Loka Technologies Pte Ltd</h2>
+                        <h2 className="text-[15px] font-bold text-black truncate">{verifyData.companyName || 'Unknown Company'}</h2>
                         <span className="px-2 py-0.5 bg-green-50 text-green-600 text-[9px] font-black rounded-full border border-green-200/50 flex items-center gap-0.5 shrink-0">
                           <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                           Verified
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-gray-200 hover:bg-gray-50 transition-all shrink-0" style={{ color: 'oklch(40% 0.02 260)' }}>
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => navigate('/market/startup/loka-technologies', {
+                      <div className="flex items-center gap-2 shrink-0 relative mt-2 sm:mt-0">
+                          <button
+                            onClick={() => { setShowVerifyWizard(true); setVerifyDone(false); setVerifyStep(0); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            Edit
+                          </button>
+                          <button
+                          onClick={() => navigate(`/market/startup/${verifyData.companyName.toLowerCase().replace(/\s+/g, '-')}`, {
                             state: {
                               project: {
-                                name: 'Loka Technologies Pte Ltd', cat: 'Fintech', mapped_cat: 'Fintech',
+                                name: verifyData.companyName, cat: verifyData.categories[0] || 'Uncategorized', mapped_cat: verifyData.categories[0] || 'Uncategorized',
                                 tagColor: 'text-gray-700 bg-gray-50 border-gray-100', views: '—', saves: 0,
-                                desc: 'AI-powered revenue financing platform for SaaS companies in Southeast Asia.',
-                                rev: '$0', revGrow: '', waitlist: '0', tags: ['SaaS', 'Fintech', 'AI'],
-                                logo: 'L', color: 'from-gray-500 to-gray-700', cover: 'from-gray-900/10 to-transparent', label: '',
-                                allTimeRev: '$0', mrr: '$0', founder: 'Ellie Liu', founderFollowers: undefined,
-                                websiteUrl: 'https://loka.finance', founded: '2021', country: 'Singapore',
-                                slug: 'loka-technologies', profitMargin: '-',
+                                desc: verifyData.description || 'No description provided.',
+                                rev: '$0', revGrow: '', waitlist: '0', tags: verifyData.categories.length > 0 ? verifyData.categories : ['New'],
+                                logo: verifyData.companyName ? verifyData.companyName.charAt(0).toUpperCase() : 'C', color: 'from-gray-500 to-gray-700', cover: 'from-gray-900/10 to-transparent', label: '',
+                                allTimeRev: '$0', mrr: '$0', founder: userProfile.name, founderFollowers: undefined,
+                                websiteUrl: verifyData.website || '#', founded: verifyData.foundedYear || '-', country: verifyData.country || 'Unknown',
+                                slug: verifyData.companyName.toLowerCase().replace(/\s+/g, '-'), profitMargin: '-',
                               }
                             }
                           })}
@@ -997,7 +1157,9 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                         </button>
                       </div>
                     </div>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'oklch(55% 0.01 250)' }}>Singapore · Founded 2021 · SaaS</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'oklch(55% 0.01 250)' }}>
+                      {[verifyData.country, verifyData.foundedYear ? `Founded ${verifyData.foundedYear}` : null, verifyData.categories[0]].filter(Boolean).join(' · ')}
+                    </p>
                   </div>
                 </div>
 
@@ -1006,34 +1168,38 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 <div className="space-y-0 divide-y divide-gray-100">
                   <div className="flex items-center justify-between py-3">
                     <span className="text-[11px] text-gray-400 font-medium">Company Name</span>
-                    <span className="text-[13px] font-bold text-black">Loka Technologies Pte Ltd</span>
+                    <span className="text-[13px] font-bold text-black">{verifyData.companyName || '-'}</span>
                   </div>
                   <div className="flex items-center justify-between py-3">
                     <span className="text-[11px] text-gray-400 font-medium">Country / Region</span>
-                    <span className="text-[13px] font-bold text-black">Singapore</span>
+                    <span className="text-[13px] font-bold text-black">{verifyData.country || '-'}</span>
                   </div>
                   <div className="flex items-center justify-between py-3">
                     <span className="text-[11px] text-gray-400 font-medium">Registration No.</span>
-                    <span className="text-[13px] font-bold text-black">202312345A</span>
+                    <span className="text-[13px] font-bold text-black">{verifyData.registrationNo || '-'}</span>
                   </div>
                   <div className="flex items-start justify-between py-3 gap-4">
                     <span className="text-[11px] text-gray-400 font-medium shrink-0">Description</span>
-                    <span className="text-[12px] text-gray-700 text-right leading-relaxed">AI-powered revenue financing platform for SaaS companies in Southeast Asia.</span>
+                    <span className="text-[12px] text-gray-700 text-right leading-relaxed">{verifyData.description || '-'}</span>
                   </div>
                   <div className="flex items-center justify-between py-3">
                     <span className="text-[11px] text-gray-400 font-medium">Founded</span>
-                    <span className="text-[13px] font-bold text-black">2021</span>
+                    <span className="text-[13px] font-bold text-black">{verifyData.foundedYear || '-'}</span>
                   </div>
                   <div className="flex items-center justify-between py-3">
                     <span className="text-[11px] text-gray-400 font-medium">Website</span>
-                    <a href="#" className="text-[12px] font-semibold" style={{ color: 'oklch(40% 0.08 260)' }}>loka.finance</a>
+                    {verifyData.website ? (
+                      <a href={verifyData.website} target="_blank" rel="noopener noreferrer" className="text-[12px] font-semibold" style={{ color: 'oklch(40% 0.08 260)' }}>{verifyData.website.replace(/^https?:\/\//, '')}</a>
+                    ) : (
+                      <span className="text-[13px] font-bold text-black">-</span>
+                    )}
                   </div>
                   <div className="flex items-start justify-between py-3 gap-4">
                     <span className="text-[11px] text-gray-400 font-medium shrink-0">Categories</span>
                     <div className="flex flex-wrap gap-1.5 justify-end">
-                      {['SaaS', 'Fintech', 'AI'].map(tag => (
+                      {verifyData.categories.length > 0 ? verifyData.categories.map(tag => (
                         <span key={tag} className="px-2 py-0.5 text-[10px] font-semibold rounded-full border border-gray-200 text-gray-500">{tag}</span>
-                      ))}
+                      )) : <span className="text-[12px] text-gray-500">-</span>}
                     </div>
                   </div>
                 </div>
@@ -1064,42 +1230,53 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       <p className="text-[10px] text-gray-400 font-medium">Company fundraising status</p>
                     </div>
                   </div>
-                  {/* Toggle: show Active badge only when fundraising is active */}
-                  {false /* replace with fundraising state */ ? (
+                  <div className="flex items-center gap-3">
+                  {enterpriseApplications.length > 0 ? (
                     <span className="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-200/50">● Active</span>
                   ) : (
                     <span className="px-2.5 py-1 bg-gray-50 text-gray-400 text-[10px] font-bold rounded-full border border-gray-200">Not Started</span>
                   )}
                 </div>
+                </div>
 
-                {/* State A: Active fundraising */}
-                {false /* replace with fundraising state */ ? (
-                  <>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="bg-gray-50 rounded-xl p-3">
-                        <p className="text-[10px] text-gray-400 font-medium mb-1">Target</p>
-                        <p className="text-[15px] font-bold text-gray-900">$500,000</p>
+                {enterpriseApplications.length > 0 ? (
+                  <div className="space-y-4">
+                    {enterpriseApplications.map((app: any, idx: number) => (
+                      <div key={idx} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="text-sm font-bold text-gray-900">{app.projectName}</h4>
+                          <span className={`px-2 py-1 text-[10px] font-bold rounded-full border ${app.status === 'in_review' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
+                            {app.status === 'verified' ? 'Active' : app.status === 'in_review' ? 'In Review' : 'Pending'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                            <p className="text-[10px] text-gray-400 font-medium mb-1">Target</p>
+                            <p className="text-[14px] font-black text-gray-900">${(app.requestedAmount || 0).toLocaleString()}</p>
+                          </div>
+                          <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                            <p className="text-[10px] text-gray-400 font-medium mb-1">Raised</p>
+                            <p className="text-[14px] font-black text-green-600">${((app as any)?.raisedAmount || 0).toLocaleString()}</p>
+                          </div>
+                          <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                            <p className="text-[10px] text-gray-400 font-medium mb-1">APY / Term</p>
+                            <p className="text-[14px] font-black text-gray-900">{app.proposedApy || 0}% <span className="text-[11px] font-medium text-gray-400">{app.durationDays || 0}d</span></p>
+                          </div>
+                        </div>
+                        {((app as any)?.raisedAmount || 0) > 0 && (
+                          <div className="mb-4">
+                            <div className="flex justify-between mb-1.5">
+                              <span className="text-[10px] text-gray-400 font-medium">Progress</span>
+                              <span className="text-[10px] font-bold text-gray-900">{Math.round((((app as any)?.raisedAmount || 0) / (app.requestedAmount || 1)) * 100)}% funded</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.round((((app as any)?.raisedAmount || 0) / (app.requestedAmount || 1)) * 100)}%` }} />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="bg-gray-50 rounded-xl p-3">
-                        <p className="text-[10px] text-gray-400 font-medium mb-1">Raised</p>
-                        <p className="text-[15px] font-bold text-green-600">$375,000</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-xl p-3">
-                        <p className="text-[10px] text-gray-400 font-medium mb-1">APY / Term</p>
-                        <p className="text-[15px] font-bold text-gray-900">15.5% <span className="text-[11px] font-medium text-gray-400">60d</span></p>
-                      </div>
-                    </div>
-                    <div className="mb-4">
-                      <div className="flex justify-between mb-1.5">
-                        <span className="text-[10px] text-gray-400 font-medium">Progress</span>
-                        <span className="text-[10px] font-bold text-gray-900">75% funded</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500 rounded-full" style={{ width: '75%' }} />
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-gray-400">Fundraising closes in <span className="font-semibold text-gray-700">18 days</span></p>
-                  </>
+                    ))}
+                  </div>
                 ) : (
                   /* State B: No fundraising yet — empty state */
                   <div className="text-center py-8">
@@ -1133,21 +1310,21 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                 )}
               </section>
 
-              {/* Repayment Records — only show when data exists */}
-              {Object.keys(enterpriseDeductions).length > 0 && (
-                <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
-                      <svg className="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h2 className="text-[15px] font-semibold text-gray-900">Repayment Records</h2>
-                      <p className="text-[10px] text-gray-400 font-medium">Auto-deducted from revenue for investor repayments</p>
-                    </div>
+              {/* Repayment Records */}
+              <section className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 sm:p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
+                    <svg className="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
                   </div>
+                  <div>
+                    <h2 className="text-[15px] font-semibold text-gray-900">Repayment Records</h2>
+                    <p className="text-[10px] text-gray-400 font-medium">Auto-deducted from revenue for investor repayments</p>
+                  </div>
+                </div>
 
+                {Object.keys(enterpriseDeductions).length > 0 ? (
                   <div className="space-y-4">
                     {Object.entries(enterpriseDeductions).map(([projectId, { schedule, project }]) => {
                       const paidPeriods = schedule.filter(s => s.status === 'paid');
@@ -1207,8 +1384,13 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                       );
                     })}
                   </div>
-                </section>
-              )}
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-[13px] font-semibold text-gray-400 mb-1">No Repayment Records</p>
+                    <p className="text-[11px] text-gray-400/80">You don't have any active repayment schedules yet.</p>
+                  </div>
+                )}
+              </section>
             </>}
           </div>
         )}
@@ -1413,11 +1595,11 @@ const AllocationCard: React.FC<{
   </div>
 );
 
-const ActivityItem: React.FC<{ title: string; time: string; amount: string; type: 'INTEREST' | 'DEPOSIT'; source?: string; onSourceClick?: () => void }> = ({ title, time, amount, type, source, onSourceClick }) => (
+const ActivityItem: React.FC<{ title: string; time: string; amount: string; type: 'INTEREST' | 'DEPOSIT' | 'WITHDRAWAL'; source?: string; onSourceClick?: () => void }> = ({ title, time, amount, type, source, onSourceClick }) => (
   <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-50 last:border-none hover:bg-gray-50/50 transition-colors gap-3">
     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${type === 'INTEREST' ? 'bg-green-50 text-green-500' : 'bg-gray-100 text-black'}`}>
-        {type === 'INTEREST' ? '💰' : '⬇️'}
+      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${type === 'INTEREST' ? 'bg-green-50 text-green-500' : type === 'WITHDRAWAL' ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-black'}`}>
+        {type === 'INTEREST' ? '💰' : type === 'WITHDRAWAL' ? '⬆️' : '⬇️'}
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -1444,7 +1626,7 @@ const ActivityItem: React.FC<{ title: string; time: string; amount: string; type
         </div>
       </div>
     </div>
-    <span className={`text-sm font-bold shrink-0 ${type === 'INTEREST' ? 'text-green-600' : 'text-black'}`}>{amount}</span>
+    <span className={`text-sm font-bold shrink-0 ${type === 'INTEREST' ? 'text-green-600' : type === 'WITHDRAWAL' ? 'text-red-500' : 'text-black'}`}>{amount}</span>
   </div>
 );
 

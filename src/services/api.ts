@@ -382,6 +382,32 @@ class ApiClient {
     });
   }
 
+  // ============ Stripe Revenue Verification ============
+
+  async submitStripeApiKey(apiKey: string) {
+    return this.request<{ success: boolean; message: string }>('/stripe/connect-key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    });
+  }
+
+  async disconnectStripe() {
+    return this.request<{ success: boolean; message: string }>('/stripe/disconnect', {
+      method: 'DELETE',
+    });
+  }
+
+  async getStripeRevenue() {
+    return this.request<{
+      connected: boolean;
+      keyStatus: string | null;
+      mrr: number;
+      last30dRev: number;
+      momGrowth: number;
+      lastSyncAt: string | null;
+    }>('/stripe/revenue');
+  }
+
   // ============ Portfolio Additional ============
 
   async getHistoricalBalance() {
@@ -555,6 +581,16 @@ class ApiClient {
   }
   async getGroupPolls(groupId: string) {
     return this.request<any[]>(`/community/groups/${groupId}/polls`);
+  }
+
+  // ============ Discover ============
+
+  async discoverGroups() {
+    return this.request<any[]>('/groups/discover');
+  }
+
+  async discoverUsers() {
+    return this.request<any[]>('/users/discover');
   }
 
 

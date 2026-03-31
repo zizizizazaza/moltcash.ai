@@ -46,4 +46,58 @@ router.patch('/profile', authRequired, async (req: AuthRequest, res, next) => {
   }
 });
 
+// ============ Discover public users (square) ============
+router.get('/discover', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const me = req.userId!;
+
+    const users = await prisma.user.findMany({
+      where: {
+        id: { not: me },
+        isPublic: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        bio: true,
+        role: true,
+        twitter: true,
+        linkedin: true,
+        personalWebsite: true,
+        creditScore: true,
+        createdAt: true,
+      },
+      orderBy: { creditScore: 'desc' },
+      take: 50,
+    });
+
+    // Get friendship statuses in bulk
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        OR: [
+          { requesterId: me, addresseeId: { in: users.map(u => u.id) } },
+          { addresseeId: me, requesterId: { in: users.map(u => u.id) } },
+        ],
+      },
+      select: { requesterId: true, addresseeId: true, status: true },
+    });
+
+    const friendshipMap = new Map<string, string>();
+    for (const f of friendships) {
+      const otherId = f.requesterId === me ? f.addresseeId : f.requesterId;
+      friendshipMap.set(otherId, f.status); // 'pending' | 'accepted'
+    }
+
+    const result = users.map(u => ({
+      ...u,
+      friendshipStatus: friendshipMap.get(u.id) || 'none', // 'none' | 'pending' | 'accepted'
+    }));
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

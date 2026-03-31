@@ -7,6 +7,38 @@ import { emitToGroup } from '../socket/index.js';
 
 const router = Router();
 
+// ============ Discover all groups (public square) ============
+router.get('/discover', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const me = req.userId!;
+
+    const groups = await prisma.groupChat.findMany({
+      include: {
+        _count: { select: { members: true } },
+        members: {
+          where: { userId: me },
+          select: { userId: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const result = groups.map(g => ({
+      id: g.id,
+      name: g.name,
+      bio: g.bio,
+      avatar: g.avatar,
+      memberCount: g._count.members,
+      isMember: g.members.length > 0,
+      createdAt: g.createdAt,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ============ List groups (user's groups) ============
 router.get('/', authRequired, async (req: AuthRequest, res, next) => {
   try {

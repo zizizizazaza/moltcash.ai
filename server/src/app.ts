@@ -26,6 +26,7 @@ import trustmrrRoutes from './routes/trustmrr.js';
 import communityRoutes from './routes/community.js';
 import uploadRoutes from './routes/upload.js';
 import enterpriseRoutes from './routes/enterprise.js';
+import stripeRoutes from './routes/stripe.js';
 import path from 'path';
 import prisma from './db.js';
 
@@ -108,6 +109,7 @@ app.use('/api/trustmrr', trustmrrRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/enterprise', enterpriseRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 // Static file serving for uploads
 app.use('/api/uploads', express.static(path.join(process.cwd(), 'public/uploads')));

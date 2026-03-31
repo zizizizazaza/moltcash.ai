@@ -3072,13 +3072,101 @@ const ContactsPage: React.FC = () => {
 };
 
 const DiscoverPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'Agents' | 'People' | 'Groups'>('Agents');
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'Agents' | 'Groups' | 'People'>('Agents');
   const [agentCat, setAgentCat] = useState('All');
   const [showCreateAgent, setShowCreateAgent] = useState(false);
 
-  const tabs = ['Agents', 'People', 'Groups'] as const;
+  // ── Groups state ──
+  const [groups, setGroups] = useState<any[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [joiningGroup, setJoiningGroup] = useState<string | null>(null);
 
+  // ── People state ──
+  const [people, setPeople] = useState<any[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [addingFriend, setAddingFriend] = useState<string | null>(null);
+
+  const tabs = ['Agents', 'Groups', 'People'] as const;
   const filteredAgents = agentCat === 'All' ? DISCOVER_AGENTS : DISCOVER_AGENTS.filter(a => a.category === agentCat);
+
+  // Fetch groups when tab activates
+  useEffect(() => {
+    if (activeTab === 'Groups' && groups.length === 0) {
+      setGroupsLoading(true);
+      api.discoverGroups().then(data => {
+        setGroups(data || []);
+      }).catch(console.error).finally(() => setGroupsLoading(false));
+    }
+  }, [activeTab]);
+
+  // Fetch people when tab activates
+  useEffect(() => {
+    if (activeTab === 'People' && people.length === 0) {
+      setPeopleLoading(true);
+      api.discoverUsers().then(data => {
+        setPeople(data || []);
+      }).catch(console.error).finally(() => setPeopleLoading(false));
+    }
+  }, [activeTab]);
+
+  const handleJoinGroup = async (groupId: string) => {
+    setJoiningGroup(groupId);
+    try {
+      await api.joinGroup(groupId);
+      setGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: true, memberCount: g.memberCount + 1 } : g));
+    } catch (err: any) {
+      console.error('Join failed', err);
+    } finally {
+      setJoiningGroup(null);
+    }
+  };
+
+  const handleLeaveGroup = async (groupId: string) => {
+    setJoiningGroup(groupId);
+    try {
+      await api.leaveGroup(groupId);
+      setGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: false, memberCount: Math.max(0, g.memberCount - 1) } : g));
+    } catch (err: any) {
+      console.error('Leave failed', err);
+    } finally {
+      setJoiningGroup(null);
+    }
+  };
+
+  const handleAddFriend = async (userId: string) => {
+    setAddingFriend(userId);
+    try {
+      await api.sendFriendRequest(userId);
+      setPeople(prev => prev.map(p => p.id === userId ? { ...p, friendshipStatus: 'pending' } : p));
+    } catch (err: any) {
+      console.error('Add friend failed', err);
+    } finally {
+      setAddingFriend(null);
+    }
+  };
+
+  const handleChatWithFriend = async (e: React.MouseEvent, userId: string) => {
+    e.stopPropagation();
+    try {
+      const conv = await api.createDMConversation(userId);
+      navigate(`/chat?convId=${conv.id}`);
+    } catch (err) {
+      console.error('Navigate to chat failed', err);
+    }
+  };
+
+  // Color palette for avatars
+  const AVATAR_COLORS = [
+    'from-violet-500 to-purple-700', 'from-indigo-600 to-blue-700', 'from-emerald-500 to-teal-700',
+    'from-rose-500 to-pink-600', 'from-amber-600 to-orange-600', 'from-sky-500 to-blue-500',
+    'from-cyan-600 to-blue-700', 'from-fuchsia-600 to-purple-600', 'from-gray-700 to-gray-900', 'from-blue-600 to-blue-800',
+  ];
+  const GROUP_COLORS = [
+    'bg-blue-100 text-blue-600', 'bg-emerald-100 text-emerald-600', 'bg-violet-100 text-violet-600',
+    'bg-amber-100 text-amber-600', 'bg-rose-100 text-rose-600', 'bg-cyan-100 text-cyan-600',
+    'bg-indigo-100 text-indigo-600', 'bg-pink-100 text-pink-600',
+  ];
 
   return (
     <>
@@ -3100,27 +3188,65 @@ const DiscoverPage: React.FC = () => {
 
         {/* ── Groups Tab ── */}
         {activeTab === 'Groups' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {DISCOVER_GROUPS.map(g => (
-              <div key={g.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-9 h-9 rounded-xl ${g.color} flex items-center justify-center text-[13px] font-bold shrink-0`}>{g.letter}</div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-gray-900 truncate leading-tight">{g.name}</p>
-                    <p className="text-[10px] text-gray-400 font-medium">{g.members.toLocaleString()} members</p>
-                  </div>
-                </div>
-                {/* Desc */}
-                <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{g.desc}</p>
-                {/* Action */}
-                <button className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                  Join group
-                </button>
+          groupsLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : groups.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-5 border border-gray-100">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </div>
-            ))}
-          </div>
+              <p className="text-[15px] text-gray-600 font-semibold">No groups yet</p>
+              <p className="text-[13px] text-gray-400 mt-1.5 max-w-[200px]">Create an energetic community group from the Chat page!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {groups.map((g, i) => {
+                const color = GROUP_COLORS[i % GROUP_COLORS.length];
+                const letter = (g.avatar || g.name?.charAt(0) || 'G').charAt(0).toUpperCase();
+                return (
+                  <div key={g.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center text-[13px] font-bold shrink-0`}>{letter}</div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-semibold text-gray-900 truncate leading-tight">{g.name}</p>
+                        <p className="text-[10px] text-gray-400 font-medium">{(g.memberCount || 0).toLocaleString()} members</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{g.bio || 'A community group on Loka'}</p>
+                    {g.isMember ? (
+                      <button
+                        onClick={() => handleLeaveGroup(g.id)}
+                        disabled={joiningGroup === g.id}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 hover:text-red-500 transition-colors disabled:opacity-50"
+                      >
+                        {joiningGroup === g.id ? (
+                          <div className="w-3 h-3 border border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                        )}
+                        Joined
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleJoinGroup(g.id)}
+                        disabled={joiningGroup === g.id}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50"
+                      >
+                        {joiningGroup === g.id ? (
+                          <div className="w-3 h-3 border border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        )}
+                        Join group
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
 
         {/* ── Agents Tab ── */}
@@ -3143,7 +3269,6 @@ const DiscoverPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {filteredAgents.map(a => {
-                // Map solid color to gradient pair
                 const gradMap: Record<string, string> = {
                   'bg-blue-500': 'from-blue-500 to-indigo-500',
                   'bg-red-500': 'from-red-500 to-rose-500',
@@ -3157,7 +3282,6 @@ const DiscoverPage: React.FC = () => {
                 const grad = gradMap[a.color] ?? 'from-gray-400 to-gray-500';
                 return (
                   <div key={a.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
-                    {/* Avatar + name row */}
                     <div className="flex items-start gap-3 mb-3">
                       <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[13px] font-black text-white shadow-sm shrink-0`}>
                         {a.letter}
@@ -3167,9 +3291,7 @@ const DiscoverPage: React.FC = () => {
                         <p className="text-[10px] text-gray-400 font-medium mt-0.5">{a.category}</p>
                       </div>
                     </div>
-                    {/* Desc */}
                     <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{a.desc}</p>
-                    {/* Action — lightweight, not full-width black */}
                     <button className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition-colors group-hover:underline underline-offset-2">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                       Start a chat
@@ -3183,54 +3305,123 @@ const DiscoverPage: React.FC = () => {
 
         {/* ── People Tab ── */}
         {activeTab === 'People' && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {[
-              { name: 'Alex Chen', role: 'Founder', org: 'ComputeDAO', score: 1200, investments: 0, raises: 3, avatar: 'A', color: 'from-violet-500 to-purple-700', followers: '12.5k' },
-              { name: 'Sarah Kim', role: 'Investor', org: 'Independent', score: 980, investments: 12, raises: 0, avatar: 'S', color: 'from-indigo-600 to-blue-700', followers: '450' },
-              { name: 'Marcus Johnson', role: 'Investor', org: 'Alpha Capital', score: 1450, investments: 28, raises: 0, avatar: 'M', color: 'from-emerald-500 to-teal-700', followers: '2.1k' },
-              { name: 'Lisa Wang', role: 'Founder', org: 'Rezi Inc.', score: 890, investments: 0, raises: 2, avatar: 'L', color: 'from-rose-500 to-pink-600', followers: '18.2k' },
-              { name: 'David Park', role: 'Investor', org: 'DePhi Ventures', score: 720, investments: 5, raises: 0, avatar: 'D', color: 'from-amber-600 to-orange-600', followers: '8,900' },
-              { name: 'Emma Torres', role: 'Contributor', org: 'Loka DAO', score: 650, investments: 3, raises: 0, avatar: 'E', color: 'from-sky-500 to-blue-500', followers: '1,200' },
-              { name: 'James Liu', role: 'Founder', org: 'Deeptrue Corp.', score: 760, investments: 1, raises: 1, avatar: 'J', color: 'from-cyan-600 to-blue-700', followers: '34.5k' },
-              { name: 'Rachel Green', role: 'Investor', org: 'Onchain Insights', score: 1100, investments: 19, raises: 0, avatar: 'R', color: 'from-fuchsia-600 to-purple-600', followers: '5,020' },
-              { name: 'Sam Altman', role: 'Founder', org: 'OpenAI', score: 9990, investments: 42, raises: 5, avatar: 'S', color: 'from-gray-700 to-gray-900', followers: '3.2M' },
-              { name: 'Brian Armstrong', role: 'Founder', org: 'Coinbase', score: 8500, investments: 30, raises: 2, avatar: 'B', color: 'from-blue-600 to-blue-800', followers: '1.2M' },
-            ].map((person, i) => (
-              <div key={i} className="group cursor-pointer flex flex-col h-full rounded-[20px] overflow-hidden bg-white hover:shadow-xl transition-all duration-500 border border-gray-100 hover:border-gray-200">
-                {/* Large Profile Image Area */}
-                <div className={`h-28 w-full bg-gradient-to-br ${person.color} relative flex items-center justify-center overflow-hidden`}>
-                   <span className="text-white/30 font-black text-5xl transition-transform duration-700 group-hover:scale-110 drop-shadow-lg">{person.avatar}</span>
-                   {/* Top Left X (Twitter) Followers */}
-                   <a href="#" onClick={(e) => e.stopPropagation()} className="absolute top-3 left-3 bg-white/95 backdrop-blur shadow-sm text-gray-900 text-[10px] font-bold px-2 py-1 rounded-lg z-10 flex items-center gap-1.5 border border-white/20 hover:scale-105 hover:bg-white transition-all cursor-pointer">
-                     <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                     {person.followers}
-                   </a>
-                   {/* Top Right Add Friend */}
-                   <button onClick={(e) => e.stopPropagation()} className="absolute top-3 right-3 w-8 h-8 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors z-10 border border-white/10">
-                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                   </button>
-                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                </div>
-                {/* Content */}
-                <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="text-base font-bold text-gray-900 leading-tight mb-1.5 group-hover:text-blue-600 transition-colors">{person.name}</h3>
-                  <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-3 line-clamp-3">
-                    {person.role} @ {person.org}. {person.investments > 0 ? `${person.investments} investments. ` : ''}Active ({person.score.toLocaleString()} pts).
-                  </p>
-                  <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
-                    <a href="#" onClick={(e) => e.preventDefault()} className="text-[11px] font-semibold text-gray-400 hover:text-blue-600 transition-all">
-                      {person.name.split(' ')[0].toLowerCase() + (person.name.split(' ')[1] ? person.name.split(' ')[1].toLowerCase() : '')}.com
-                    </a>
-                    <div className="flex items-center gap-2.5 text-gray-400">
-                      <button className="hover:text-[#0A66C2] hover:scale-110 transition-all">
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                      </button>
+          peopleLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : people.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-5 border border-gray-100">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              </div>
+              <p className="text-[15px] text-gray-600 font-semibold">No users discovered yet</p>
+              <p className="text-[13px] text-gray-400 mt-1.5">Be the first to join Loka!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {people.map((person, i) => {
+                const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                const initial = (person.avatar || person.name?.charAt(0) || 'U').charAt(0).toUpperCase();
+                const displayName = person.name || 'Anonymous';
+                const isFriend = person.friendshipStatus === 'accepted';
+                const isPending = person.friendshipStatus === 'pending';
+
+                return (
+                  <div key={person.id} 
+                    onClick={(e) => {
+                      if (isFriend) handleChatWithFriend(e, person.id);
+                    }}
+                    className="group cursor-pointer flex flex-col h-full rounded-[20px] overflow-hidden bg-white hover:shadow-xl transition-all duration-500 border border-gray-100 hover:border-gray-200"
+                  >
+                    {/* Large Profile Image Area */}
+                    <div className={`h-28 w-full bg-gradient-to-br ${color} relative flex items-center justify-center overflow-hidden`}>
+                      {/* Blurred background if avatar exists */}
+                      {person.avatar && person.avatar.startsWith('http') && (
+                         <img src={person.avatar} className="absolute inset-0 w-full h-full object-cover blur-xl opacity-60 scale-125" alt="" />
+                      )}
+                      
+                      {/* Crisp centered avatar */}
+                      {person.avatar && person.avatar.startsWith('http') ? (
+                         <img src={person.avatar} alt={displayName} className="w-14 h-14 rounded-full object-cover ring-2 ring-white/20 shadow-xl relative z-10 transition-transform duration-700 group-hover:scale-110" />
+                      ) : (
+                        <span className="text-white/40 font-black text-5xl transition-transform duration-700 group-hover:scale-110 drop-shadow-lg relative z-10">{initial}</span>
+                      )}
+                      
+                      {/* Credit Score badge */}
+                      <span className="absolute top-3 left-3 bg-white/95 backdrop-blur shadow-sm text-gray-900 text-[10px] font-bold px-2 py-1 rounded-lg z-10 flex items-center gap-1.5 border border-white/20">
+                        ⭐ {(person.creditScore || 100).toLocaleString()}
+                      </span>
+                      
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="p-4 flex-1 flex flex-col">
+                      <h3 className="text-base font-bold text-gray-900 leading-tight mb-1.5 group-hover:text-blue-600 transition-colors truncate">{displayName}</h3>
+                      <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-4 line-clamp-2 min-h-[33px]">
+                        {person.bio || `${person.role || 'Member'} on Loka`}
+                      </p>
+                      
+                      {/* Action Button */}
+                      <div className="mt-auto mb-3">
+                        {isFriend ? (
+                          <button 
+                            onClick={(e) => handleChatWithFriend(e, person.id)}
+                            className="w-full py-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors border border-emerald-100/50"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                            Message
+                          </button>
+                        ) : isPending ? (
+                          <button disabled className="w-full py-2 rounded-xl bg-amber-50 text-amber-600 text-[11px] font-bold flex items-center justify-center gap-1.5 border border-amber-100/50">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" /></svg>
+                            Pending
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleAddFriend(person.id); }}
+                            disabled={addingFriend === person.id}
+                            className="w-full py-2 rounded-xl bg-gray-900 text-white text-[11px] font-bold hover:bg-black transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            {addingFriend === person.id ? (
+                              <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                                Connect
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-gray-50 pt-2.5">
+                        {person.personalWebsite ? (
+                          <a href={person.personalWebsite.startsWith('http') ? person.personalWebsite : `https://${person.personalWebsite}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] font-semibold text-gray-400 hover:text-blue-600 transition-all truncate max-w-[120px]">
+                            {person.personalWebsite.replace(/^https?:\/\//, '')}
+                          </a>
+                        ) : (
+                          <span className="text-[11px] text-gray-300">{person.role || 'Member'}</span>
+                        )}
+                        <div className="flex items-center gap-2.5 text-gray-400">
+                          {person.twitter && (
+                            <a href={person.twitter.startsWith('http') ? person.twitter : `https://x.com/${person.twitter.replace('@', '')}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-black hover:scale-110 transition-all">
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                            </a>
+                          )}
+                          {person.linkedin && (
+                            <a href={person.linkedin.startsWith('http') ? person.linkedin : `https://linkedin.com/in/${person.linkedin}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-[#0A66C2] hover:scale-110 transition-all">
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
     </div>
