@@ -117,7 +117,7 @@ const navItems = [
   { key: Page.CONTACTS, icon: I.People, label: 'Contacts', anim: 'nav-sparkle' },
   { key: Page.DISCOVER, icon: I.Compass, label: 'Discover', anim: 'nav-compass' },
   { key: Page.INVEST, icon: I.Market, label: 'Market', anim: 'nav-market' },
-  { key: Page.API, icon: I.Code, label: 'API', anim: 'nav-code' },
+  // { key: Page.API, icon: I.Code, label: 'API', anim: 'nav-code' },
 ];
 
 /* ── User menu popup ── */
