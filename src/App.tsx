@@ -131,7 +131,8 @@ const UserMenu: React.FC<{
   isDark: boolean; onToggleDark: () => void; onLogout?: () => void;
   userName?: string;
   userInitial?: string;
-}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial }) => {
+  userAvatar?: string | null;
+}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial, userAvatar }) => {
   const menuNav = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -170,7 +171,7 @@ const UserMenu: React.FC<{
       {/* User header */}
       <div className={`px-3.5 py-2.5 border-b ${headerBorder}`}>
         <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white`}>{userInitial || 'U'}</div>
+          <div className={`w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
           <div>
             <p className={`text-[13px] font-semibold ${nameColor}`}>{userName || 'User'}</p>
             <p className={`text-[11px] ${subColor}`}>@user</p>
@@ -237,7 +238,7 @@ const Sidebar: React.FC<{
       </div>
       <div className="relative">
         <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </nav>
   );
@@ -288,7 +289,7 @@ const Sidebar: React.FC<{
           <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </aside>
   );
@@ -2738,7 +2739,8 @@ const App: React.FC = () => {
           // Force sync to DB so it doesn't 404
           const email = user?.email?.address;
           const name = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0];
-          api.syncPrivyUser({ email, name }).then(() => {
+          const avatar = (user?.google as any)?.pictureUrl || user?.twitter?.profilePictureUrl || (user?.discord as any)?.avatarUrl;
+          api.syncPrivyUser({ email, name, avatar }).then(() => {
             window.dispatchEvent(new Event('loka-profile-updated'));
           }).catch(console.error);
         }

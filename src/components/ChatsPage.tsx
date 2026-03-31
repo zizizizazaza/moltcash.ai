@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePrivy } from '@privy-io/react-auth';
 import { api } from '../services/api';
 import { socket } from '../services/socket';
@@ -289,6 +289,7 @@ const AddMemberModal: React.FC<{
 };
 
 const ChatsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<'All' | 'People' | 'Groups'>('All');
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const selectedRef = useRef<string | null>(null);
@@ -790,28 +791,39 @@ const ChatsPage: React.FC = () => {
                 </div>
               </div>
             ))
-          ) : filtered.map(m => (
-            <button key={m.id} onClick={() => setSelected(m.id)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${selected === m.id ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold overflow-hidden ${m.color || 'bg-gray-100 text-gray-600'}`}>
-                {m.avatar?.startsWith('http') ? <img src={m.avatar} className="w-full h-full object-cover" alt="" /> : m.avatar?.substring(0, 2).toUpperCase()}
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </div>
-              <div className="flex-1 text-left min-w-0 flex flex-col justify-center">
-                <p className="text-[14px] font-medium text-gray-900 truncate leading-none mb-1.5">{m.name}</p>
-                <p className="text-[12.5px] text-gray-400 truncate leading-none">{m.lastMsg}</p>
-              </div>
-              <div className="flex flex-col items-end justify-center shrink-0 ml-2 gap-1.5 h-full">
-                <span className="text-[11px] text-gray-400 leading-none">{m.time}</span>
-                {m.unread > 0 ? (
-                  <span className="min-w-[18px] h-[18px] bg-gray-900 text-white text-[10px] font-semibold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
-                    {m.unread}
-                  </span>
-                ) : (
-                  <div className="min-w-[18px] h-[18px]" />
-                )}
-              </div>
-            </button>
-          ))}
+              <p className="text-[13px] font-bold text-gray-900 mb-1">No chats yet</p>
+              <p className="text-[11px] text-gray-400 mb-4 max-w-[180px] leading-relaxed">Discover people and build your network</p>
+              <button 
+                onClick={() => navigate('/discover')}
+                className="px-4 py-2 bg-gray-900 text-white text-[12px] font-bold rounded-xl hover:bg-gray-800 transition-all active:scale-95 flex items-center gap-2 shadow-sm inline-flex"
+              >
+                Discover People
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          ) : (
+            filtered.map(m => (
+              <button key={m.id} onClick={() => setSelected(m.id)}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${selected === m.id ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold overflow-hidden ${m.color || 'bg-gray-100 text-gray-600'}`}>
+                  {m.avatar?.startsWith('http') ? <img src={m.avatar} className="w-full h-full object-cover" alt="" /> : m.avatar?.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <div className="flex justify-between items-center">
+                    <p className="text-[13px] font-medium text-gray-900 truncate">{m.name}</p>
+                    <span className="text-[11px] text-gray-300 shrink-0 ml-2">{m.time}</span>
+                  </div>
+                  <p className="text-[12px] text-gray-400 truncate mt-0.5">{m.lastMsg}</p>
+                </div>
+                {m.unread > 0 && <span className="min-w-[18px] h-[18px] bg-gray-900 text-white text-[9px] font-semibold rounded-full flex items-center justify-center px-1 shrink-0">{m.unread}</span>}
+              </button>
+            ))
+          )}
         </div>
       </div>
 
