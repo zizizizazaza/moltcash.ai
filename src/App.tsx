@@ -2734,6 +2734,13 @@ const App: React.FC = () => {
           api.setTokenGetter(getAccessToken);
           socket.setTokenGetter(getAccessToken);
           socket.reconnectWithToken(token);
+
+          // Force sync to DB so it doesn't 404
+          const email = user?.email?.address;
+          const name = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0];
+          api.syncPrivyUser({ email, name }).then(() => {
+            window.dispatchEvent(new Event('loka-profile-updated'));
+          }).catch(console.error);
         }
       }).catch(err => console.warn('[Auth] Token fetch failed:', err));
 
