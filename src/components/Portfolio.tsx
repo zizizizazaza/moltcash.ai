@@ -997,7 +997,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                             type="password"
                             value={stripeApiKeyInput}
                             onChange={e => { setStripeApiKeyInput(e.target.value); setStripeKeyError(null); }}
-                            placeholder="Paste your Restricted API Key (rk_live_... or rk_test_...)"
+                            placeholder="Paste your Restricted API Key (rk_live_...)"
                             className={`w-full px-4 py-3 text-sm bg-gray-50 border rounded-xl focus:outline-none focus:ring-1 transition-all font-mono ${
                               stripeKeyError ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-gray-300'
                             } placeholder:text-gray-300`}
@@ -1005,16 +1005,23 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                           {stripeKeyError && (
                             <p className="text-[10px] text-red-500 mt-1.5 font-medium">{stripeKeyError}</p>
                           )}
-                          {stripeApiKeyInput && !stripeApiKeyInput.startsWith('rk_') && (
-                            <p className="text-[10px] text-amber-500 mt-1.5 font-medium">Key must start with rk_live_ or rk_test_</p>
+                          {stripeApiKeyInput.startsWith('rk_test_') && (
+                            <p className="text-[10px] text-red-500 mt-1.5 font-medium">Test keys are not allowed. Please use a live key.</p>
+                          )}
+                          {stripeApiKeyInput && !stripeApiKeyInput.startsWith('rk_live_') && !stripeApiKeyInput.startsWith('rk_test_') && (
+                            <p className="text-[10px] text-amber-500 mt-1.5 font-medium">Key must start with rk_live_</p>
                           )}
                         </div>
 
                         {/* Submit Button */}
                         <button
                           onClick={async () => {
-                            if (!stripeApiKeyInput.startsWith('rk_')) {
-                              setStripeKeyError('Must be a Stripe Restricted API Key (starts with rk_)');
+                            if (stripeApiKeyInput.startsWith('rk_test_')) {
+                              setStripeKeyError('Test keys are not allowed. Please use a live Stripe Restricted API Key (starts with rk_live_)');
+                              return;
+                            }
+                            if (!stripeApiKeyInput.startsWith('rk_live_')) {
+                              setStripeKeyError('Must be a live Stripe Restricted API Key (starts with rk_live_)');
                               return;
                             }
                             setStripeConnecting(true);
@@ -1034,7 +1041,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ isWalletConnected = false, onConn
                               setStripeConnecting(false);
                             }
                           }}
-                          disabled={stripeConnecting || !stripeApiKeyInput.startsWith('rk_')}
+                          disabled={stripeConnecting || !stripeApiKeyInput.startsWith('rk_live_')}
                           className="w-full py-3 flex items-center justify-center gap-2.5 bg-[#635BFF] text-white text-[13px] font-semibold rounded-xl hover:bg-[#4F46E5] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {stripeConnecting ? (

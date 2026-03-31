@@ -27,9 +27,12 @@ router.post('/connect-key', authRequired, async (req: AuthRequest, res: Response
       return res.status(400).json({ error: 'API key is required' });
     }
 
-    // Format validation: must start with rk_
-    if (!apiKey.startsWith('rk_')) {
-      return res.status(400).json({ error: 'Must be a Stripe Restricted API Key (starts with rk_)' });
+    // Format validation: must start with rk_live_ (production keys only)
+    if (apiKey.startsWith('rk_test_')) {
+      return res.status(400).json({ error: 'Test keys are not allowed. Please provide a live Stripe Restricted API Key (starts with rk_live_)' });
+    }
+    if (!apiKey.startsWith('rk_live_')) {
+      return res.status(400).json({ error: 'Must be a live Stripe Restricted API Key (starts with rk_live_)' });
     }
 
     // Validate the key by making a test API call

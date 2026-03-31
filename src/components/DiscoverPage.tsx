@@ -38,7 +38,8 @@ const DiscoverPage: React.FC = () => {
               tag: 'Community',
               color: textColors[idx] + ' ' + colors[idx],
               grad: grads[idx],
-              letter: g.avatar || (g.name ? g.name.charAt(0).toUpperCase() : 'G'),
+              logoUrl: (g.avatar && typeof g.avatar === 'string' && (g.avatar.startsWith('http') || g.avatar.startsWith('data:'))) ? g.avatar : undefined,
+              letter: g.name ? g.name.charAt(0).toUpperCase() : 'G',
             };
           });
           setGroups(augmented);
@@ -144,12 +145,18 @@ const DiscoverPage: React.FC = () => {
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn" onClick={e => e.stopPropagation()}>
             {/* Cover */}
             <div className={`h-36 bg-gradient-to-br ${selectedGroup.grad} relative flex items-center justify-center overflow-hidden`}>
-              <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0 opacity-20 pointer-events-none">
                 <div className="absolute top-4 left-8 w-20 h-20 rounded-full border-4 border-white/50" />
                 <div className="absolute bottom-2 right-12 w-14 h-14 rounded-full border-4 border-white/30" />
                 <div className="absolute top-8 right-4 w-8 h-8 rounded-full bg-white/20" />
               </div>
-              <span className="text-white/20 font-black text-8xl select-none">{selectedGroup.letter}</span>
+              {selectedGroup.logoUrl ? (
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white/20 shadow-xl z-10">
+                  <img src={selectedGroup.logoUrl} className="w-full h-full object-cover" alt={selectedGroup.name} />
+                </div>
+              ) : (
+                <span className="text-white/20 font-black text-8xl select-none z-10 relative">{selectedGroup.letter}</span>
+              )}
               <button onClick={() => setSelectedGroup(null)} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur flex items-center justify-center text-white transition-colors">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -307,11 +314,17 @@ const DiscoverPage: React.FC = () => {
                     className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-lg hover:border-gray-200 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group"
                   >
                     <div className={`h-24 bg-gradient-to-br ${g.grad} relative overflow-hidden flex items-center justify-center`}>
-                      <div className="absolute top-3 left-5 w-12 h-12 rounded-full border-2 border-white/20" />
-                      <div className="absolute bottom-1 right-8 w-8 h-8 rounded-full border-2 border-white/15" />
-                      <div className="absolute top-1 right-3 w-5 h-5 rounded-full bg-white/10" />
-                      <span className="text-white/15 font-black text-6xl select-none">{g.letter}</span>
-                      <span className="absolute top-2.5 left-2.5 text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">{g.tag}</span>
+                      <div className="absolute top-3 left-5 w-12 h-12 rounded-full border-2 border-white/20 pointer-events-none" />
+                      <div className="absolute bottom-1 right-8 w-8 h-8 rounded-full border-2 border-white/15 pointer-events-none" />
+                      <div className="absolute top-1 right-3 w-5 h-5 rounded-full bg-white/10 pointer-events-none" />
+                      {g.logoUrl ? (
+                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/30 shadow-md z-10">
+                          <img src={g.logoUrl} className="w-full h-full object-cover" alt={g.name} />
+                        </div>
+                      ) : (
+                        <span className="text-white/15 font-black text-6xl select-none z-10 relative">{g.letter}</span>
+                      )}
+                      <span className="absolute top-2.5 left-2.5 text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full z-20">{g.tag}</span>
                     </div>
                     <div className="p-4">
                       <p className="text-[13px] font-bold text-gray-900 mb-1 leading-tight group-hover:text-blue-600 transition-colors">{g.name}</p>
@@ -435,7 +448,18 @@ const DiscoverPage: React.FC = () => {
                 {filteredPeople.map((person: any, i: number) => (
                   <div
                     key={person.id || i}
-                    onClick={() => setSelectedPerson(person)}
+                    onClick={async () => {
+                      if (person.friendshipStatus === 'accepted') {
+                        try {
+                          const conv = await api.createDMConversation(person.id);
+                          navigate(`/chat?convId=${conv.id}`);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      } else {
+                        setSelectedPerson(person);
+                      }
+                    }}
                     className="group cursor-pointer bg-white hover:shadow-lg hover:border-gray-200 transition-all duration-300 border border-gray-100 rounded-2xl p-5 flex flex-col items-center text-center"
                   >
                     <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${person.color} flex items-center justify-center text-[20px] font-black text-white shadow-md mb-3 group-hover:scale-105 transition-transform duration-300`}>

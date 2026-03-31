@@ -13,6 +13,7 @@ import TxModal from './components/TxModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
 import DiscoverPage from './components/DiscoverPage';
 import { api } from './services/api';
+import { socket } from './services/socket';
 
 /* ────────────────────────────────────────────────────────────
    Icons — richer, hand-crafted 18×18 with fills & details
@@ -2718,11 +2719,58 @@ const App: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, getAccessToken } = usePrivy();
   const { logout } = useLogout({
     onSuccess: () => navigate('/'),
   });
   const isLoggedIn = ready && authenticated;
+
+  // ── Socket + API token initialization ──
+  useEffect(() => {
+    if (ready && authenticated) {
+      getAccessToken().then(token => {
+        if (token) {
+          api.setToken(token);
+          api.setTokenGetter(getAccessToken);
+          socket.setTokenGetter(getAccessToken);
+          socket.reconnectWithToken(token);
+        }
+      }).catch(err => console.warn('[Auth] Token fetch failed:', err));
+
+
+
+      // Periodic token refresh (every 5 min)
+      const interval = setInterval(() => {
+        getAccessToken().then(freshToken => {
+          if (freshToken) {
+            api.setToken(freshToken);
+            socket.reconnectWithToken(freshToken);
+          }
+        }).catch(err => console.warn('[Auth] Refresh failed:', err));
+      }, 5 * 60 * 1000);
+
+      // Visibility-based token refresh
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          getAccessToken().then(freshToken => {
+            if (freshToken) {
+              api.setToken(freshToken);
+              socket.reconnectWithToken(freshToken);
+            }
+          }).catch(() => {});
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
+    } else if (ready && !authenticated) {
+      api.clearToken();
+      socket.clearToken();
+    }
+  }, [ready, authenticated, getAccessToken, user]);
 
   // Derive user display info from Privy user object
   // Fetch profile from backend for accurate name/avatar
