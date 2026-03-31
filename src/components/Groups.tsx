@@ -466,22 +466,22 @@ const Groups: React.FC = () => {
 
         // Application Hub logic
         if (groupId.startsWith('app_')) {
-            if (hasImage || lower.includes('license') || lower.includes('上传') || lower.includes('执照') || lower.includes('upload')) {
+            if (hasImage || lower.includes('license') || lower.includes('upload')) {
                 return [{ senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier', role: 'agent', content: '📄 **Business License received.** Proceeding with Ultimate Beneficial Owner (UBO) check.\n\nPlease declare all shareholders holding >25% and provide passport/ID scans for KYC verification.' }];
             }
-            if (lower.includes('kyc') || lower.includes('护照') || lower.includes('passport') || lower.includes('shareholder') || lower.includes('id')) {
+            if (lower.includes('kyc') || lower.includes('passport') || lower.includes('shareholder') || lower.includes('id')) {
                 return [{ senderId: 'kyc_verifier', senderName: 'KYC/AML Verifier', role: 'agent', content: '✅ **KYC & UBO Check Passed.** Third-party manual review completed. Issuing **"Verified Issuer" Certificate** to your account. You now have permission to create asset pools and initiate fundraising.\n\nLet\'s move to Step 2: **Project Details**.\nPlease provide your project name, description, website, and target financing parameters: Target Amount (e.g., $100,000 USD), Minimum Start Amount (e.g. $50,000), Duration (7-90 days), and APY rate/Repayment cycle.' }];
             }
-            if (lower.includes('amount') || lower.includes('100,000') || lower.includes('usdc') || lower.includes('usd') || lower.includes('项目') || lower.includes('target') || lower.includes('apy')) {
+            if (lower.includes('amount') || lower.includes('100,000') || lower.includes('usdc') || lower.includes('usd') || lower.includes('target') || lower.includes('apy')) {
                 return [{ senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '📊 Project parameters logged. \n\nNext, we need to perform a **Revenue Review**. Please connect your payment processors (Stripe/PayPal/Shopify/AWS) or bank accounts to provide the last 6 months of cash flow history.' }];
             }
-            if (lower.includes('connect') || lower.includes('stripe') || lower.includes('paypal') || lower.includes('bank') || lower.includes('.bank.') || lower.includes('连接')) {
+            if (lower.includes('connect') || lower.includes('stripe') || lower.includes('paypal') || lower.includes('bank') || lower.includes('.bank.')) {
                 return [
                     { senderId: 'contract_auditor', senderName: 'Contract Auditor', role: 'agent', content: '🔗 Revenue API securely connected. Partner API linked and Cash Flow Takeover agreement drafted. Validating 6-month cash flow...' },
                     { senderId: 'risk_assessment', senderName: 'Risk Assessor', role: 'agent', content: '✅ Verification successful! Healthy cash flow detected.\n\nFinally, let\'s configure the **Collateral** (10-30% required). Please provide your physical assets or account receivables contract as collateral.' }
                 ];
             }
-            if (lower.includes('collateral') || lower.includes('confirm') || lower.includes('确认') || lower.includes('抵押') || lower.includes('asset')) {
+            if (lower.includes('collateral') || lower.includes('confirm') || lower.includes('asset')) {
                 return [{ senderId: 'agent_onboard', senderName: 'Loka Launcher', role: 'agent', content: '🎉 **Project Application Complete!** \n\nCollateral locked. The escrow agreement has been finalized and the cash flow takeover agreement is active. Your project is now listed in the Market and available for investors. Good luck! 🚀' }];
             }
             return [{ senderId: 'agent_onboard', senderName: 'Loka Launcher', role: 'agent', content: 'I am here to help you apply. Please follow the steps: Upload License -> KYC -> Project Details -> Revenue Connect -> Collateral. What would you like to do next?' }];

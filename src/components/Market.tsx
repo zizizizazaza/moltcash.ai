@@ -1067,7 +1067,7 @@ const Market: React.FC = () => {
             </button>
           ))}
 
-          {/* Apply CTA 推右侧 */}
+          {/* Apply CTA — push right */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('loka-nav-groups'))}
             className="ml-auto mb-2 flex items-center gap-1.5 px-4 py-1.5 bg-[#00E676] text-black rounded-xl text-xs font-bold hover:bg-[#00C853] transition-all active:scale-[0.97] whitespace-nowrap"
@@ -1424,7 +1424,7 @@ const Market: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Actions — 靠右对齐 */}
+                  {/* Actions — right-aligned */}
                   <div className="sm:col-span-2 lg:col-span-3 flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
                     <button onClick={() => { setPotRevMin(''); setPotRevMax(''); setPotMrrMin(''); setPotMrrMax(''); setPotGrowthMin(''); setPotGrowthMax(''); setPotMarginMin(''); setPotMarginMax(''); setPotAudience('Any'); setPotFoundedFrom(''); setPotFoundedTo(''); }} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Clear</button>
                     <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold">Apply Filters</button>

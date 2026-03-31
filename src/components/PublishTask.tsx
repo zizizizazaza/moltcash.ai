@@ -35,7 +35,7 @@ const PublishTask: React.FC<PublishTaskProps> = ({ onBack, onSubmit }) => {
             status: 'open',
             rating: 5.0,
             executionCount: 0,
-            recentFeedback: '新任务，等待第一位执行者',
+            recentFeedback: 'New task, awaiting first executor',
             url: url.trim() || undefined,
         };
 
