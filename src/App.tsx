@@ -12,7 +12,6 @@ import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
 import DiscoverPage from './components/DiscoverPage';
-import { LaunchScreen } from './components/LaunchScreen';
 import { api } from './services/api';
 import { socket } from './services/socket';
 
@@ -846,7 +845,7 @@ const ChatsPage: React.FC = () => {
               </div>
               <p className="text-[13px] font-bold text-gray-900 mb-1">No chats yet</p>
               <p className="text-[11px] text-gray-400 mb-4 max-w-[180px] leading-relaxed">Discover people and build your network</p>
-              <button 
+              <button
                 onClick={() => navigate('/discover')}
                 className="px-4 py-2 bg-gray-900 text-white text-[12px] font-bold rounded-xl hover:bg-gray-800 transition-all active:scale-95 flex items-center gap-2 shadow-sm inline-flex"
               >
@@ -1473,16 +1472,16 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
   // Cross-Check config
   const [ccDomain, setCcDomain] = useState<string[]>([]);
   const [ccThreshold, setCcThreshold] = useState(67);
-  const [ccMode, setCcMode] = useState<'consensus'|'collaboration'>('consensus');
-  const [ccDepth, setCcDepth] = useState<1|2|3>(2);
+  const [ccMode, setCcMode] = useState<'consensus' | 'collaboration'>('consensus');
+  const [ccDepth, setCcDepth] = useState<1 | 2 | 3>(2);
   // MirrorFish config
   const [mfSeed, setMfSeed] = useState('');
   const [mfTask, setMfTask] = useState('');
   const [mfFiles, setMfFiles] = useState<File[]>([]);
   const [mfTemperature, setMfTemperature] = useState(50);
-  const [mfDuration, setMfDuration] = useState<24|72|168>(72);
+  const [mfDuration, setMfDuration] = useState<24 | 72 | 168>(72);
   // Multi-agent model panel: [{modelId, count}]
-  const [agentPanel, setAgentPanel] = useState<{modelId: string; count: number}[]>([
+  const [agentPanel, setAgentPanel] = useState<{ modelId: string; count: number }[]>([
     { modelId: 'gpt-4o', count: 1 }
   ]);
   const totalAgentCount = agentPanel.reduce((s, r) => s + r.count, 0);
@@ -1498,21 +1497,21 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
   const canNext = step === 'type'
     ? (agentType === 'single' || multiMode !== null)
     : step === 'behavior'
-    ? (agentType === 'multi' && multiMode === 'mirrorfish' ? mfSeed.trim().length > 0 : prompt.trim().length > 0)
-    : step === 'info'
-    ? name.trim().length > 0
-    : true;
+      ? (agentType === 'multi' && multiMode === 'mirrorfish' ? mfSeed.trim().length > 0 : prompt.trim().length > 0)
+      : step === 'info'
+        ? name.trim().length > 0
+        : true;
 
 
   const MODELS = [
-    { id: 'gpt-4o',          label: 'GPT-4o',           provider: 'OpenAI' },
-    { id: 'gpt-4-turbo',     label: 'GPT-4 Turbo',      provider: 'OpenAI' },
-    { id: 'gpt-3-5-turbo',   label: 'GPT-3.5 Turbo',    provider: 'OpenAI' },
-    { id: 'claude-3-5',      label: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
-    { id: 'claude-3-haiku',  label: 'Claude 3 Haiku',   provider: 'Anthropic' },
-    { id: 'gemini-1-5-pro',  label: 'Gemini 1.5 Pro',   provider: 'Google' },
-    { id: 'gemini-flash',    label: 'Gemini 1.5 Flash',  provider: 'Google' },
-    { id: 'loka-fast',       label: 'Loka Fast',         provider: 'Loka' },
+    { id: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
+    { id: 'gpt-4-turbo', label: 'GPT-4 Turbo', provider: 'OpenAI' },
+    { id: 'gpt-3-5-turbo', label: 'GPT-3.5 Turbo', provider: 'OpenAI' },
+    { id: 'claude-3-5', label: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+    { id: 'claude-3-haiku', label: 'Claude 3 Haiku', provider: 'Anthropic' },
+    { id: 'gemini-1-5-pro', label: 'Gemini 1.5 Pro', provider: 'Google' },
+    { id: 'gemini-flash', label: 'Gemini 1.5 Flash', provider: 'Google' },
+    { id: 'loka-fast', label: 'Loka Fast', provider: 'Loka' },
   ];
   const modelDotColor = (id: string) =>
     id.startsWith('gpt') ? 'bg-green-500' : id.startsWith('claude') ? 'bg-violet-500' : id.startsWith('gemini') ? 'bg-blue-500' : 'bg-indigo-400';
@@ -1575,9 +1574,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 {/* Single Agent Card */}
                 <button
                   onClick={() => { setAgentType('single'); setMultiMode(null); }}
-                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${
-                    agentType === 'single' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
-                  }`}
+                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${agentType === 'single' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
+                    }`}
                 >
                   <div className="relative">
                     <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
@@ -1597,9 +1595,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 {/* Multi-Agent Card */}
                 <button
                   onClick={() => setAgentType('multi')}
-                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${
-                    agentType === 'multi' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
-                  }`}
+                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${agentType === 'multi' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
+                    }`}
                 >
                   <div className="relative">
                     <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
@@ -1629,36 +1626,34 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                     {/* Cross-Check Precision */}
                     <div
                       onClick={() => setMultiMode('loka')}
-                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${
-                        multiMode === 'loka' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-150 hover:border-gray-200 bg-white'
-                      }`}
+                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${multiMode === 'loka' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-150 hover:border-gray-200 bg-white'
+                        }`}
                     >
                       {/* Hero: Cross-Check — compact triangle */}
                       <div className="h-28 bg-slate-50 flex items-center justify-center">
                         <svg viewBox="0 0 160 96" width="160" height="96" fill="none" xmlns="http://www.w3.org/2000/svg">
                           {/* 3 nodes: tight equilateral triangle */}
                           {/* A — top */}
-                          <circle cx="80" cy="20" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <path d="M76.5 20l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="80" cy="20" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <path d="M76.5 20l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           {/* B — bottom-left */}
-                          <circle cx="44" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <path d="M40.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="44" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <path d="M40.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           {/* C — bottom-right */}
-                          <circle cx="116" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <path d="M112.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="116" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <path d="M112.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           {/* Edges */}
-                          <line x1="74" y1="29" x2="50" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3"/>
-                          <line x1="86" y1="29" x2="110" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3"/>
-                          <line x1="54" y1="78" x2="106" y2="78" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3"/>
+                          <line x1="74" y1="29" x2="50" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3" />
+                          <line x1="86" y1="29" x2="110" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3" />
+                          <line x1="54" y1="78" x2="106" y2="78" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3" />
                         </svg>
                       </div>
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-[13px] font-semibold text-gray-900">Cross-Check Precision</p>
-                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${
-                            multiMode === 'loka' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
-                          }`}>
+                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${multiMode === 'loka' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
+                            }`}>
                             {multiMode === 'loka' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[3px]" />}
                           </div>
                         </div>
@@ -1687,38 +1682,37 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                     {/* Predictive Insight */}
                     <div
                       onClick={() => setMultiMode('mirrorfish')}
-                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${
-                        multiMode === 'mirrorfish' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${multiMode === 'mirrorfish' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
                     >
                       {/* Hero: Predictive — compact fan tree */}
                       <div className="h-28 bg-slate-50 flex items-center justify-center">
                         <svg viewBox="0 0 160 96" width="160" height="96" fill="none" xmlns="http://www.w3.org/2000/svg">
                           {/* Root */}
-                          <circle cx="80" cy="14" r="9" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <circle cx="80" cy="14" r="3.5" fill="#6366f1" opacity="0.35"/>
+                          <circle cx="80" cy="14" r="9" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <circle cx="80" cy="14" r="3.5" fill="#6366f1" opacity="0.35" />
                           {/* L1 branches */}
-                          <line x1="74" y1="22" x2="50" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5"/>
-                          <line x1="80" y1="23" x2="80" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5"/>
-                          <line x1="86" y1="22" x2="110" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5"/>
+                          <line x1="74" y1="22" x2="50" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5" />
+                          <line x1="80" y1="23" x2="80" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5" />
+                          <line x1="86" y1="22" x2="110" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5" />
                           {/* L1 nodes */}
-                          <circle cx="50" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1"/>
-                          <circle cx="80" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1"/>
-                          <circle cx="110" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1"/>
+                          <circle cx="50" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1" />
+                          <circle cx="80" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1" />
+                          <circle cx="110" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1" />
                           {/* L2 branches from each */}
-                          <line x1="45" y1="54" x2="32" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="55" y1="54" x2="58" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="76" y1="54" x2="70" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="84" y1="54" x2="90" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="105" y1="54" x2="102" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="115" y1="54" x2="124" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
+                          <line x1="45" y1="54" x2="32" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="55" y1="54" x2="58" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="76" y1="54" x2="70" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="84" y1="54" x2="90" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="105" y1="54" x2="102" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="115" y1="54" x2="124" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
                           {/* L2 dots */}
-                          <circle cx="32" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="58" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="70" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="90" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="102" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="124" cy="78" r="3" fill="#c7d2fe"/>
+                          <circle cx="32" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="58" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="70" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="90" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="102" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="124" cy="78" r="3" fill="#c7d2fe" />
                         </svg>
                       </div>
                       {/* Content */}
@@ -1728,9 +1722,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                             <p className="text-[13px] font-semibold text-gray-900">Predictive Insight</p>
                             <span className="text-[8px] font-semibold text-indigo-400 bg-indigo-50 border border-indigo-100 px-1 py-0.5 rounded">Prediction</span>
                           </div>
-                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${
-                            multiMode === 'mirrorfish' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
-                          }`}>
+                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${multiMode === 'mirrorfish' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
+                            }`}>
                             {multiMode === 'mirrorfish' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[3px]" />}
                           </div>
                         </div>
@@ -1789,18 +1782,16 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                   <div className="space-y-2">
                     {MODELS.map(m => (
                       <button key={m.id} onClick={() => setModel(m.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                          model === m.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                        }`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${model === m.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                          }`}
                       >
                         <div className={`w-2 h-2 rounded-full shrink-0 ${modelDotColor(m.id)}`} />
                         <div className="flex-1">
                           <p className="text-[13px] font-bold text-gray-900">{m.label}</p>
                           <p className="text-[12px] text-gray-400">{m.provider}</p>
                         </div>
-                        <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${
-                          model === m.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
-                        }`}>
+                        <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${model === m.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
+                          }`}>
                           {model === m.id && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
                         </div>
                       </button>
@@ -1835,11 +1826,10 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                                   <button
                                     key={m.id}
                                     onClick={() => { updatePanelRow(idx, 'modelId', m.id); setOpenPanelDropdown(null); }}
-                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors ${
-                                      row.modelId === m.id
-                                        ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                                        : 'text-gray-700 hover:bg-gray-50'
-                                    }`}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors ${row.modelId === m.id
+                                      ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                                      : 'text-gray-700 hover:bg-gray-50'
+                                      }`}
                                   >
                                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${modelDotColor(m.id)}`} />
                                     <span className="flex-1">{m.label}</span>
@@ -1914,84 +1904,82 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                     <div className="grid grid-cols-2 gap-2">
                       {/* Consensus card */}
                       <button onClick={() => setCcMode('consensus')}
-                        className={`rounded-xl border text-left transition-all overflow-hidden ${
-                          ccMode === 'consensus' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
-                        }`}
+                        className={`rounded-xl border text-left transition-all overflow-hidden ${ccMode === 'consensus' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
+                          }`}
                       >
                         {/* SVG: all agents output full answers, then debate → merge */}
                         <div className="h-20 bg-slate-50 flex items-center justify-center">
                           <svg viewBox="0 0 140 72" width="140" height="72" fill="none">
                             {/* 3 agent nodes on left */}
-                            <circle cx="22" cy="18" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="36" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="54" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
+                            <circle cx="22" cy="18" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="36" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="54" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2" />
                             {/* Speech bubble dots = full answer */}
-                            {[18,36,54].map(y => <>
-                              <circle key={`d1-${y}`} cx="18" cy={y} r="1.2" fill="#6366f1"/>
-                              <circle key={`d2-${y}`} cx="22" cy={y} r="1.2" fill="#6366f1"/>
-                              <circle key={`d3-${y}`} cx="26" cy={y} r="1.2" fill="#6366f1"/>
+                            {[18, 36, 54].map(y => <>
+                              <circle key={`d1-${y}`} cx="18" cy={y} r="1.2" fill="#6366f1" />
+                              <circle key={`d2-${y}`} cx="22" cy={y} r="1.2" fill="#6366f1" />
+                              <circle key={`d3-${y}`} cx="26" cy={y} r="1.2" fill="#6366f1" />
                             </>)}
                             {/* Arrows right toward center discussion */}
-                            <line x1="30" y1="18" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2"/>
-                            <line x1="30" y1="36" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2"/>
-                            <line x1="30" y1="54" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2"/>
+                            <line x1="30" y1="18" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2" />
+                            <line x1="30" y1="36" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2" />
+                            <line x1="30" y1="54" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2" />
                             {/* Discussion circle */}
-                            <circle cx="75" cy="36" r="14" fill="white" stroke="#818cf8" strokeWidth="1"/>
+                            <circle cx="75" cy="36" r="14" fill="white" stroke="#818cf8" strokeWidth="1" />
                             {/* Debate arrows inside */}
-                            <path d="M67 33 Q75 28 83 33" stroke="#818cf8" strokeWidth="0.9" fill="none" markerEnd="url(#arr)"/>
-                            <path d="M83 39 Q75 44 67 39" stroke="#818cf8" strokeWidth="0.9" fill="none"/>
+                            <path d="M67 33 Q75 28 83 33" stroke="#818cf8" strokeWidth="0.9" fill="none" markerEnd="url(#arr)" />
+                            <path d="M83 39 Q75 44 67 39" stroke="#818cf8" strokeWidth="0.9" fill="none" />
                             {/* Arrow out to result */}
-                            <line x1="89" y1="36" x2="112" y2="36" stroke="#6366f1" strokeWidth="1"/>
-                            <polygon points="112,33 118,36 112,39" fill="#6366f1"/>
+                            <line x1="89" y1="36" x2="112" y2="36" stroke="#6366f1" strokeWidth="1" />
+                            <polygon points="112,33 118,36 112,39" fill="#6366f1" />
                             {/* Result node */}
-                            <circle cx="126" cy="36" r="8" fill="#eef2ff" stroke="#6366f1" strokeWidth="1.2"/>
-                            <path d="M122.5 36l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="126" cy="36" r="8" fill="#eef2ff" stroke="#6366f1" strokeWidth="1.2" />
+                            <path d="M122.5 36l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                         <div className="p-3">
-                          <p className={`text-[13px] font-semibold mb-0.5 ${ ccMode === 'consensus' ? 'text-indigo-700' : 'text-gray-700' }`}>Consensus</p>
+                          <p className={`text-[13px] font-semibold mb-0.5 ${ccMode === 'consensus' ? 'text-indigo-700' : 'text-gray-700'}`}>Consensus</p>
                           <p className="text-[11px] text-gray-400 leading-tight">Each agent produces a full answer, then agents debate until agreement is reached.</p>
                         </div>
                       </button>
 
                       {/* Collaboration card */}
                       <button onClick={() => setCcMode('collaboration')}
-                        className={`rounded-xl border text-left transition-all overflow-hidden ${
-                          ccMode === 'collaboration' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
-                        }`}
+                        className={`rounded-xl border text-left transition-all overflow-hidden ${ccMode === 'collaboration' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
+                          }`}
                       >
                         {/* SVG: 4 agents each handle one part → combined output */}
                         <div className="h-20 bg-slate-50 flex items-center justify-center">
                           <svg viewBox="0 0 140 72" width="140" height="72" fill="none">
                             {/* 4 agent nodes stacked */}
-                            <circle cx="22" cy="12" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="28" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="44" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="60" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
+                            <circle cx="22" cy="12" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="28" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="44" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="60" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
                             {/* Partial output bars (each has 1 bar = one part) */}
-                            <rect x="33" y="10" width="20" height="4" rx="2" fill="#c7d2fe"/>
-                            <rect x="33" y="26" width="20" height="4" rx="2" fill="#a5b4fc"/>
-                            <rect x="33" y="42" width="20" height="4" rx="2" fill="#818cf8"/>
-                            <rect x="33" y="58" width="20" height="4" rx="2" fill="#6366f1"/>
+                            <rect x="33" y="10" width="20" height="4" rx="2" fill="#c7d2fe" />
+                            <rect x="33" y="26" width="20" height="4" rx="2" fill="#a5b4fc" />
+                            <rect x="33" y="42" width="20" height="4" rx="2" fill="#818cf8" />
+                            <rect x="33" y="58" width="20" height="4" rx="2" fill="#6366f1" />
                             {/* Merge arrows */}
-                            <line x1="53" y1="12" x2="82" y2="30" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
-                            <line x1="53" y1="28" x2="82" y2="33" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
-                            <line x1="53" y1="44" x2="82" y2="39" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
-                            <line x1="53" y1="60" x2="82" y2="42" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
+                            <line x1="53" y1="12" x2="82" y2="30" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
+                            <line x1="53" y1="28" x2="82" y2="33" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
+                            <line x1="53" y1="44" x2="82" y2="39" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
+                            <line x1="53" y1="60" x2="82" y2="42" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
                             {/* Assembled output block */}
-                            <rect x="82" y="26" width="28" height="4" rx="2" fill="#c7d2fe"/>
-                            <rect x="82" y="32" width="28" height="4" rx="2" fill="#a5b4fc"/>
-                            <rect x="82" y="38" width="28" height="4" rx="2" fill="#818cf8"/>
-                            <rect x="82" y="44" width="28" height="4" rx="2" fill="#6366f1"/>
+                            <rect x="82" y="26" width="28" height="4" rx="2" fill="#c7d2fe" />
+                            <rect x="82" y="32" width="28" height="4" rx="2" fill="#a5b4fc" />
+                            <rect x="82" y="38" width="28" height="4" rx="2" fill="#818cf8" />
+                            <rect x="82" y="44" width="28" height="4" rx="2" fill="#6366f1" />
                             {/* Border around assembled */}
-                            <rect x="81" y="24" width="30" height="26" rx="3" stroke="#6366f1" strokeWidth="1" fill="none"/>
+                            <rect x="81" y="24" width="30" height="26" rx="3" stroke="#6366f1" strokeWidth="1" fill="none" />
                             {/* Arrow to final */}
-                            <line x1="111" y1="36" x2="124" y2="36" stroke="#6366f1" strokeWidth="1"/>
-                            <polygon points="124,33 130,36 124,39" fill="#6366f1"/>
+                            <line x1="111" y1="36" x2="124" y2="36" stroke="#6366f1" strokeWidth="1" />
+                            <polygon points="124,33 130,36 124,39" fill="#6366f1" />
                           </svg>
                         </div>
                         <div className="p-3">
-                          <p className={`text-[13px] font-semibold mb-0.5 ${ ccMode === 'collaboration' ? 'text-indigo-700' : 'text-gray-700' }`}>Collaboration</p>
+                          <p className={`text-[13px] font-semibold mb-0.5 ${ccMode === 'collaboration' ? 'text-indigo-700' : 'text-gray-700'}`}>Collaboration</p>
                           <p className="text-[11px] text-gray-400 leading-tight">Each agent handles one segment; results are assembled into a unified output.</p>
                         </div>
                       </button>
@@ -2010,7 +1998,7 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                         <input type="range" min={50} max={95} step={5} value={ccThreshold}
                           onChange={e => setCcThreshold(Number(e.target.value))}
                           className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                          style={{background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${(ccThreshold-50)/45*100}%, #e5e7eb ${(ccThreshold-50)/45*100}%, #e5e7eb 100%)`}}
+                          style={{ background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${(ccThreshold - 50) / 45 * 100}%, #e5e7eb ${(ccThreshold - 50) / 45 * 100}%, #e5e7eb 100%)` }}
                         />
                         <div className="flex justify-between mt-1">
                           <span className="text-[11px] text-gray-400">Lenient 50%</span>
@@ -2026,16 +2014,15 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                       <label className="text-[13px] font-semibold text-gray-500 mb-2 block">Analysis Depth</label>
                       <div className="grid grid-cols-3 gap-2">
                         {[
-                          { rounds: 1 as const, label: 'Fast',     sub: '1 round' },
+                          { rounds: 1 as const, label: 'Fast', sub: '1 round' },
                           { rounds: 2 as const, label: 'Standard', sub: '2 rounds' },
-                          { rounds: 3 as const, label: 'Deep',     sub: '3 rounds' },
+                          { rounds: 3 as const, label: 'Deep', sub: '3 rounds' },
                         ].map(d => (
                           <button key={d.rounds} onClick={() => setCcDepth(d.rounds)}
-                            className={`p-2.5 rounded-xl border text-left transition-all ${
-                              ccDepth === d.rounds ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
-                            }`}
+                            className={`p-2.5 rounded-xl border text-left transition-all ${ccDepth === d.rounds ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
+                              }`}
                           >
-                            <p className={`text-[13px] font-semibold mb-0.5 ${ ccDepth === d.rounds ? 'text-indigo-700' : 'text-gray-700' }`}>{d.label}</p>
+                            <p className={`text-[13px] font-semibold mb-0.5 ${ccDepth === d.rounds ? 'text-indigo-700' : 'text-gray-700'}`}>{d.label}</p>
                             <p className="text-[11px] text-gray-400">{d.sub}</p>
                           </button>
                         ))}
@@ -2120,7 +2107,7 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                     <input type="range" min={0} max={100} step={5} value={mfTemperature}
                       onChange={e => setMfTemperature(Number(e.target.value))}
                       className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                      style={{background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${mfTemperature}%, #e5e7eb ${mfTemperature}%, #e5e7eb 100%)`}}
+                      style={{ background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${mfTemperature}%, #e5e7eb ${mfTemperature}%, #e5e7eb 100%)` }}
                     />
                     <div className="flex justify-between mt-1">
                       <span className="text-[11px] text-gray-400">Conservative</span>
@@ -2138,11 +2125,10 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                         { h: 168 as const, label: 'Deep', sub: '7 days' },
                       ].map(d => (
                         <button key={d.h} onClick={() => setMfDuration(d.h)}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
-                            mfDuration === d.h ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
-                          }`}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${mfDuration === d.h ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
+                            }`}
                         >
-                          <p className={`text-[13px] font-semibold mb-0.5 ${ mfDuration === d.h ? 'text-indigo-700' : 'text-gray-700' }`}>{d.label}</p>
+                          <p className={`text-[13px] font-semibold mb-0.5 ${mfDuration === d.h ? 'text-indigo-700' : 'text-gray-700'}`}>{d.label}</p>
                           <p className="text-[11px] text-gray-400">{d.sub}</p>
                         </button>
                       ))}
@@ -2157,13 +2143,11 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 <div className="grid grid-cols-2 gap-2">
                   {CAPS.map(c => (
                     <button key={c} onClick={() => toggleCap(c)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all ${
-                        capabilities.has(c) ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                      }`}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all ${capabilities.has(c) ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                        }`}
                     >
-                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${
-                        capabilities.has(c) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'
-                      }`}>
+                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${capabilities.has(c) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'
+                        }`}>
                         {capabilities.has(c) && <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                       </div>
                       <span className="text-[11px] font-medium text-gray-700">{c}</span>
@@ -2235,9 +2219,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map(c => (
                     <button key={c} onClick={() => setCategory(c)}
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
-                        category === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}>{c}</button>
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${category === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}>{c}</button>
                   ))}
                 </div>
               </div>
@@ -2252,26 +2235,30 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 <label className="text-[13px] font-semibold text-gray-500 mb-2 block">Visibility</label>
                 <div className="space-y-2">
                   {([
-                    { id: 'public'  as const, label: 'Public',  desc: 'Anyone on Loka can discover and use this agent.',
-                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="1.5"/><path strokeLinecap="round" strokeWidth="1.5" d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg> },
-                    { id: 'group'   as const, label: 'Group',   desc: 'Only members of your groups can access this agent.',
-                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg> },
-                    { id: 'private' as const, label: 'Private', desc: 'Only you can see and use this agent.',
-                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" strokeWidth="1.5"/><path strokeLinecap="round" strokeWidth="1.5" d="M7 11V7a5 5 0 0110 0v4"/></svg> },
+                    {
+                      id: 'public' as const, label: 'Public', desc: 'Anyone on Loka can discover and use this agent.',
+                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="1.5" /><path strokeLinecap="round" strokeWidth="1.5" d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" /></svg>
+                    },
+                    {
+                      id: 'group' as const, label: 'Group', desc: 'Only members of your groups can access this agent.',
+                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    },
+                    {
+                      id: 'private' as const, label: 'Private', desc: 'Only you can see and use this agent.',
+                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" strokeWidth="1.5" /><path strokeLinecap="round" strokeWidth="1.5" d="M7 11V7a5 5 0 0110 0v4" /></svg>
+                    },
                   ]).map(v => (
                     <button key={v.id} onClick={() => setVisibility(v.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                        visibility === v.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                      }`}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${visibility === v.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                        }`}
                     >
                       {v.icon}
                       <div className="flex-1">
                         <p className="text-[13px] font-bold text-gray-900">{v.label}</p>
                         <p className="text-[12px] text-gray-400">{v.desc}</p>
                       </div>
-                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${
-                        visibility === v.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
-                      }`}>
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${visibility === v.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
+                        }`}>
                         {visibility === v.id && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
                       </div>
                     </button>
@@ -2284,9 +2271,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 <label className="text-[13px] font-semibold text-gray-500 mb-2 block">Creator Premium</label>
                 <div className="space-y-2">
                   <button onClick={() => setPricing('free')}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      pricing === 'free' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${pricing === 'free' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
                   >
                     <div className="flex-1">
                       <p className="text-[13px] font-bold text-gray-900">Free</p>
@@ -2297,9 +2283,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                     </div>
                   </button>
                   <button onClick={() => setPricing('subscription')}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      pricing === 'subscription' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${pricing === 'subscription' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
                   >
                     <div className="flex-1">
                       <p className="text-[13px] font-bold text-gray-900">Subscription</p>
@@ -2323,9 +2308,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                     </div>
                   )}
                   <button onClick={() => setPricing('pay_per_use')}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      pricing === 'pay_per_use' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${pricing === 'pay_per_use' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
                   >
                     <div className="flex-1">
                       <p className="text-[13px] font-bold text-gray-900">Pay per use</p>
@@ -2354,81 +2338,80 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
           )}
         </div>}
 
-          {/* ── Done: Success screen ── */}
-          {step === 'done' && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
+        {/* ── Done: Success screen ── */}
+        {step === 'done' && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
 
-              {/* Celebration icon */}
-              <div className="relative mb-6"
-                style={{animation: 'scaleIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards'}}>
-                {/* Outer glow ring */}
-                <div className="w-24 h-24 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center">
-                    {/* Sparkle / check */}
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      style={{strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.4s ease 0.35s forwards'}}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-                {/* Decorative dots */}
-                <span style={{position:'absolute', top:'-4px', right:'4px', width:8, height:8, borderRadius:'50%', background:'#6366f1', animation:'popIn 0.3s ease 0.5s both'}} />
-                <span style={{position:'absolute', top:'10px', right:'-8px', width:5, height:5, borderRadius:'50%', background:'#a5b4fc', animation:'popIn 0.3s ease 0.6s both'}} />
-                <span style={{position:'absolute', bottom:'4px', right:'-6px', width:6, height:6, borderRadius:'50%', background:'#4f46e5', animation:'popIn 0.3s ease 0.7s both'}} />
-                <span style={{position:'absolute', top:'-2px', left:'6px', width:6, height:6, borderRadius:'50%', background:'#c7d2fe', animation:'popIn 0.3s ease 0.55s both'}} />
-                <span style={{position:'absolute', bottom:'2px', left:'-6px', width:5, height:5, borderRadius:'50%', background:'#818cf8', animation:'popIn 0.3s ease 0.65s both'}} />
-              </div>
-
-              <h2 className="text-[20px] font-bold text-gray-900 mb-1.5">Agent published!</h2>
-              <p className="text-[13px] text-gray-400 mb-6 max-w-[220px] leading-relaxed">
-                <span className="font-semibold text-gray-700">{name || 'Your agent'}</span> is now live
-                {visibility === 'public' ? ' and discoverable by everyone' : visibility === 'group' ? ' for your group members' : ' (private)'}.
-              </p>
-
-              {/* Summary chips */}
-              <div className="flex flex-wrap gap-2 justify-center mb-8">
-                {agentType === 'multi' && multiMode && (
-                  <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold">
-                    {multiMode === 'loka' ? 'Cross-check' : 'MirrorFace'}
-                  </span>
-                )}
-                {agentType !== 'multi' && (
-                  <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
-                    {MODELS.find(m => m.id === model)?.label}
-                  </span>
-                )}
-                {category && (
-                  <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
-                    {category}
-                  </span>
-                )}
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                  pricing === 'free' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
-                }`}>
-                  {pricing === 'free' ? 'Free' : pricing === 'subscription' ? `${premiumPrice || '—'} USDC/mo` : `${premiumPrice || '—'} USDC/msg`}
-                </span>
-              </div>
-
-              {/* CTAs */}
-              <div className="flex gap-2.5">
-                <button
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-500 hover:bg-gray-50 transition-all"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-bold transition-all active:scale-[0.98] flex items-center gap-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            {/* Celebration icon */}
+            <div className="relative mb-6"
+              style={{ animation: 'scaleIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards' }}>
+              {/* Outer glow ring */}
+              <div className="w-24 h-24 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center">
+                  {/* Sparkle / check */}
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.4s ease 0.35s forwards' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
-                  Chat with Agent
-                </button>
+                </div>
               </div>
+              {/* Decorative dots */}
+              <span style={{ position: 'absolute', top: '-4px', right: '4px', width: 8, height: 8, borderRadius: '50%', background: '#6366f1', animation: 'popIn 0.3s ease 0.5s both' }} />
+              <span style={{ position: 'absolute', top: '10px', right: '-8px', width: 5, height: 5, borderRadius: '50%', background: '#a5b4fc', animation: 'popIn 0.3s ease 0.6s both' }} />
+              <span style={{ position: 'absolute', bottom: '4px', right: '-6px', width: 6, height: 6, borderRadius: '50%', background: '#4f46e5', animation: 'popIn 0.3s ease 0.7s both' }} />
+              <span style={{ position: 'absolute', top: '-2px', left: '6px', width: 6, height: 6, borderRadius: '50%', background: '#c7d2fe', animation: 'popIn 0.3s ease 0.55s both' }} />
+              <span style={{ position: 'absolute', bottom: '2px', left: '-6px', width: 5, height: 5, borderRadius: '50%', background: '#818cf8', animation: 'popIn 0.3s ease 0.65s both' }} />
+            </div>
 
-              <style>{`
+            <h2 className="text-[20px] font-bold text-gray-900 mb-1.5">Agent published!</h2>
+            <p className="text-[13px] text-gray-400 mb-6 max-w-[220px] leading-relaxed">
+              <span className="font-semibold text-gray-700">{name || 'Your agent'}</span> is now live
+              {visibility === 'public' ? ' and discoverable by everyone' : visibility === 'group' ? ' for your group members' : ' (private)'}.
+            </p>
+
+            {/* Summary chips */}
+            <div className="flex flex-wrap gap-2 justify-center mb-8">
+              {agentType === 'multi' && multiMode && (
+                <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold">
+                  {multiMode === 'loka' ? 'Cross-check' : 'MirrorFace'}
+                </span>
+              )}
+              {agentType !== 'multi' && (
+                <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
+                  {MODELS.find(m => m.id === model)?.label}
+                </span>
+              )}
+              {category && (
+                <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
+                  {category}
+                </span>
+              )}
+              <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${pricing === 'free' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                }`}>
+                {pricing === 'free' ? 'Free' : pricing === 'subscription' ? `${premiumPrice || '—'} USDC/mo` : `${premiumPrice || '—'} USDC/msg`}
+              </span>
+            </div>
+
+            {/* CTAs */}
+            <div className="flex gap-2.5">
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-500 hover:bg-gray-50 transition-all"
+              >
+                Close
+              </button>
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-bold transition-all active:scale-[0.98] flex items-center gap-1.5"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Chat with Agent
+              </button>
+            </div>
+
+            <style>{`
                 @keyframes scaleIn {
                   from { transform: scale(0.5); opacity: 0; }
                   to   { transform: scale(1);   opacity: 1; }
@@ -2441,8 +2424,8 @@ export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose })
                   to   { transform: scale(1); opacity: 1; }
                 }
               `}</style>
-            </div>
-          )}
+          </div>
+        )}
 
         {/* Footer — hidden on done screen */}
         {step !== 'done' && <div className="mt-6 flex justify-end">
@@ -2493,7 +2476,7 @@ export const CreateGroupModal: React.FC<{
         avatar: f.user.avatar,
         bgColor: 'bg-' + ['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((f.user.name || 'a').charCodeAt(0)) % 5] + '-500'
       })));
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2772,7 +2755,7 @@ const App: React.FC = () => {
               api.setToken(freshToken);
               socket.reconnectWithToken(freshToken);
             }
-          }).catch(() => {});
+          }).catch(() => { });
         }
       };
       document.addEventListener('visibilitychange', handleVisibility);
@@ -2792,12 +2775,12 @@ const App: React.FC = () => {
   const [profileData, setProfileData] = useState<any>(null);
   useEffect(() => {
     if (!isLoggedIn) { setProfileData(null); return; }
-    api.getProfile().then(p => setProfileData(p)).catch(() => {});
+    api.getProfile().then(p => setProfileData(p)).catch(() => { });
   }, [isLoggedIn]);
   // Listen for profile updates
   useEffect(() => {
     const handler = () => {
-      api.getProfile().then(p => setProfileData(p)).catch(() => {});
+      api.getProfile().then(p => setProfileData(p)).catch(() => { });
     };
     window.addEventListener('loka-profile-updated', handler);
     return () => window.removeEventListener('loka-profile-updated', handler);
@@ -2834,7 +2817,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden ${appBg} selection:bg-gray-900 selection:text-white transition-colors duration-300`}>
-      {showLaunch && <LaunchScreen onComplete={() => setShowLaunch(false)} />}
+
       <AnimStyles />
       <OAuthCallbackHandler />
       {showAuthModal && <AuthModal onLogin={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />}
