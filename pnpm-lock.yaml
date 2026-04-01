@@ -10,28 +10,28 @@ importers:
     dependencies:
       '@capacitor-community/speech-recognition':
         specifier: ^7.0.1
-        version: 7.0.1(@capacitor/core@8.2.0)
+        version: 7.0.1(@capacitor/core@8.3.0)
       '@capacitor/android':
         specifier: ^8.2.0
-        version: 8.2.0(@capacitor/core@8.2.0)
+        version: 8.2.0(@capacitor/core@8.3.0)
       '@capacitor/app':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.2.0)
+        version: 8.0.1(@capacitor/core@8.3.0)
       '@capacitor/browser':
         specifier: ^8.0.2
-        version: 8.0.2(@capacitor/core@8.2.0)
+        version: 8.0.2(@capacitor/core@8.3.0)
       '@capacitor/core':
-        specifier: ^8.2.0
-        version: 8.2.0
+        specifier: ^8.3.0
+        version: 8.3.0
       '@capacitor/ios':
         specifier: ^8.2.0
-        version: 8.2.0(@capacitor/core@8.2.0)
+        version: 8.2.0(@capacitor/core@8.3.0)
       '@capacitor/splash-screen':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.2.0)
+        version: 8.0.1(@capacitor/core@8.3.0)
       '@capacitor/status-bar':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.2.0)
+        version: 8.0.1(@capacitor/core@8.3.0)
       '@privy-io/react-auth':
         specifier: ^3.17.0
         version: 3.17.0(@solana-program/system@0.10.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.8.3)(utf-8-validate@6.0.6)))(@solana-program/token@0.9.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.8.3)(utf-8-validate@6.0.6)))(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.8.3)(utf-8-validate@6.0.6))(@solana/sysvars@5.5.1(typescript@5.8.3))(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@19.2.4))(@types/react@19.2.14)(bufferutil@4.1.0)(immer@11.1.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.8.3)(use-sync-external-store@1.6.0(react@19.2.4))(utf-8-validate@6.0.6)(zod@4.3.6)
@@ -229,8 +229,8 @@ packages:
     engines: {node: '>=22.0.0'}
     hasBin: true
 
-  '@capacitor/core@8.2.0':
-    resolution: {integrity: sha512-oKaoNeNtH2iIZMDFVrb1atoyRECDGHcfLMunJ5KWN8DtvpVBeeA4c41e20NTuhMxw1cSYbpq2PV2hb+/9CJxlQ==}
+  '@capacitor/core@8.3.0':
+    resolution: {integrity: sha512-S4ajn4G/fS3VJj8salxqH/3LO5PPWv1VxGKQ27OCajnDcLJjEg9VXwgMPnlypgkIOqCJ2fmQLtk8GT+BlI9/rw==}
 
   '@capacitor/ios@8.2.0':
     resolution: {integrity: sha512-X2/VtM4qP/R1SM0VQ5W/VotEc6PS/KTooD33EijsfAHWBdee+xmBapW8SeNLnu16wJ+tsfWlvtipaJEyfKbRKQ==}
@@ -4420,21 +4420,21 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@capacitor-community/speech-recognition@7.0.1(@capacitor/core@8.2.0)':
+  '@capacitor-community/speech-recognition@7.0.1(@capacitor/core@8.3.0)':
     dependencies:
-      '@capacitor/core': 8.2.0
+      '@capacitor/core': 8.3.0
 
-  '@capacitor/android@8.2.0(@capacitor/core@8.2.0)':
+  '@capacitor/android@8.2.0(@capacitor/core@8.3.0)':
     dependencies:
-      '@capacitor/core': 8.2.0
+      '@capacitor/core': 8.3.0
 
-  '@capacitor/app@8.0.1(@capacitor/core@8.2.0)':
+  '@capacitor/app@8.0.1(@capacitor/core@8.3.0)':
     dependencies:
-      '@capacitor/core': 8.2.0
+      '@capacitor/core': 8.3.0
 
-  '@capacitor/browser@8.0.2(@capacitor/core@8.2.0)':
+  '@capacitor/browser@8.0.2(@capacitor/core@8.3.0)':
     dependencies:
-      '@capacitor/core': 8.2.0
+      '@capacitor/core': 8.3.0
 
   '@capacitor/cli@8.2.0':
     dependencies:
@@ -4458,21 +4458,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@capacitor/core@8.2.0':
+  '@capacitor/core@8.3.0':
     dependencies:
       tslib: 2.8.1
 
-  '@capacitor/ios@8.2.0(@capacitor/core@8.2.0)':
+  '@capacitor/ios@8.2.0(@capacitor/core@8.3.0)':
     dependencies:
-      '@capacitor/core': 8.2.0
+      '@capacitor/core': 8.3.0
 
-  '@capacitor/splash-screen@8.0.1(@capacitor/core@8.2.0)':
+  '@capacitor/splash-screen@8.0.1(@capacitor/core@8.3.0)':
     dependencies:
-      '@capacitor/core': 8.2.0
+      '@capacitor/core': 8.3.0
 
-  '@capacitor/status-bar@8.0.1(@capacitor/core@8.2.0)':
+  '@capacitor/status-bar@8.0.1(@capacitor/core@8.3.0)':
     dependencies:
-      '@capacitor/core': 8.2.0
+      '@capacitor/core': 8.3.0
 
   '@coinbase/cdp-sdk@1.45.0(bufferutil@4.1.0)(typescript@5.8.3)(utf-8-validate@6.0.6)':
     dependencies:
