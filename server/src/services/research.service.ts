@@ -22,14 +22,15 @@ export const researchService = {
     ].filter(Boolean) as string[];
 
     return new Promise<{ summary: string; topic: string; timestamp: string }>((resolve, reject) => {
-      const pythonExe = path.join(LAST30DAYS_PATH, '.venv', 'Scripts', 'python.exe');
+      const isWin = process.platform === 'win32';
+      const venvBinDir = path.join(LAST30DAYS_PATH, '.venv', isWin ? 'Scripts' : 'bin');
+      const pythonExe = path.join(venvBinDir, isWin ? 'python.exe' : 'python');
 
       console.log(`[researchService] Starting deep research on: "${topic}"`);
 
-      const venvScripts = path.join(LAST30DAYS_PATH, '.venv', 'Scripts');
       const child = spawn(pythonExe, args, {
         cwd: LAST30DAYS_PATH,
-        env: { ...process.env, PATH: `${venvScripts}${path.delimiter}${process.env.PATH || ''}` },
+        env: { ...process.env, PATH: `${venvBinDir}${path.delimiter}${process.env.PATH || ''}` },
       });
 
       let stdoutData = '';
