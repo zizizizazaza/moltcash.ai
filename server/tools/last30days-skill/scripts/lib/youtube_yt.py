@@ -156,6 +156,11 @@ def search_youtube(
         "--no-download",
     ]
 
+    if os.path.exists("cookies.txt"):
+        cmd.extend(["--cookies", "cookies.txt"])
+    elif os.path.exists("scripts/cookies.txt"):
+        cmd.extend(["--cookies", "scripts/cookies.txt"])
+
     preexec = os.setsid if hasattr(os, 'setsid') else None
 
     try:
@@ -378,6 +383,11 @@ def _fetch_transcript_ytdlp(video_id: str, temp_dir: str) -> Optional[str]:
         "-o", f"{temp_dir}/%(id)s",
         f"https://www.youtube.com/watch?v={video_id}",
     ]
+
+    if os.path.exists("cookies.txt"):
+        cmd.extend(["--cookies", "cookies.txt"])
+    elif os.path.exists("scripts/cookies.txt"):
+        cmd.extend(["--cookies", "scripts/cookies.txt"])
 
     preexec = os.setsid if hasattr(os, 'setsid') else None
 
