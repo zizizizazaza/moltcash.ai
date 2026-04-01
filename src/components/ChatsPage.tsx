@@ -1061,7 +1061,6 @@ const ChatsPage: React.FC = () => {
               />
             )}
 
-            {/* Input */}
             <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0">
               <div className="max-w-4xl mx-auto w-full relative">
               {showAttachMenu && (
@@ -1149,8 +1148,8 @@ const ChatsPage: React.FC = () => {
           {/* ── Right: members sidebar (groups only) ── */}
           {/* Mobile: right-sliding drawer with backdrop */}
           {sel.isGroup && members && showMembers && (
-            <div className="md:hidden fixed inset-0 z-50 flex justify-end">
-              {/* Backdrop */}
+            <div className="md:hidden fixed inset-0 z-[100] flex justify-end">
+              {/* Backdrop — z above mobile tab bar (z-50) so drawer is not covered */}
               <div 
                 className="absolute inset-0 bg-black/20 backdrop-blur-sm" 
                 onClick={() => setShowMembers(false)}
@@ -1161,10 +1160,13 @@ const ChatsPage: React.FC = () => {
               `}</style>
               {/* Drawer Container */}
               <div 
-                className="relative w-[260px] bg-white h-full flex flex-col shadow-2xl rounded-l-2xl overflow-hidden"
+                className="relative w-[260px] bg-white h-full max-h-[100dvh] flex flex-col shadow-2xl rounded-l-2xl overflow-hidden min-h-0"
                 style={{ animation: 'slideInRight 0.3s cubic-bezier(0.16,1,0.3,1)' }}
               >
-                <div className="flex items-center justify-between px-4 pt-6 pb-4 border-b border-gray-100 bg-white z-10">
+                <div
+                  className="flex items-center justify-between px-4 pb-4 border-b border-gray-100 bg-white z-10 shrink-0"
+                  style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
+                >
                   <div>
                     <p className="text-[15px] font-bold text-gray-900">Members</p>
                     <p className="text-[11px] text-gray-400 font-medium">{members.agents.length + members.members.length} total</p>
@@ -1173,7 +1175,7 @@ const ChatsPage: React.FC = () => {
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 pb-20">
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 pb-6 space-y-6">
                   {/* ── AI Agents ── */}
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">AI Agents</p>
@@ -1265,7 +1267,10 @@ const ChatsPage: React.FC = () => {
 
                 {/* Admin: Dissolve group */}
                 {members.isAdmin && (
-                  <div className="px-5 pt-4 pb-24 border-t border-gray-100 bg-gray-50/50 mt-auto shrink-0 z-10">
+                  <div
+                    className="px-5 pt-4 border-t border-gray-100 bg-gray-50/50 mt-auto shrink-0 z-10"
+                    style={{ paddingBottom: 'max(1.25rem, calc(0.5rem + env(safe-area-inset-bottom)))' }}
+                  >
                     <button onClick={() => setShowDissolve(true)}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-bold text-red-500 bg-white border border-red-100 shadow-sm transition-all active:scale-[0.98]">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
