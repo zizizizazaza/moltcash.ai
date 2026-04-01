@@ -4,20 +4,27 @@ import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Page } from './types';
 import Market from './components/Market';
 import Portfolio from './components/Portfolio';
+import RealChatsPage from './components/ChatsPage';
+import RealContactsPage from './components/ContactsPage';
 import ApiLanding from './components/ApiLanding';
 import SuperAgentChat from './components/SuperAgentChat';
 import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
+import DiscoverPage from './components/DiscoverPage';
+import { api } from './services/api';
+import { socket } from './services/socket';
 
 /* ────────────────────────────────────────────────────────────
    Icons — richer, hand-crafted 18×18 with fills & details
    ──────────────────────────────────────────────────────────── */
 const sv = "w-[18px] h-[18px]";
-const I = {
+export const I = {
   Panel: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 3v18" /></svg>,
   Plus: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
   Search: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M21 21l-4.35-4.35" /></svg>,
+  /* Home — house with door */
+  Home: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" fill="currentColor" fillOpacity={0.06} /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
   /* SuperAgent — layered sparkle star */
   Sparkles: () => <svg className={sv} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" fill="currentColor" fillOpacity={0.12} stroke="currentColor" strokeWidth={1.8} /><path d="M20 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" fill="currentColor" fillOpacity={0.2} stroke="currentColor" strokeWidth={1.4} /></svg>,
   /* Discover — compass with needle */
@@ -32,6 +39,8 @@ const I = {
   People: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>,
   Send: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>,
   Dots: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>,
+  /* Profile — person with circle */
+  Profile: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" fill="currentColor" fillOpacity={0.08} /><path d="M20 21v-1a6 6 0 00-6-6H10a6 6 0 00-6 6v1" /></svg>,
   /* Menu icons */
   UserIcon: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0112 0v1" /></svg>,
   Settings: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z" /></svg>,
@@ -266,7 +275,8 @@ const UserMenu: React.FC<{
   isDark: boolean; onToggleDark: () => void; onLogout?: () => void;
   userName?: string;
   userInitial?: string;
-}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial }) => {
+  userAvatar?: string | null;
+}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial, userAvatar }) => {
   const menuNav = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -305,7 +315,7 @@ const UserMenu: React.FC<{
       {/* User header */}
       <div className={`px-3.5 py-2.5 border-b ${headerBorder}`}>
         <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white`}>{userInitial || 'U'}</div>
+          <div className={`w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
           <div>
             <p className={`text-[13px] font-semibold ${nameColor}`}>{userName || 'User'}</p>
             <p className={`text-[11px] ${subColor}`}>@user</p>
@@ -334,8 +344,8 @@ const Sidebar: React.FC<{
   expanded: boolean; onToggle: () => void; page: Page; go: (p: Page) => void;
   isDark: boolean; onToggleDark: () => void;
   isLoggedIn: boolean; onLogin: () => void; onLogout: () => void;
-  userName?: string; userInitial?: string;
-}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial }) => {
+  userName?: string; userInitial?: string; userAvatar?: string | null;
+}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial, userAvatar }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   /* theme classes */
@@ -371,8 +381,8 @@ const Sidebar: React.FC<{
         ))}
       </div>
       <div className="relative">
-        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all`}>{userInitial || 'U'}</div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
+        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </nav>
   );
@@ -419,11 +429,11 @@ const Sidebar: React.FC<{
       {/* User */}
       <div className="px-3 py-3 relative">
         <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${hoverBg} transition-all cursor-pointer group/user`}>
-          <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold`}>{userInitial || 'U'}</div>
+          <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
           <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} />
+        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
       </div>
     </aside>
   );
@@ -1690,7 +1700,7 @@ const ChatsPage: React.FC = () => {
 };
 
 /* ── Discover Page Data ── */
-const DISCOVER_GROUPS = [
+export const DISCOVER_GROUPS = [
   { id: 1, name: 'Alpha Investors Network', desc: 'Find early-stage investment opportunities before everyone else. We share deal flow, term sheets, and real-time signals from top angel investors and VCs.', members: 1240, letter: 'A', color: 'bg-blue-100 text-blue-600', grad: 'from-blue-500 to-indigo-600', tag: 'Investing', activity: 'Very Active' },
   { id: 2, name: 'SaaS Founders Club', desc: 'B2B SaaS founders sharing growth metrics, fundraising war stories, and operator playbooks. Monthly revenue milestones celebrated here.', members: 890, letter: 'S', color: 'bg-emerald-100 text-emerald-600', grad: 'from-emerald-500 to-teal-600', tag: 'Startups', activity: 'Active' },
   { id: 3, name: 'AI Builders Circle', desc: 'AI-powered product builders sharing tools, demos, and launch strategies. Stay updated on the latest LLM releases and practical applications.', members: 2100, letter: 'A', color: 'bg-violet-100 text-violet-600', grad: 'from-violet-500 to-purple-700', tag: 'AI', activity: 'Very Active' },
@@ -1701,7 +1711,7 @@ const DISCOVER_GROUPS = [
   { id: 8, name: 'Portfolio Management', desc: 'Build and optimize your investment portfolio using modern portfolio theory, factor models, and AI-assisted rebalancing. Monthly performance reviews included.', members: 430, letter: 'P', color: 'bg-pink-100 text-pink-600', grad: 'from-pink-500 to-rose-600', tag: 'Portfolio', activity: 'Active' },
 ];
 
-const DISCOVER_AGENTS = [
+export const DISCOVER_AGENTS = [
   { id: 1, name: 'Finance Assistant', desc: 'Analyze financial data and generate investment insights', category: 'Finance', letter: 'F', color: 'bg-blue-500' },
   { id: 2, name: 'Risk Analyzer', desc: 'Evaluate portfolio risk and suggest hedging strategies', category: 'Finance', letter: 'R', color: 'bg-red-500' },
   { id: 3, name: 'Market Research', desc: 'Research market trends, competitors, and opportunities', category: 'Research', letter: 'M', color: 'bg-emerald-500' },
@@ -1712,7 +1722,7 @@ const DISCOVER_AGENTS = [
   { id: 8, name: 'Revenue Forecaster', desc: 'Model revenue scenarios and forecast business performance using AI', category: 'Finance', letter: 'R', color: 'bg-pink-500' },
 ];
 
-const DISCOVER_CONTACTS = [
+export const DISCOVER_CONTACTS = [
   { id: 1, name: 'Alex Chen', role: 'Founder & CEO', bio: 'Building the future of AI-driven investment research tools.', twitter: '@alexchen_ai', followers: 12400, initials: 'AC', bgColor: 'bg-blue-500' },
   { id: 2, name: 'Sarah Kim', role: 'Co-founder & CTO', bio: 'ML engineer & fintech architect. prev @Stripe, @Plaid.', twitter: '@sarahkim_dev', followers: 8900, initials: 'SK', bgColor: 'bg-violet-500' },
   { id: 3, name: 'Marcus Rivera', role: null, bio: 'Angel investor & portfolio advisor. Obsessed with capital efficiency.', twitter: null, followers: 15600, initials: 'MR', bgColor: 'bg-emerald-500' },
@@ -1724,7 +1734,7 @@ const DISCOVER_CONTACTS = [
   { id: 9, name: 'Tom Wu', role: 'CFO', bio: 'Treasury management & financial modeling for high-growth startups.', twitter: '@tomwu_fi', followers: 7800, initials: 'TW', bgColor: 'bg-orange-500' },
 ];
 
-const AGENT_CATEGORIES = ['All', 'Finance', 'Research', 'Growth'];
+export const AGENT_CATEGORIES = ['All', 'Finance', 'Research', 'Growth'];
 
 // Mock "strangers" database — not in contacts
 const STRANGER_DB = [
@@ -1873,7 +1883,7 @@ const AddFriendModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 };
 
 // ── Create Agent Modal ────────────────────────────────────────────────
-const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   type AgentType = 'single' | 'multi';
   type MultiMode = 'loka' | 'mirrorfish' | null;
   type Visibility = 'public' | 'group' | 'private';
@@ -2887,15 +2897,30 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 };
 
 // ── Create Group Modal ─────────────────────────────────────────────────
-const CreateGroupModal: React.FC<{
+export const CreateGroupModal: React.FC<{
   onClose: () => void;
   onCreated?: (newGroupId: string) => void;
 }> = ({ onClose, onCreated }) => {
   const [step, setStep] = useState<'members' | 'info'>('members');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<any>>(new Set());
   const [groupName, setGroupName] = useState('');
   const [groupBio, setGroupBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [realFriends, setRealFriends] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getFriends().then((data: any[]) => {
+      setRealFriends(data.map((f: any) => ({
+        id: f.user.id,
+        name: f.user.name || 'User',
+        role: 'Friend',
+        bio: f.user.email || 'LokaCash Member',
+        initials: (f.user.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+        avatar: f.user.avatar,
+        bgColor: 'bg-' + ['blue', 'violet', 'emerald', 'amber', 'rose'][Math.abs((f.user.name || 'a').charCodeAt(0)) % 5] + '-500'
+      })));
+    }).catch(() => { });
+  }, []);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2982,13 +3007,22 @@ const CreateGroupModal: React.FC<{
             <div className="px-5 pt-3 pb-1 border-t border-gray-50 mt-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contacts</p>
             </div>
-            {DISCOVER_CONTACTS.map(c => {
+            {realFriends.length === 0 ? (
+              <p className="px-5 py-4 text-[12px] text-gray-400 text-center">No friends yet. Add friends from the Contacts page.</p>
+            ) : null}
+            {realFriends.map(c => {
               const grad = GRAD_MAP[c.bgColor] ?? 'from-gray-400 to-gray-500';
               const isSel = selected.has(c.id);
               return (
                 <div key={c.id} onClick={() => toggleMember(c.id)}
                   className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>{c.initials}</div>
+                  {c.avatar && typeof c.avatar === 'string' && c.avatar.startsWith('http') ? (
+                    <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0">
+                      <img src={c.avatar} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[12px] font-black text-white shrink-0`}>{c.initials}</div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
@@ -3085,13 +3119,7 @@ const MOCK_REQUESTS = [
 ];
 
 // ── ContactsPage ───────────────────────────────────────────────────────
-const ContactsPage: React.FC = () => {
-  const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<'friend' | null>(null);
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
-  const [accepted, setAccepted] = useState<Set<string>>(new Set());
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [followedUp, setFollowedUp] = useState<Set<string>>(new Set());
+
 
   const handleAccept = (id: string) => {
     setAccepted(prev => { const n = new Set(prev); n.add(id); return n; });
@@ -3693,6 +3721,7 @@ const DiscoverPage: React.FC = () => {
   );
 };
 
+
 const SettingsPage: React.FC = () => (
   <div className="flex-1 flex items-center justify-center h-full">
     <div className="text-center space-y-3">
@@ -3703,9 +3732,6 @@ const SettingsPage: React.FC = () => (
   </div>
 );
 
-/* ════════════════════════════════════════════════════════════
-   APP
-   ════════════════════════════════════════════════════════════ */
 const PAGE_PATHS: Record<string, string> = {
   [Page.SUPER_AGENT]: '/',
   [Page.CHATS]: '/chat',
@@ -3725,16 +3751,88 @@ const App: React.FC = () => {
   const [expanded, setExpanded] = useState(true);
   const [isDark, setIsDark] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showLaunch, setShowLaunch] = useState(true);
 
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, getAccessToken } = usePrivy();
   const { logout } = useLogout({
     onSuccess: () => navigate('/'),
   });
   const isLoggedIn = ready && authenticated;
 
+  // ── Socket + API token initialization ──
+  useEffect(() => {
+    if (ready && authenticated) {
+      getAccessToken().then(token => {
+        if (token) {
+          api.setToken(token);
+          api.setTokenGetter(getAccessToken);
+          socket.setTokenGetter(getAccessToken);
+          socket.reconnectWithToken(token);
+
+          // Force sync to DB so it doesn't 404
+          const email = user?.email?.address;
+          const name = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0];
+          const avatar = (user?.google as any)?.pictureUrl || user?.twitter?.profilePictureUrl || (user?.discord as any)?.avatarUrl;
+          api.syncPrivyUser({ email, name, avatar }).then(() => {
+            window.dispatchEvent(new Event('loka-profile-updated'));
+          }).catch(console.error);
+        }
+      }).catch(err => console.warn('[Auth] Token fetch failed:', err));
+
+
+
+      // Periodic token refresh (every 5 min)
+      const interval = setInterval(() => {
+        getAccessToken().then(freshToken => {
+          if (freshToken) {
+            api.setToken(freshToken);
+            socket.reconnectWithToken(freshToken);
+          }
+        }).catch(err => console.warn('[Auth] Refresh failed:', err));
+      }, 5 * 60 * 1000);
+
+      // Visibility-based token refresh
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          getAccessToken().then(freshToken => {
+            if (freshToken) {
+              api.setToken(freshToken);
+              socket.reconnectWithToken(freshToken);
+            }
+          }).catch(() => { });
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
+    } else if (ready && !authenticated) {
+      api.clearToken();
+      socket.clearToken();
+    }
+  }, [ready, authenticated, getAccessToken, user]);
+
   // Derive user display info from Privy user object
-  const userName = user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
+  // Fetch profile from backend for accurate name/avatar
+  const [profileData, setProfileData] = useState<any>(null);
+  useEffect(() => {
+    if (!isLoggedIn) { setProfileData(null); return; }
+    api.getProfile().then(p => setProfileData(p)).catch(() => { });
+  }, [isLoggedIn]);
+  // Listen for profile updates
+  useEffect(() => {
+    const handler = () => {
+      api.getProfile().then(p => setProfileData(p)).catch(() => { });
+    };
+    window.addEventListener('loka-profile-updated', handler);
+    return () => window.removeEventListener('loka-profile-updated', handler);
+  }, []);
+
+  const userName = profileData?.name || user?.google?.name || user?.twitter?.username || user?.email?.address?.split('@')[0] || 'User';
   const userInitial = userName.charAt(0).toUpperCase();
+  const userAvatar = profileData?.avatar || null;
 
   const toggleDark = () => {
     setIsDark(prev => {
@@ -3763,6 +3861,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden ${appBg} selection:bg-gray-900 selection:text-white transition-colors duration-300`}>
+
       <AnimStyles />
       <OAuthCallbackHandler />
       {showAuthModal && <AuthModal onLogin={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />}
@@ -3770,14 +3869,14 @@ const App: React.FC = () => {
 
       <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={go} isDark={isDark} onToggleDark={toggleDark}
         isLoggedIn={isLoggedIn} onLogin={() => setShowAuthModal(true)} onLogout={logout}
-        userName={userName} userInitial={userInitial} />
+        userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
 
       <main className={`flex-1 flex flex-col overflow-hidden h-full pt-[max(env(safe-area-inset-top),32px)] md:pt-0 pb-14 md:pb-0 ${mainBg}`}>
         <div className={`flex-1 overflow-y-auto flex flex-col md:m-0 ${location.pathname.startsWith('/market/startup/') ? 'bg-gray-50 md:bg-gray-100/80' : ''}`}>
           <Routes>
             <Route path="/" element={<SuperAgentHome />} />
-            <Route path="/chat" element={<ChatsPage />} />
-            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/chat" element={<RealChatsPage />} />
+            <Route path="/contacts" element={<RealContactsPage />} />
             <Route path="/market/*" element={<Market />} />
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/settings" element={<SettingsPage />} />
@@ -3789,16 +3888,22 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-2 pt-1 z-50" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
-        {navItems.map(({ key, icon: Icon, label }) => {
-          const u = key === Page.CHATS ? MOCK_MESSAGES.reduce((s, m) => s + m.unread, 0) : 0;
+      {/* Mobile bottom nav — 6-tab layout */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-0 pt-1 z-50" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
+        {([
+          { key: Page.SUPER_AGENT, icon: I.Home, label: 'Home' },
+          { key: Page.CHATS, icon: I.Chat, label: 'Chat' },
+          { key: Page.CONTACTS, icon: I.People, label: 'Contacts' },
+          { key: Page.DISCOVER, icon: I.Compass, label: 'Discover' },
+          { key: Page.INVEST, icon: I.Market, label: 'Market' },
+          { key: Page.PORTFOLIO, icon: I.Profile, label: 'Me' },
+        ] as { key: Page; icon: React.FC; label: string }[]).map(({ key, icon: Icon, label }) => {
+          const isActive = page === key;
           return (
             <button key={key} onClick={() => go(key)}
-              className={`relative flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-all ${page === key ? 'text-gray-900' : 'text-gray-400'}`}>
+              className={`relative flex flex-col items-center gap-0.5 py-1.5 px-1.5 min-w-0 transition-all ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
               <Icon />
-              <span className="text-[9px] font-medium">{label}</span>
-              {u > 0 && <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-gray-900 text-white text-[7px] font-bold rounded-full flex items-center justify-center">{u > 9 ? '9+' : u}</span>}
+              <span className={`text-[8px] leading-tight ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
             </button>
           );
         })}

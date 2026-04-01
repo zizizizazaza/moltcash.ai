@@ -64,6 +64,47 @@ router.get('/history', authRequired, async (req: AuthRequest, res, next) => {
   }
 });
 
+// Get historical net worth balance (90 days)
+router.get('/historical-balance', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    // 1. Get current holdings to determine current precise net worth
+    const holdings = await prisma.portfolioHolding.findMany({
+      where: { userId: req.userId },
+    });
+    
+    let currentTotal = holdings.reduce((sum, h) => {
+      const currentPrice = h.asset === 'AIUSD' ? 1.0 : (getTokenPrice(h.asset) ?? h.avgCost);
+      return sum + (h.amount * currentPrice);
+    }, 0);
+
+    // 2. Synthesize 90-day history moving backwards from currentTotal
+    const data = [];
+    const now = new Date();
+    
+    // 2. Synthesize 90-day history moving backwards from currentTotal
+    let movingTotal = currentTotal;
+    
+    // For a more realistic MVP: We will add small random daily market fluctuations to simulate yield / price action,
+    // working BACKWARDS.
+    for (let i = 0; i <= 90; i++) {
+       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+       data.unshift({
+         date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+         timestamp: d.getTime(),
+         total: parseFloat(movingTotal.toFixed(2))
+       });
+       
+       // Working backwards: subtract a random "daily change" to arrive at yesterday's balance
+       const randomDailyChange = (Math.random() * 0.005) - 0.002; // -0.2% to +0.3% daily fluctuation
+       movingTotal = movingTotal * (1 - randomDailyChange);
+    }
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Get investments — with real yield calculation
 router.get('/investments', authRequired, async (req: AuthRequest, res, next) => {
   try {

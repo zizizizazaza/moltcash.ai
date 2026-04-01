@@ -198,25 +198,7 @@ async function seed() {
   });
   console.log('  ✅ Treasury snapshot');
 
-  // Create portfolio holdings for demo user
-  await prisma.portfolioHolding.createMany({
-    data: [
-      { userId: user.id, asset: 'AIUSD', amount: 10000, avgCost: 1.0, currentApy: 5.24 },
-      { userId: user.id, asset: 'Rezi - AI Resume Builder', amount: 5000, avgCost: 96, currentApy: 15.5 },
-      { userId: user.id, asset: 'POST BRIDGE - Social Media', amount: 2000, avgCost: 97, currentApy: 18.2 },
-    ],
-  });
-  console.log('  ✅ Portfolio holdings');
-
-  // Create some transaction history
-  await prisma.transaction.createMany({
-    data: [
-      { userId: user.id, type: 'DEPOSIT', amount: 10000, asset: 'USDC', status: 'COMPLETED' },
-      { userId: user.id, type: 'MINT', amount: 10000, asset: 'AIUSD', status: 'COMPLETED' },
-      { userId: user.id, type: 'INTEREST', amount: 45.2, asset: 'AIUSD', status: 'COMPLETED' },
-      { userId: user.id, type: 'DEPOSIT', amount: 2500, asset: 'USDC', status: 'COMPLETED' },
-    ],
-  });
+  // (Skipped mock Portfolio holdings and Transactions for demo user)
   console.log('  ✅ Transactions');
 
   // ============ Repayment & Issuer Seed Data ============
@@ -227,35 +209,7 @@ async function seed() {
   const postBridgeProject = allProjects.find(p => p.title === 'POST BRIDGE - Social Media')!;
   const draftlyProject = allProjects.find(p => p.title === 'Draftly - 3D Web Builder')!;
 
-  // Create investments for demo user
-  const inv1 = await prisma.investment.create({
-    data: {
-      userId: user.id,
-      projectId: reziProject.id,
-      amount: 15000,
-      shares: 150,
-      status: 'active',
-    },
-  });
-  const inv2 = await prisma.investment.create({
-    data: {
-      userId: user.id,
-      projectId: postBridgeProject.id,
-      amount: 5000,
-      shares: 50,
-      status: 'active',
-    },
-  });
-  const inv3 = await prisma.investment.create({
-    data: {
-      userId: user.id,
-      projectId: draftlyProject.id,
-      amount: 2000,
-      shares: 20,
-      status: 'active',
-    },
-  });
-  console.log('  ✅ Investments (3 projects)');
+  // (Skipped mock investments for demo user)
 
   // --- Rezi AI: 6-month schedule, 4 paid + 1 overdue + 1 upcoming ---
   const now = new Date();

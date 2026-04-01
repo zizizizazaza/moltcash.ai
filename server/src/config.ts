@@ -45,4 +45,8 @@ export const config = {
     detailTtlMs: 10 * 60 * 1000,        // 10 min detail cache
     maxRequestsPerMinute: 18,            // leave 2 for headroom
   },
+  stripe: {
+    encryptionKey: process.env.STRIPE_ENCRYPTION_KEY || '',
+    syncIntervalMs: 60 * 60 * 1000, // 1 hour
+  },
 } as const;

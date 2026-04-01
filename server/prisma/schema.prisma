@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,6 +18,11 @@ model User {
   authProvider    String?  // google, apple, x, email
   authProviderId  String?
   role            String   @default("user") // user, investor, issuer, admin
+  bio             String?  // User abstract
+  twitter         String?  // Social links
+  linkedin        String?
+  personalWebsite String?
+  isPublic        Boolean  @default(true)
   kycStatus       String   @default("none") // none, pending, verified, rejected
   creditScore     Int      @default(100)
   riskAccepted    Boolean  @default(false)
@@ -339,6 +344,11 @@ model EnterpriseVerification {
   companyName     String
   country         String
   registrationNo  String?
+  description     String?  // company description
+  website         String?  // company website
+  foundedYear     Int?     // year company was founded
+  categories      String?  // comma-separated: "SaaS,AI,Fintech"
+  companyLogo     String?  // uploaded logo URL
   licenseDoc      String?  // file URL
   uboName         String?
   uboIdDoc        String?  // file URL
@@ -346,6 +356,12 @@ model EnterpriseVerification {
   status          String   @default("pending") // pending, in_review, verified, rejected
   creditAwarded   Int      @default(0)
   sbtMinted       Boolean  @default(false)
+  stripeApiKeyEncrypted String?  // AES-256-GCM encrypted restricted API key
+  stripeKeyStatus       String?  // active, inactive, invalid
+  stripeMrr          Float?   // cached MRR value in USD
+  stripeLast30dRev   Float?   // cached last 30 days revenue
+  stripeMomGrowth    Float?   // cached month-over-month growth %
+  stripeLastSyncAt   DateTime? // last time we fetched from Stripe
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

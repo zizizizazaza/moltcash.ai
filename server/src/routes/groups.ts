@@ -3,9 +3,41 @@ import prisma from '../db.js';
 import { authRequired, type AuthRequest } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { z } from 'zod';
-import { emitToGroup } from '../socket/index.js';
+import { emitToGroup, emitToUser, joinSocketRoom } from '../socket/index.js';
 
 const router = Router();
+
+// ============ Discover all groups (public square) ============
+router.get('/discover', authRequired, async (req: AuthRequest, res, next) => {
+  try {
+    const me = req.userId!;
+
+    const groups = await prisma.groupChat.findMany({
+      include: {
+        _count: { select: { members: true } },
+        members: {
+          where: { userId: me },
+          select: { userId: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const result = groups.map(g => ({
+      id: g.id,
+      name: g.name,
+      bio: g.bio,
+      avatar: g.avatar,
+      memberCount: g._count.members,
+      isMember: g.members.length > 0,
+      createdAt: g.createdAt,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ============ List groups (user's groups) ============
 router.get('/', authRequired, async (req: AuthRequest, res, next) => {
@@ -174,16 +206,48 @@ router.post('/:id/join', authRequired, async (req: AuthRequest, res, next) => {
     });
     if (existing) throw new AppError('Already a member', 400);
 
-    // Get user role for the group
+    // Get user info
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const role = user?.role === 'issuer' ? 'issuer' : 'investor';
+    const userName = user?.name || 'Someone';
 
     const member = await prisma.groupMember.create({
       data: { groupId, userId, role },
     });
 
-    // Broadcast join event
-    emitToGroup(groupId, 'group:member:joined', { groupId, userId, role });
+    // 1. Make the new user's socket join the group room immediately
+    joinSocketRoom(userId, `group:${groupId}`);
+
+    // 2. Create a system message "xxx joined the group" (Telegram-style)
+    const systemMsg = await prisma.groupMessage.create({
+      data: {
+        groupId,
+        userId,
+        content: `${userName} joined the group`,
+        attachmentType: 'system',
+        role,
+      },
+      include: {
+        user: { select: { id: true, name: true, avatar: true, role: true } },
+      },
+    });
+
+    // 3. Broadcast the system message to all group members
+    emitToGroup(groupId, 'group:message', systemMsg);
+
+    // 4. Notify the new user to refresh their conversation list
+    emitToUser(userId, 'group:joined', { groupId });
+
+    // 5. Get updated member count & broadcast member:joined with details
+    const memberCount = await prisma.groupMember.count({ where: { groupId } });
+    emitToGroup(groupId, 'group:member:joined', {
+      groupId,
+      userId,
+      name: userName,
+      avatar: user?.avatar || null,
+      role,
+      memberCount,
+    });
 
     res.status(201).json(member);
   } catch (err) {
@@ -202,12 +266,34 @@ router.post('/:id/leave', authRequired, async (req: AuthRequest, res, next) => {
     });
     if (!member) throw new AppError('Not a member', 400);
 
+    // Get user name before deletion
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const userName = user?.name || 'Someone';
+
     await prisma.groupMember.delete({
       where: { groupId_userId: { groupId, userId } },
     });
 
-    // Broadcast leave event
-    emitToGroup(groupId, 'group:member:left', { groupId, userId });
+    // Create a system message "xxx left the group"
+    const systemMsg = await prisma.groupMessage.create({
+      data: {
+        groupId,
+        userId,
+        content: `${userName} left the group`,
+        attachmentType: 'system',
+        role: member.role,
+      },
+      include: {
+        user: { select: { id: true, name: true, avatar: true, role: true } },
+      },
+    });
+
+    // Broadcast the system message
+    emitToGroup(groupId, 'group:message', systemMsg);
+
+    // Broadcast leave event with updated count
+    const memberCount = await prisma.groupMember.count({ where: { groupId } });
+    emitToGroup(groupId, 'group:member:left', { groupId, userId, memberCount });
 
     res.json({ left: true, groupId });
   } catch (err) {

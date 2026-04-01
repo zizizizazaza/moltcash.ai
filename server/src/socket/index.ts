@@ -119,6 +119,19 @@ export function emitToGroup(groupId: string, event: string, data: unknown) {
   }
 }
 
+// Helper to make a user's active sockets join a specific room
+// Used when a user joins a group via REST API so they immediately receive group events
+export function joinSocketRoom(userId: string, room: string) {
+  if (!io) return;
+  const userRoom = io.sockets.adapter.rooms.get(`user:${userId}`);
+  if (userRoom) {
+    for (const socketId of userRoom) {
+      const s = io.sockets.sockets.get(socketId);
+      if (s) s.join(room);
+    }
+  }
+}
+
 // Helper to get online user IDs
 export function getOnlineUserIds(): string[] {
   return Array.from(onlineUsers);
