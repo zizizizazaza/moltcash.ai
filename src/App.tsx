@@ -12,6 +12,7 @@ import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
 import DiscoverPage from './components/DiscoverPage';
+import DeepResearch from './components/DeepResearch';
 import { api } from './services/api';
 import { socket } from './services/socket';
 
@@ -93,7 +94,7 @@ const ActionIcons = {
 
 const QUICK_ACTIONS = [
   { id: 'invest', icon: ActionIcons.Invest, label: 'Analyze Investment' },
-  { id: 'research', icon: ActionIcons.Research, label: 'Deep Research' },
+  { id: 'signal-radar', icon: ActionIcons.Research, label: 'Signal Radar' },
   { id: 'trade', icon: ActionIcons.Trade, label: 'Execute Trade' },
   { id: 'risk', icon: ActionIcons.Risk, label: 'Assess Risk' },
   { id: 'sentiment', icon: ActionIcons.Sentiment, label: 'Check Sentiment' },
@@ -332,6 +333,7 @@ const SuperAgentHome: React.FC = () => {
   const [input, setInput] = useState('');
   const [model, setModel] = useState('GPT-4o');
   const [chatMessage, setChatMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   if (chatMessage) {
     return <SuperAgentChat initialMessage={chatMessage} onBack={() => setChatMessage(null)} />;
@@ -393,7 +395,13 @@ const SuperAgentHome: React.FC = () => {
                 const Ic = a.icon;
                 return (
                   <button key={a.id}
-                    onClick={() => setChatMessage(a.label)}
+                    onClick={() => {
+                      if (a.id === 'signal-radar') {
+                        navigate('/signal-radar', { state: { initialTopic: '' } });
+                      } else {
+                        setChatMessage(a.label);
+                      }
+                    }}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all whitespace-nowrap shrink-0">
                     <Ic /> {a.label}
                   </button>
@@ -2837,6 +2845,7 @@ const App: React.FC = () => {
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/api" element={<ApiLanding />} />
+            <Route path="/signal-radar" element={<DeepResearch />} />
             <Route path="/portfolio" element={<Portfolio isWalletConnected={isLoggedIn} onConnect={() => setShowAuthModal(true)} onLogout={logout} defaultTab="personal" />} />
             <Route path="/enterprise" element={<Portfolio isWalletConnected={isLoggedIn} onConnect={() => setShowAuthModal(true)} onLogout={logout} defaultTab="enterprise" />} />
             <Route path="*" element={<SuperAgentHome />} />
