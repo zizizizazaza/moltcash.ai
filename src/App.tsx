@@ -12,6 +12,7 @@ import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
 import DiscoverPage from './components/DiscoverPage';
+import DeepResearch from './components/DeepResearch';
 import { api } from './services/api';
 import { socket } from './services/socket';
 
@@ -614,7 +615,16 @@ const SuperAgentHome: React.FC = () => {
               key={phIdx}
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && input.trim()) { e.preventDefault(); setChatMessage(input.trim()); } }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
+                  e.preventDefault();
+                  if (selectedAgent === 'research') {
+                    navigate('/signal-radar', { state: { initialTopic: input.trim() } });
+                  } else {
+                    setChatMessage(input.trim());
+                  }
+                }
+              }}
               placeholder={PLACEHOLDERS[phIdx]}
               rows={3}
               className="ph-fade-in w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none"
@@ -688,7 +698,15 @@ const SuperAgentHome: React.FC = () => {
                   <InputIcons.Mic />
                 </button>
                 <button
-                  onClick={() => { if (input.trim()) setChatMessage(input.trim()); }}
+                  onClick={() => {
+                    if (input.trim()) {
+                      if (selectedAgent === 'research') {
+                        navigate('/signal-radar', { state: { initialTopic: input.trim() } });
+                      } else {
+                        setChatMessage(input.trim());
+                      }
+                    }
+                  }}
                   className={`send-btn-active w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
                     }`}>
                   <I.Send />
@@ -3292,441 +3310,6 @@ const ContactsPage: React.FC = () => {
   );
 };
 
-const DiscoverPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'Agents' | 'Groups' | 'People'>('Groups');
-  const [agentCat, setAgentCat] = useState('All');
-  const [selectedGroup, setSelectedGroup] = useState<typeof DISCOVER_GROUPS[0] | null>(null);
-  const [joinedGroups, setJoinedGroups] = useState<Set<number>>(new Set());
-  const [joiningGroup, setJoiningGroup] = useState<number | null>(null);
-  const [joinSuccessGroup, setJoinSuccessGroup] = useState<typeof DISCOVER_GROUPS[0] | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [showCreateAgent, setShowCreateAgent] = useState(false);
-
-  const PEOPLE = [
-    { name: 'Alex Chen', role: 'Founder', org: 'ComputeDAO', score: 1200, investments: 0, raises: 3, avatar: 'A', color: 'from-violet-500 to-purple-700', followers: '12.5k', bio: 'Building decentralized compute infrastructure. Previously at Google Brain. Open-source contributor.', active: true, company: { name: 'ComputeDAO', color: 'from-violet-500 to-purple-700' } },
-    { name: 'Sarah Kim', role: 'Investor', org: 'Independent', score: 980, investments: 12, raises: 0, avatar: 'S', color: 'from-indigo-600 to-blue-700', followers: '450', bio: 'Angel investor focused on early-stage SaaS and fintech. 12 portfolio companies. Ex-Goldman Sachs.', active: false },
-    { name: 'Marcus Johnson', role: 'Investor', org: 'Alpha Capital', score: 1450, investments: 28, raises: 0, avatar: 'M', color: 'from-emerald-500 to-teal-700', followers: '2.1k', bio: 'General Partner at Alpha Capital. 28 investments across Web3 and AI infra. Focus on seed to Series A.', active: true },
-    { name: 'Lisa Wang', role: 'Founder', org: 'Rezi Inc.', score: 890, investments: 0, raises: 2, avatar: 'L', color: 'from-rose-500 to-pink-600', followers: '18.2k', bio: 'CEO at Rezi — AI resume builder with 1M+ users. Forbes 30 Under 30. YC S22.', active: true, company: { name: 'Rezi Inc.', color: 'from-rose-500 to-pink-600' } },
-    { name: 'David Park', role: 'Investor', org: 'DePhi Ventures', score: 720, investments: 5, raises: 0, avatar: 'D', color: 'from-amber-600 to-orange-600', followers: '8,900', bio: 'Crypto-native VC at DePhi Ventures. 5 investments. Former trader at Jump Crypto.', active: false },
-    { name: 'Emma Torres', role: 'Contributor', org: 'Loka DAO', score: 650, investments: 3, raises: 0, avatar: 'E', color: 'from-sky-500 to-blue-500', followers: '1,200', bio: 'Active governance contributor at Loka DAO. DeFi researcher and writer. 3 investments on platform.', active: true },
-    { name: 'James Liu', role: 'Founder', org: 'Deeptrue Corp.', score: 760, investments: 1, raises: 1, avatar: 'J', color: 'from-cyan-600 to-blue-700', followers: '34.5k', bio: 'Co-founder & CTO of Deeptrue Corp. AI-native compliance tooling for financial institutions. MIT PhD dropout.', active: false, company: { name: 'Deeptrue Corp.', color: 'from-cyan-600 to-blue-700' } },
-    { name: 'Rachel Green', role: 'Investor', org: 'Onchain Insights', score: 1100, investments: 19, raises: 0, avatar: 'R', color: 'from-fuchsia-600 to-purple-600', followers: '5,020', bio: 'Research lead at Onchain Insights. 19 on-chain investments, specializing in RWA protocols.', active: true },
-    { name: 'Sam Altman', role: 'Founder', org: 'OpenAI', score: 9990, investments: 42, raises: 5, avatar: 'S', color: 'from-gray-700 to-gray-900', followers: '3.2M', bio: 'CEO of OpenAI. Previously President of Y Combinator. Investor in 40+ companies including Stripe and Airbnb.', active: true, company: { name: 'OpenAI', color: 'from-gray-700 to-gray-900' } },
-    { name: 'Brian Armstrong', role: 'Founder', org: 'Coinbase', score: 8500, investments: 30, raises: 2, avatar: 'B', color: 'from-blue-600 to-blue-800', followers: '1.2M', bio: 'CEO & co-founder of Coinbase. 30 investments across crypto infrastructure. Airbnb alum.', active: false, company: { name: 'Coinbase', color: 'from-blue-600 to-blue-800' } },
-  ];
-  type Person = typeof PEOPLE[0];
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
-  const [peopleCat, setPeopleCat] = useState('All');
-  const PEOPLE_CATS = ['All', 'Investor', 'Founder', 'Contributor', 'Active'] as const;
-  const filteredPeople = peopleCat === 'All' ? PEOPLE
-    : peopleCat === 'Active' ? PEOPLE.filter(p => p.active)
-      : PEOPLE.filter(p => p.role === peopleCat);
-
-  const tabs = ['Groups', 'People'] as const;
-  const filteredAgents = agentCat === 'All' ? DISCOVER_AGENTS : DISCOVER_AGENTS.filter(a => a.category === agentCat);
-
-  const handleJoin = (group: typeof DISCOVER_GROUPS[0], e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (joinedGroups.has(group.id)) return;
-    setJoiningGroup(group.id);
-    setTimeout(() => {
-      setJoiningGroup(null);
-      setJoinedGroups(prev => new Set([...prev, group.id]));
-      setJoinSuccessGroup(group);
-      setSelectedGroup(null);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-      // Redirect to community chat after 1.5s
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('loka-nav-groups', { detail: group.name }));
-        navigate('/chat');
-      }, 1500);
-    }, 900);
-  };
-
-  const activityColor = (a: string) => a === 'Very Active' ? 'text-emerald-600 bg-emerald-50' : a === 'Active' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100';
-
-  if (showCreateAgent) {
-    return <CreateAgentModal onClose={() => setShowCreateAgent(false)} />;
-  }
-
-  return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-gray-50 md:bg-gray-100/80">
-      {/* Create Group Modal */}
-      {showCreateGroup && (
-        <CreateGroupModal
-          onClose={() => setShowCreateGroup(false)}
-          onCreated={() => setShowCreateGroup(false)}
-        />
-      )}
-      {/* Success toast */}
-      {showToast && joinSuccessGroup && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] animate-fadeIn">
-          <div className="flex items-center gap-2.5 bg-gray-900 text-white text-[13px] font-semibold px-4 py-3 rounded-2xl shadow-2xl">
-            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-            </div>
-            Joined <span className="font-bold">{joinSuccessGroup.name}</span> — redirecting to chat...
-          </div>
-        </div>
-      )}
-
-      {/* Group Detail Modal */}
-      {selectedGroup && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={() => setSelectedGroup(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn" onClick={e => e.stopPropagation()}>
-            {/* Cover */}
-            <div className={`h-36 bg-gradient-to-br ${selectedGroup.grad} relative flex items-center justify-center overflow-hidden`}>
-              {/* Abstract pattern */}
-              <div className="absolute inset-0 opacity-20">
-                <div className="absolute top-4 left-8 w-20 h-20 rounded-full border-4 border-white/50" />
-                <div className="absolute bottom-2 right-12 w-14 h-14 rounded-full border-4 border-white/30" />
-                <div className="absolute top-8 right-4 w-8 h-8 rounded-full bg-white/20" />
-              </div>
-              <span className="text-white/20 font-black text-8xl select-none">{selectedGroup.letter}</span>
-              {/* Close button */}
-              <button onClick={() => setSelectedGroup(null)} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur flex items-center justify-center text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-              {/* Member join animation */}
-              <div className="absolute bottom-3 left-4 flex -space-x-2">
-                {['from-blue-400 to-indigo-500', 'from-emerald-400 to-teal-500', 'from-rose-400 to-pink-500', 'from-amber-400 to-orange-500'].map((g, i) => (
-                  <div key={i} className={`w-7 h-7 rounded-full bg-gradient-to-br ${g} border-2 border-white shadow-sm flex items-center justify-center text-[10px] font-bold text-white`}>
-                    {['A', 'B', 'C', 'D'][i]}
-                  </div>
-                ))}
-                <div className="w-7 h-7 rounded-full bg-black/30 border-2 border-white shadow-sm flex items-center justify-center text-[9px] font-bold text-white backdrop-blur">
-                  +{(selectedGroup.members - 4).toLocaleString()}
-                </div>
-              </div>
-
-            </div>
-            {/* Content */}
-            <div className="p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h2 className="text-[18px] font-black text-gray-900 leading-tight">{selectedGroup.name}</h2>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${selectedGroup.color}`}>{selectedGroup.tag}</span>
-                  </div>
-                  <p className="text-[12px] text-gray-400 font-medium">{selectedGroup.members.toLocaleString()} members</p>
-                </div>
-              </div>
-              <p className="text-[13px] text-gray-600 leading-relaxed mb-6">{selectedGroup.desc}</p>
-              {/* Stats row */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {[
-                  { label: 'Members', value: selectedGroup.members.toLocaleString() },
-                  { label: 'Category', value: selectedGroup.tag },
-                ].map(stat => (
-                  <div key={stat.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                    <p className="text-[11px] font-black text-gray-900 leading-tight">{stat.value}</p>
-                    <p className="text-[9px] text-gray-400 font-medium mt-0.5">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-              {/* Join Button */}
-              {joinedGroups.has(selectedGroup.id) ? (
-                <div className="w-full py-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center gap-2 text-emerald-700 font-bold text-[14px]">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                  Joined
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleJoin(selectedGroup)}
-                  disabled={joiningGroup === selectedGroup.id}
-                  className="w-full py-3 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-[14px] transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
-                >
-                  {joiningGroup === selectedGroup.id ? (
-                    <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Joining...</>
-                  ) : (
-                    <>Join Group<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg></>
-                  )}
-                </button>
-              )}
-              <p className="text-[10px] text-gray-400 text-center mt-3">By joining, you agree to our community guidelines.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Person Detail Modal */}
-      {selectedPerson && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={() => setSelectedPerson(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-fadeIn" onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-50">
-              <div className="flex items-center gap-3">
-                {/* Circle avatar */}
-                <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${selectedPerson.color} flex items-center justify-center text-[20px] font-black text-white shadow-md shrink-0`}>
-                  {selectedPerson.avatar}
-                </div>
-                <div>
-                  <h2 className="text-[16px] font-black text-gray-900 leading-tight">{selectedPerson.name}</h2>
-                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">{selectedPerson.role} · {selectedPerson.org}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedPerson(null)} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            {/* Content */}
-            <div className="p-5">
-              <div className="mb-3">
-                <h2 className="text-[18px] font-black text-gray-900 leading-tight">{selectedPerson.name}</h2>
-                <p className="text-[12px] text-gray-400 font-medium mt-0.5">{selectedPerson.role} · {selectedPerson.org}</p>
-                {/* Social links */}
-                <div className="flex items-center gap-2 mt-2">
-                  <a href="#" onClick={(e) => e.preventDefault()} className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-[#0A66C2] transition-colors">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                    LinkedIn
-                  </a>
-                  <span className="text-gray-200">·</span>
-                  <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400">
-                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                    {selectedPerson.followers} followers
-                  </div>
-                </div>
-              </div>
-              <p className="text-[13px] text-gray-600 leading-relaxed mb-4">{selectedPerson.bio}</p>
-              {/* Founder company block */}
-              {selectedPerson.role === 'Founder' && selectedPerson.company && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 mb-4">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${selectedPerson.company.color} flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm`}>
-                    {selectedPerson.company.name[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-gray-900 truncate">{selectedPerson.company.name}</p>
-                    <p className="text-[10px] text-gray-400">Founder</p>
-                  </div>
-                  <span className="ml-auto text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full shrink-0">Verified Issuer</span>
-                </div>
-              )}
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-2 mb-5">
-                {[
-                  { label: 'Investments', value: selectedPerson.investments },
-                  { label: 'Raises', value: selectedPerson.raises },
-                ].map(stat => (
-                  <div key={stat.label} className="bg-gray-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[13px] font-black text-gray-900">{stat.value}</p>
-                    <p className="text-[9px] text-gray-400 font-medium mt-0.5">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full py-2.5 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-[13px] transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                Add Friend
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="animate-fadeIn pb-24 p-4 sm:p-8 md:p-10 lg:p-12 max-w-[1600px] mx-auto w-full min-h-full">
-        {/* Header + Tabs */}
-        <h1 className="text-[22px] font-semibold text-gray-900 mb-4">Discover</h1>
-        <div className="flex items-center gap-6 border-b border-gray-100 mb-6">
-          {tabs.map(t => (
-            <button key={t}
-              onClick={() => setActiveTab(t)}
-              className={`pb-2 text-[14px] font-medium transition-all border-b-2 -mb-px flex items-center gap-1.5 ${activeTab === t
-                ? 'border-gray-900 text-gray-900'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}>{t}</button>
-          ))}
-        </div>
-
-        {/* ── Groups Tab ── */}
-        {activeTab === 'Groups' && (
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <p className="text-[12px] text-gray-400 font-medium">{DISCOVER_GROUPS.length} groups</p>
-              <button
-                onClick={() => setShowCreateGroup(true)}
-                className="flex items-center gap-1.5 text-[12px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3.5 py-1.5 rounded-xl transition-all active:scale-95">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                Create Group
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {DISCOVER_GROUPS.map(g => (
-                <div
-                  key={g.id}
-                  onClick={() => setSelectedGroup(g)}
-                  className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-lg hover:border-gray-200 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group"
-                >
-                  {/* Cover area */}
-                  <div className={`h-24 bg-gradient-to-br ${g.grad} relative overflow-hidden flex items-center justify-center`}>
-                    {/* Decorative circles */}
-                    <div className="absolute top-3 left-5 w-12 h-12 rounded-full border-2 border-white/20" />
-                    <div className="absolute bottom-1 right-8 w-8 h-8 rounded-full border-2 border-white/15" />
-                    <div className="absolute top-1 right-3 w-5 h-5 rounded-full bg-white/10" />
-                    <span className="text-white/15 font-black text-6xl select-none">{g.letter}</span>
-                    {/* Category badge */}
-                    <span className="absolute top-2.5 left-2.5 text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">{g.tag}</span>
-                    {/* Activity badge removed */}
-                  </div>
-                  {/* Card body */}
-                  <div className="p-4">
-                    <p className="text-[13px] font-bold text-gray-900 mb-1 leading-tight group-hover:text-blue-600 transition-colors">{g.name}</p>
-                    <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{g.desc}</p>
-                    {/* Footer */}
-                    <div className="flex items-center justify-between">
-                      {/* Member avatars */}
-                      <div className="flex -space-x-1.5">
-                        {['from-blue-400 to-indigo-500', 'from-emerald-400 to-teal-500', 'from-rose-400 to-pink-500'].map((grd, i) => (
-                          <div key={i} className={`w-5 h-5 rounded-full bg-gradient-to-br ${grd} border border-white shadow-sm`} />
-                        ))}
-                        <div className="w-5 h-5 rounded-full bg-gray-200 border border-white shadow-sm flex items-center justify-center text-[8px] font-bold text-gray-500">+{Math.floor(g.members / 100)}</div>
-                      </div>
-                      {/* Join / Joined */}
-                      {joinedGroups.has(g.id) ? (
-                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                          Joined
-                        </span>
-                      ) : (
-                        <button
-                          onClick={(e) => handleJoin(g, e)}
-                          disabled={joiningGroup === g.id}
-                          className="flex items-center gap-1 text-[11px] font-bold text-white bg-gray-900 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 disabled:opacity-60"
-                        >
-                          {joiningGroup === g.id ? (
-                            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                          ) : (
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                          )}
-                          Join
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Agents Tab ── */}
-        {activeTab === 'Agents' && (
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2 flex-wrap">
-                {AGENT_CATEGORIES.map(c => (
-                  <button key={c}
-                    onClick={() => setAgentCat(c)}
-                    className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${agentCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}>{c}</button>
-                ))}
-              </div>
-              <button
-                onClick={() => setShowCreateAgent(true)}
-                className="flex items-center gap-1.5 text-[12px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3.5 py-1.5 rounded-xl transition-all active:scale-95 shrink-0 ml-3">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                Create Agent
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {filteredAgents.map(a => {
-                const gradMap: Record<string, string> = {
-                  'bg-blue-500': 'from-blue-500 to-indigo-500',
-                  'bg-red-500': 'from-red-500 to-rose-500',
-                  'bg-emerald-500': 'from-emerald-500 to-teal-500',
-                  'bg-amber-500': 'from-amber-400 to-orange-400',
-                  'bg-violet-500': 'from-violet-500 to-purple-500',
-                  'bg-cyan-500': 'from-cyan-500 to-sky-500',
-                  'bg-indigo-500': 'from-indigo-500 to-blue-600',
-                  'bg-pink-500': 'from-pink-500 to-rose-500',
-                };
-                const grad = gradMap[a.color] ?? 'from-gray-400 to-gray-500';
-                return (
-                  <div key={a.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-[13px] font-black text-white shadow-sm shrink-0`}>
-                        {a.letter}
-                      </div>
-                      <div className="min-w-0 pt-0.5">
-                        <p className="text-[13px] font-semibold text-gray-900 leading-tight">{a.name}</p>
-                        <p className="text-[10px] text-gray-400 font-medium mt-0.5">{a.category}</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{a.desc}</p>
-                    <button className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition-colors group-hover:underline underline-offset-2">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                      Start a chat
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── People Tab ── */}
-        {activeTab === 'People' && (
-          <div>
-            {/* Filter pills */}
-            <div className="flex items-center gap-2 mb-5 flex-wrap">
-              {PEOPLE_CATS.map(c => (
-                <button key={c}
-                  onClick={() => setPeopleCat(c)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${peopleCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredPeople.map((person, i) => (
-                <div
-                  key={i}
-                  onClick={() => setSelectedPerson(person)}
-                  className="group cursor-pointer bg-white hover:shadow-lg hover:border-gray-200 transition-all duration-300 border border-gray-100 rounded-2xl p-5 flex flex-col items-center text-center"
-                >
-                  {/* Circle avatar */}
-                  <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${person.color} flex items-center justify-center text-[20px] font-black text-white shadow-md mb-3 group-hover:scale-105 transition-transform duration-300`}>
-                    {person.avatar}
-                  </div>
-                  {/* Name + role */}
-                  <p className="text-[13px] font-bold text-gray-900 leading-tight mb-0.5 group-hover:text-blue-600 transition-colors">{person.name}</p>
-                  <p className="text-[10px] text-gray-400 mb-2">{person.role} · {person.org}</p>
-                  {/* Bio excerpt */}
-                  <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-2 mb-3">{person.bio}</p>
-                  {/* Footer: followers + LinkedIn always visible, Add on hover */}
-                  <div className="flex items-center justify-between w-full mt-auto pt-3 border-t border-gray-50">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        <svg className="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                        <span className="text-[10px] font-semibold text-gray-500">{person.followers}</span>
-                      </div>
-                      <a href="#" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-[#0A66C2] transition-colors">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                      </a>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedPerson(person); }}
-                      className="flex items-center gap-1 text-[11px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 opacity-0 group-hover:opacity-100"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                      Add
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 
 const SettingsPage: React.FC = () => (
   <div className="flex-1 flex items-center justify-center h-full">
@@ -3877,7 +3460,7 @@ const App: React.FC = () => {
         isLoggedIn={isLoggedIn} onLogin={() => setShowAuthModal(true)} onLogout={logout}
         userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
 
-      <main className={`flex-1 flex flex-col overflow-hidden h-full pt-[max(env(safe-area-inset-top),32px)] md:pt-0 pb-14 md:pb-0 ${mainBg}`}>
+      <main className={`flex-1 flex flex-col overflow-hidden h-full pt-[max(env(safe-area-inset-top),32px)] md:pt-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0 ${mainBg}`}>
         <div className={`flex-1 overflow-y-auto flex flex-col md:m-0 ${location.pathname.startsWith('/market/startup/') ? 'bg-gray-50 md:bg-gray-100/80' : ''}`}>
           <Routes>
             <Route path="/" element={<SuperAgentHome />} />
@@ -3887,6 +3470,7 @@ const App: React.FC = () => {
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/api" element={<ApiLanding />} />
+            <Route path="/signal-radar" element={<DeepResearch />} />
             <Route path="/portfolio" element={<Portfolio isWalletConnected={isLoggedIn} onConnect={() => setShowAuthModal(true)} onLogout={logout} defaultTab="personal" />} />
             <Route path="/enterprise" element={<Portfolio isWalletConnected={isLoggedIn} onConnect={() => setShowAuthModal(true)} onLogout={logout} defaultTab="enterprise" />} />
             <Route path="*" element={<SuperAgentHome />} />
