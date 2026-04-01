@@ -350,7 +350,7 @@ const ChatsPage: React.FC = () => {
 
   // Extract API call so we can reuse it when unknown chats ping us via WS
   const loadConvs = useCallback(() => {
-    api.getCommunityConversations()
+    return api.getCommunityConversations()
       .then(data => {
         setConversations(data.map((c: any) => ({
         id: c.id,
@@ -391,7 +391,7 @@ const ChatsPage: React.FC = () => {
         api.setToken(token);
         api.setTokenGetter(chatsGetAccessToken);
       }
-      loadConvs();
+      return loadConvs();
     }).catch(() => loadConvs()).finally(() => setLoadingConvs(false));
   }, [loadConvs, chatsReady, chatsAuthenticated, chatsGetAccessToken]);
 
