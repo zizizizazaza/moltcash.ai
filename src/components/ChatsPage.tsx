@@ -454,6 +454,32 @@ const ChatsPage: React.FC = () => {
     };
     socket.on('group:dissolved', handleDissolved);
 
+    // Real-time member join/leave → update sidebar member list & count
+    const handleMemberJoined = (data: any) => {
+      setConversations(prev => prev.map(c => {
+        if (String(c.id) !== String(data.groupId)) return c;
+        const already = c.groupMembers?.some((m: any) => m.id === data.userId);
+        return {
+          ...c,
+          groupMembers: already ? c.groupMembers : [
+            ...(c.groupMembers || []),
+            { id: data.userId, name: data.name, avatar: data.avatar, role: data.role },
+          ],
+        };
+      }));
+    };
+    const handleMemberLeft = (data: any) => {
+      setConversations(prev => prev.map(c => {
+        if (String(c.id) !== String(data.groupId)) return c;
+        return {
+          ...c,
+          groupMembers: (c.groupMembers || []).filter((m: any) => m.id !== data.userId),
+        };
+      }));
+    };
+    socket.on('group:member:joined', handleMemberJoined);
+    socket.on('group:member:left', handleMemberLeft);
+
     // Poll events
     const handleNewPoll = (poll: any) => {
       if (String(selectedRef.current) === String(poll.groupId)) {
@@ -483,6 +509,8 @@ const ChatsPage: React.FC = () => {
       socket.off('group:joined', loadConvs);
       socket.off('group:removed', loadConvs);
       socket.off('group:dissolved', handleDissolved);
+      socket.off('group:member:joined', handleMemberJoined);
+      socket.off('group:member:left', handleMemberLeft);
       socket.off('group:poll', handleNewPoll);
       socket.off('group:poll-vote', handlePollVote);
     };
@@ -877,6 +905,16 @@ const ChatsPage: React.FC = () => {
                 </div>
               ) : msgs.map((msg: any, i: number) => {
                 if (!msg._isPoll && msg.attachmentType === 'poll') return null;
+                // ── System message (Telegram-style centered label) ──
+                if (msg.attachmentType === 'system') {
+                  return (
+                    <div key={msg.id || i} className="flex justify-center my-3">
+                      <span className="text-[11px] text-gray-400 bg-gray-100 rounded-full px-3.5 py-1 font-medium select-none">
+                        {msg.content}
+                      </span>
+                    </div>
+                  );
+                }
                 const isMe = (msg.senderId || msg.userId || msg.sender?.id) === dbUserId;
                 return (
                 <div key={msg.id || i}>
