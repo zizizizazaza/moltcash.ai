@@ -3119,7 +3119,13 @@ const MOCK_REQUESTS = [
 ];
 
 // ── ContactsPage ───────────────────────────────────────────────────────
-
+const ContactsPage: React.FC = () => {
+  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  const [accepted, setAccepted] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [followedUp, setFollowedUp] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [modal, setModal] = useState<string | null>(null);
 
   const handleAccept = (id: string) => {
     setAccepted(prev => { const n = new Set(prev); n.add(id); return n; });
