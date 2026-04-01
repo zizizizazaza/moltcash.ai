@@ -23,14 +23,13 @@ export const researchService = {
 
     return new Promise<{ summary: string; topic: string; timestamp: string }>((resolve, reject) => {
       const isWin = process.platform === 'win32';
-      const venvBinDir = path.join(LAST30DAYS_PATH, '.venv', isWin ? 'Scripts' : 'bin');
-      const pythonExe = path.join(venvBinDir, isWin ? 'python.exe' : 'python');
+      const pythonExe = isWin ? 'python' : 'python3';
 
       console.log(`[researchService] Starting deep research on: "${topic}"`);
 
       const child = spawn(pythonExe, args, {
         cwd: LAST30DAYS_PATH,
-        env: { ...process.env, PATH: `${venvBinDir}${path.delimiter}${process.env.PATH || ''}` },
+        env: { ...process.env },
       });
 
       let stdoutData = '';
