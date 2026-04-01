@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { Page } from './types';
 import Market from './components/Market';
@@ -37,11 +37,16 @@ const I = {
   Settings: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z" /></svg>,
   Moon: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>,
   Sun: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>,
-  LogOut: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>,
   Building: () => <svg className={sv} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M16 10h.01M8 10h.01M12 14h.01M16 14h.01M8 14h.01" /></svg>,
 };
 
-/* Hover micro-animations + tooltip for collapsed sidebar */
+const FEATURED_GROUPS = [
+  { id: 'g1', name: 'Polymarket Predictions', desc: 'Crowd-sourced market predictions — weather, elections, earnings surprises, and more.', memberCount: 3, agentCount: 2, online: 2, avatar: 'PP', color: 'bg-blue-100 text-blue-600', avatars: ['AC', 'SK', 'CW', 'LA', 'RA'] },
+  { id: 'g2', name: 'Daily Market Pulse', desc: 'Hot topics, trending tickers, and breaking macro news powered by multi-agent research.', memberCount: 3, agentCount: 1, online: 2, avatar: 'DM', color: 'bg-emerald-100 text-emerald-600', avatars: ['MR', 'EZ', 'RB', 'LA'] },
+  { id: 'g3', name: 'Alpha Research Circle', desc: 'Deep-dive signals: cross-asset momentum, earnings revisions, and sentiment shifts.', memberCount: 2, agentCount: 2, online: 1, avatar: 'AR', color: 'bg-violet-100 text-violet-600', avatars: ['DP', 'AT', 'LA', 'MR'] },
+  { id: 'g4', name: 'Global Macro Signals', desc: 'Fed watch, inflation expectations, bond yields, and central bank policy tracking.', memberCount: 4, agentCount: 1, online: 3, avatar: 'GM', color: 'bg-amber-100 text-amber-600', avatars: ['JL', 'NP', 'TW', 'LW', 'MB'] },
+];
+
 const AnimStyles = () => (
   <style>{`
     .nav-sparkle:hover .nav-icon-wrap { animation: sparkle-pulse 0.5s ease; }
@@ -64,9 +69,133 @@ const AnimStyles = () => (
       box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 50;
     }
     .rail-btn:hover .rail-tip { opacity: 1; }
-    @keyframes menu-pop { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+
+    /* ── Easing tokens ── */
+    :root {
+      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ── Keyframes ── */
+    @keyframes menu-pop {
+      from { opacity:0; transform:translateY(6px) }
+      to   { opacity:1; transform:translateY(0) }
+    }
+    @keyframes fade-up {
+      from { opacity:0; transform:translateY(12px) }
+      to   { opacity:1; transform:translateY(0) }
+    }
+    @keyframes fade-in {
+      from { opacity:0 }
+      to   { opacity:1 }
+    }
+    @keyframes scale-in {
+      from { opacity:0; transform:scale(0.96) }
+      to   { opacity:1; transform:scale(1) }
+    }
+    @keyframes send-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(17,24,39,0.4) }
+      70%  { box-shadow: 0 0 0 6px rgba(17,24,39,0) }
+      100% { box-shadow: 0 0 0 0 rgba(17,24,39,0) }
+    }
+
+    /* ── Hero entrance ── */
+    .hero-title {
+      animation: fade-up 0.6s var(--ease-out-expo) both;
+    }
+    .hero-input {
+      animation: fade-up 0.6s var(--ease-out-expo) 0.1s both;
+    }
+    .hero-actions {
+      animation: fade-up 0.5s var(--ease-out-expo) 0.2s both;
+    }
+    .hero-guide {
+      animation: fade-up 0.4s var(--ease-out-expo) 0.25s both;
+    }
+
+    /* ── Prompt items stagger ── */
+    .prompt-item { animation: fade-up 0.3s var(--ease-out-quart) both; }
+    .prompt-item:nth-child(1) { animation-delay: 0ms }
+    .prompt-item:nth-child(2) { animation-delay: 50ms }
+    .prompt-item:nth-child(3) { animation-delay: 100ms }
+
+    /* ── Use case cards ── */
+    .usecase-card {
+      transition: transform 0.2s var(--ease-out-quart), box-shadow 0.2s var(--ease-out-quart), border-color 0.15s ease;
+    }
+    .usecase-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    }
+    .usecase-card:active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: none;
+      transition-duration: 0.1s;
+    }
+
+    /* ── Quick action pills ── */
+    .qa-pill {
+      transition: transform 0.15s var(--ease-out-quart), border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+    }
+    .qa-pill:hover { transform: translateY(-1px); }
+    .qa-pill:active { transform: scale(0.96); transition-duration: 0.08s; }
+
+    /* ── Scenario pills ── */
+    .scenario-pill {
+      transition: background 0.2s var(--ease-out-quart), color 0.2s ease, border-color 0.2s ease, transform 0.15s var(--ease-out-quart);
+    }
+    .scenario-pill:hover { transform: translateY(-1px); }
+    .scenario-pill:active { transform: scale(0.96); }
+
+    /* ── Send button pulse when active ── */
+    .send-btn-active:hover { animation: send-pulse 0.6s var(--ease-out-quart); }
+    .send-btn-active { transition: transform 0.1s ease, background 0.15s ease; }
+    .send-btn-active:active { transform: scale(0.92); }
+
+    /* ── Input box focus glow ── */
+    .input-box {
+      transition: border-color 0.2s ease, box-shadow 0.25s var(--ease-out-quart);
+    }
+    .input-box:focus-within {
+      border-color: #d1d5db;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    }
+
+    /* ── Agent tag entrance ── */
+    .agent-tag {
+      animation: scale-in 0.18s var(--ease-out-expo) both;
+      transform-origin: left center;
+    }
+
+    /* ── Hero zone with dot grid ── */
+    .hero-zone {
+      position: relative;
+      background-color: #fff;
+      background-image: radial-gradient(circle, rgba(26,111,255,0.09) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    /* ── Placeholder fade ── */
+    @keyframes ph-fade-in { from { opacity:0; } to { opacity:1; } }
+    @keyframes ph-fade-out { from { opacity:1; } to { opacity:0; } }
+    .ph-fade-in  { animation: ph-fade-in  0.5s ease both; }
+    .ph-fade-out { animation: ph-fade-out 0.4s ease both; }
+
+    /* ── Use case card left accent on hover ── */
+    .usecase-card { border-left: 2px solid transparent; }
+    .usecase-card:hover { border-left-color: var(--accent); }
+
+    /* ── Reduced motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
   `}</style>
 );
+
 
 /* ────────────────────────────────────────────────────────────
    Mock data
@@ -80,24 +209,35 @@ const ActionIcons = {
   Sentiment: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
   Portfolio: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>,
   Trending: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>,
+  Forecast: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>,
+  Scout: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M10 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M14 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M8 8V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4" /><path d="M18 8v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8" /><line x1="6" y1="12" x2="18" y2="12" /></svg>,
 };
 
 const QUICK_ACTIONS = [
   { id: 'invest', icon: ActionIcons.Invest, label: 'Analyze Investment' },
-  { id: 'research', icon: ActionIcons.Research, label: 'Deep Research' },
-  { id: 'trade', icon: ActionIcons.Trade, label: 'Execute Trade' },
-  { id: 'risk', icon: ActionIcons.Risk, label: 'Assess Risk' },
+  { id: 'research', icon: ActionIcons.Research, label: 'Signal Radar' },
+  { id: 'forecast', icon: ActionIcons.Forecast, label: 'Forecast' },
+  { id: 'scout', icon: ActionIcons.Scout, label: 'Project Scout' },
   { id: 'sentiment', icon: ActionIcons.Sentiment, label: 'Check Sentiment' },
   { id: 'portfolio', icon: ActionIcons.Portfolio, label: 'Review Portfolio' },
 ];
 
-const TRENDING_PROJECTS = [
-  { id: 1, name: 'Copy Trading AI', desc: 'AI-powered copy trading protocol', mrr: '$128,500', mom: '+49%', momUp: true, pct: 78 },
-  { id: 2, name: 'MEV Searcher Agent', desc: 'Automated MEV extraction', mrr: '$89,200', mom: '+22%', momUp: true, pct: 40 },
-  { id: 3, name: 'DeFi Yield Optimizer', desc: 'Cross-chain yield aggregation', mrr: '$67,800', mom: '+15%', momUp: true, pct: 100 },
-  { id: 4, name: 'On-chain Credit Score', desc: 'AI credit scoring on-chain', mrr: '$45,300', mom: '+8%', momUp: true, pct: 7 },
-  { id: 5, name: 'AI Agent Marketplace', desc: 'Decentralized agent marketplace', mrr: '$38,600', mom: '-4%', momUp: false, pct: 21 },
-  { id: 6, name: 'Climapp.io Utility', desc: 'Climate data tokenization', mrr: '$12,400', mom: '+31%', momUp: true, pct: 2 },
+const UseCaseIcons: Record<string, React.FC> = {
+  invest: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 17V13" /><path d="M12 17V9" /><path d="M17 17V7" /></svg>,
+  research: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M21 21l-4.35-4.35" /></svg>,
+  compete: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>,
+  evaluate: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>,
+  collab: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>,
+  predict: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>,
+};
+
+const USE_CASES = [
+  { id: 'invest', title: 'Is NVIDIA Still a Buy After Q4?', desc: 'Multi-agent consensus on earnings, valuation, and market timing', prompt: 'Help me analyze NVIDIA\'s recent stock performance and whether it\'s worth investing now', tags: ['Stock', 'Earnings'] },
+  { id: 'research', title: 'SE Asia Food Delivery Landscape', desc: 'Market sizing, key players, and growth trends across the region', prompt: 'Research the competitive landscape of the Southeast Asian food delivery market', tags: ['Industry', 'Market Size'] },
+  { id: 'compete', title: 'AI Agent Demand in the Last 30 Days', desc: 'Track how market demand shifted across categories recently', prompt: 'Search and analyze how AI Agent demand has changed in the last 30 days across different categories', tags: ['Trends', '30-Day'] },
+  { id: 'evaluate', title: 'Startup Due Diligence Report', desc: 'Team background check, business model, and tech feasibility', prompt: 'Evaluate this startup — analyze team background, business model, and technical feasibility', tags: ['Team', 'Feasibility'] },
+  { id: 'collab', title: 'Q2 Roadmap → Task Breakdown', desc: 'Turn a product roadmap into assigned tasks with deadlines', prompt: 'Help me break down the Q2 product roadmap into actionable tasks with owners and deadlines', tags: ['Tasks', 'Planning'] },
+  { id: 'predict', title: 'Polymarket Opportunities Now', desc: 'Which prediction markets have the best risk-reward right now?', prompt: 'Which prediction markets on Polymarket are worth paying attention to right now?', tags: ['Odds', 'Sentiment'] },
 ];
 
 const RECENTS = [
@@ -107,7 +247,7 @@ const RECENTS = [
   'SOL Sentiment Check',
 ];
 
-const MOCK_MESSAGES: any[] = [];
+const MOCK_MESSAGES: any[] = []; // Starting with empty active chats per user feedback
 
 /* ════════════════════════════════════════════════════════════
    SIDEBAR
@@ -318,10 +458,125 @@ const InputIcons = {
   Chevron: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>,
 };
 
+/* Agent-specific guided prompts */
+type AgentGuide = { desc: string; prompts?: string[]; scenarios?: { id: string; label: string; prompts: string[] }[] };
+const AGENT_GUIDES: Record<string, AgentGuide> = {
+  invest: {
+    desc: 'Multi-dimensional analysis on any asset.',
+    prompts: [
+      'Is NVIDIA still a buy after Q4 earnings?',
+      'Compare Tesla vs BYD fundamentals for 2026',
+      'Analyze the risk-reward of buying SOL at current price',
+    ],
+  },
+  research: {
+    desc: 'Pick a scenario:',
+    scenarios: [
+      {
+        id: 'intel', label: 'Recon',
+        prompts: [
+          'Scan the last 30 days: what is the community saying about AI coding tools?',
+          'Gather intelligence on OpenAI\'s latest moves — Reddit, X, HN combined',
+          'What do investors really think about NVIDIA after Q4? Cross-platform scan',
+        ],
+      },
+      {
+        id: 'demand', label: 'Demand Validation',
+        prompts: [
+          'How much demand exists for AI-powered tax filing tools? Last 30 days',
+          'Are people actually asking for multi-agent collaboration platforms?',
+          'Validate demand: is there a gap in the market for B2B AI research agents?',
+        ],
+      },
+      {
+        id: 'trending', label: 'Trending',
+        prompts: [
+          'What AI topics went viral in the last 30 days across Reddit and X?',
+          'Which AI agent frameworks are gaining quiet momentum right now?',
+          'What are developers most excited (and angry) about this month?',
+        ],
+      },
+      {
+        id: 'competitor', label: 'Competitor Watch',
+        prompts: [
+          'Claude Code vs Cursor vs Windsurf — community sentiment comparison last 30 days',
+          'What are users complaining about with Perplexity AI recently?',
+          'Monitor: how is the community reacting to Manus\'s latest update?',
+        ],
+      },
+    ],
+  },
+  forecast: {
+    desc: 'Run scenario simulations using MirrorFace engine.',
+    prompts: [
+      'Simulate: What if Fed cuts rates by 50bps in Q3?',
+      'Predict ETH price range for the next 90 days',
+      'Model the impact of tariff escalation on AAPL supply chain',
+    ],
+  },
+  scout: {
+    desc: 'Deep-dive on any company, startup, or project.',
+    prompts: [
+      'Run due diligence on Perplexity AI — team, traction, and funding',
+      'Investigate this startup: analyze business model and red flags',
+      'Compare founders\' track records across three competing startups',
+    ],
+  },
+  sentiment: {
+    desc: 'Check real-time market sentiment from social and news sources.',
+    prompts: [
+      'Is the market bullish or bearish on AI stocks this week?',
+      'Sentiment scan: top 5 most discussed tickers right now',
+    ],
+  },
+  portfolio: {
+    desc: 'Review and optimize your investment portfolio.',
+    prompts: [
+      'Rebalance my portfolio for maximum Sharpe ratio',
+      'Show me correlation analysis of my top 5 holdings',
+    ],
+  },
+};
+
 const SuperAgentHome: React.FC = () => {
+  const navigate = useNavigate();
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('GPT-4o');
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
+  const [mode, setMode] = useState<'auto' | 'fast' | 'collaborate' | 'roundtable'>('auto');
+  const [modeOpen, setModeOpen] = useState(false);
+  const modeRef = useRef<HTMLDivElement>(null);
   const [chatMessage, setChatMessage] = useState<string | null>(null);
+  const [phIdx, setPhIdx] = useState(0);
+
+  const PLACEHOLDERS = [
+    'Ask about any asset, market, or investing idea…',
+    'Is NVIDIA still a strong buy after Q4?',
+    'Compare Tesla vs BYD fundamentals for 2026',
+    'Which AI infrastructure companies have the best moat?',
+    'Build me a diversified portfolio for a 3-year horizon',
+  ];
+
+  useEffect(() => {
+    if (input) return;
+    const id = setInterval(() => setPhIdx(i => (i + 1) % PLACEHOLDERS.length), 3500);
+    return () => clearInterval(id);
+  }, [input]);
+
+  const MODES = [
+    { id: 'auto' as const, label: 'Auto', desc: 'System picks the best mode for you', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
+    { id: 'fast' as const, label: 'Fast', desc: 'Single agent, quick response', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
+    { id: 'collaborate' as const, label: 'Collaborate', desc: 'Agents split work, assemble one answer', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
+    { id: 'roundtable' as const, label: 'Roundtable', desc: 'Multi-agent debate & cross-validation', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M14 5.5a7.5 7.5 0 014.5 12" /><path d="M17 19.5H7" /><path d="M5.5 17A7.5 7.5 0 0110 5.5" /></svg> },
+  ];
+  const currentMode = MODES.find(m => m.id === mode)!;
+
+  useEffect(() => {
+    if (!modeOpen) return;
+    const h = (e: MouseEvent) => { if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [modeOpen]);
 
   if (chatMessage) {
     return <SuperAgentChat initialMessage={chatMessage} onBack={() => setChatMessage(null)} />;
@@ -330,31 +585,87 @@ const SuperAgentHome: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
       {/* ── Hero + Input ── */}
-      <div className="flex flex-col items-center pt-20 md:pt-32 pb-6 px-4">
-        <div className="max-w-[640px] w-full space-y-8">
+      <div className="hero-zone flex flex-col items-center pt-16 md:pt-28 pb-8 px-4">
+        <div className="max-w-[640px] w-full space-y-7" style={{ position: 'relative', zIndex: 1 }}>
           {/* Title */}
-          <div className="text-center">
-            <h1 className="text-[28px] md:text-[32px] font-semibold tracking-tight text-gray-900 leading-tight">
-              Where would you like to invest?
+          <div className="text-center hero-title space-y-2">
+            <h1 className="text-[38px] md:text-[46px] font-extrabold tracking-tight leading-[1.15]">
+              <span className="text-gray-900">Where would you like to </span>
+              <span style={{ color: 'var(--accent)' }}>invest?</span>
             </h1>
+            <p className="text-[14px] text-gray-400 font-normal">
+              Multi-agent AI built for investment intelligence.
+            </p>
           </div>
 
           {/* Input Box */}
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm focus-within:border-gray-300 focus-within:shadow-md transition-all">
+          <div className="input-box hero-input bg-white border border-gray-200 rounded-2xl" style={{ boxShadow: '0 2px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)' }}>
             <textarea
+              key={phIdx}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && input.trim()) { e.preventDefault(); setChatMessage(input.trim()); } }}
-              placeholder="Describe what you want to invest in, or ask about any asset..."
+              placeholder={PLACEHOLDERS[phIdx]}
               rows={3}
-              className="w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none"
+              className="ph-fade-in w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none"
             />
             {/* Input toolbar */}
             <div className="flex items-center justify-between px-3 pb-3">
               <div className="flex items-center gap-1">
-                <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-all">
-                  {model} <InputIcons.Chevron />
-                </button>
+                <div className="relative" ref={modeRef}>
+                  <button
+                    onClick={() => setModeOpen(v => !v)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-all"
+                  >
+                    {React.createElement(currentMode.icon)}
+                    {currentMode.label}
+                    <InputIcons.Chevron />
+                  </button>
+                  {modeOpen && (
+                    <div className="absolute bottom-full left-0 mb-1.5 w-64 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30" style={{ animation: 'menu-pop 0.15s ease-out' }}>
+                      {MODES.map(m => {
+                        const MIcon = m.icon;
+                        const isActive = mode === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => { setMode(m.id); setModeOpen(false); }}
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors ${isActive ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                          >
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                              <MIcon />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-[12px] font-semibold ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>{m.label}</p>
+                              <p className="text-[10px] text-gray-400 leading-tight">{m.desc}</p>
+                            </div>
+                            {isActive && (
+                              <svg className="w-3.5 h-3.5 text-gray-900 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                {/* Selected Agent tag — sits right next to mode selector */}
+                {selectedAgent && (() => {
+                  const ag = QUICK_ACTIONS.find(a => a.id === selectedAgent);
+                  if (!ag) return null;
+                  const AgIc = ag.icon;
+                  return (
+                    <div className="agent-tag flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[12px] font-medium">
+                      <AgIc />
+                      <span>{ag.label}</span>
+                      <button
+                        onClick={() => setSelectedAgent(null)}
+                        className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors"
+                      >
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2">
                 <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Attach file">
@@ -368,7 +679,7 @@ const SuperAgentHome: React.FC = () => {
                 </button>
                 <button
                   onClick={() => { if (input.trim()) setChatMessage(input.trim()); }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  className={`send-btn-active w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
                     }`}>
                   <I.Send />
                 </button>
@@ -376,77 +687,160 @@ const SuperAgentHome: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Actions — horizontally scrollable on mobile */}
-          <div className="-mx-4 px-4 overflow-x-auto border-b border-transparent" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-            <div className="flex items-center justify-start md:justify-center gap-2 min-w-max md:min-w-0 md:w-full">
-              {QUICK_ACTIONS.slice(0, 4).map(a => {
-                const Ic = a.icon;
+          {/* Quick Actions / Agent Guide */}
+          {selectedAgent && AGENT_GUIDES[selectedAgent] ? (
+            <div className="hero-guide space-y-3" style={{ animation: 'fade-up 0.35s var(--ease-out-expo) both' }}>
+              <p className="text-[13px] font-semibold text-gray-700">{AGENT_GUIDES[selectedAgent].desc}</p>
+
+              {/* Signal Radar: scenario pills */}
+              {AGENT_GUIDES[selectedAgent].scenarios && (
+                <div className="flex flex-wrap gap-2">
+                  {AGENT_GUIDES[selectedAgent].scenarios!.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedScenario(selectedScenario === s.id ? null : s.id)}
+                      className={`scenario-pill px-3 py-1.5 rounded-full text-[12px] font-medium border ${selectedScenario === s.id
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900'
+                        }`}
+                    >{s.label}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Prompt examples under selected scenario (or flat list for other agents) */}
+              {(() => {
+                const guide = AGENT_GUIDES[selectedAgent];
+                const prompts = guide.scenarios
+                  ? guide.scenarios.find(s => s.id === selectedScenario)?.prompts ?? []
+                  : guide.prompts ?? [];
+                if (!prompts.length) return null;
                 return (
-                  <button key={a.id}
-                    onClick={() => setChatMessage(a.label)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all whitespace-nowrap shrink-0">
-                    <Ic /> {a.label}
-                  </button>
-                );
-              })}
-              <button className="px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm active:scale-[0.98] transition-all whitespace-nowrap shrink-0">
-                More
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Investment Opportunities (table-style) ── */}
-      <div className="px-4 md:px-8 pb-10 pt-16 max-w-[800px] w-full mx-auto">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[15px] font-semibold text-gray-900">Investment Opportunities</h2>
-          </div>
-          <button className="text-[12px] font-medium text-gray-400 hover:text-gray-600 transition-colors">View all →</button>
-        </div>
-
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-          {/* Table header — hidden on mobile */}
-          <div className="hidden md:grid grid-cols-[minmax(0,2fr)_100px_100px_120px] gap-2 px-4 py-2.5 border-b border-gray-100 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
-            <span>Project</span>
-            <span className="text-right">MRR</span>
-            <span className="text-right">MoM</span>
-            <span className="text-right">Progress</span>
-          </div>
-          {/* Rows — table on desktop, stacked card on mobile */}
-          {TRENDING_PROJECTS.map((p, idx) => (
-            <div key={p.id}
-              className={`md:grid md:grid-cols-[minmax(0,2fr)_100px_100px_120px] md:gap-2 px-4 py-3 md:items-center hover:bg-gray-50/80 transition-colors cursor-pointer ${idx < TRENDING_PROJECTS.length - 1 ? 'border-b border-gray-50' : ''
-                }`}>
-              {/* Project name + desc */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
-                  {p.name.charAt(0)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium text-gray-900 truncate">{p.name}</p>
-                  <p className="text-[11px] text-gray-400 truncate">{p.desc}</p>
-                </div>
-              </div>
-              {/* Stats row — inline on mobile, separate columns on desktop */}
-              <div className="flex items-center justify-between mt-2 md:mt-0 md:contents pl-10 md:pl-0">
-                <span className="text-[13px] font-semibold text-gray-900 md:text-right">{p.mrr}</span>
-                <span className={`text-[13px] font-semibold md:text-right ${p.momUp ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {p.momUp ? '↑' : '↓'} {p.mom.replace(/[+-]/, '')}
-                </span>
-                <div className="flex items-center gap-2 md:justify-end">
-                  <div className="w-12 md:w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${p.pct >= 100 ? 'bg-emerald-500' : 'bg-gray-900'}`}
-                      style={{ width: `${Math.min(p.pct, 100)}%` }} />
+                  <div className="space-y-1">
+                    <p className="text-[13px] font-semibold text-gray-700 px-1 mb-2">Explore Ideas</p>
+                    {prompts.map((p, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setInput(p)}
+                        className="prompt-item w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left text-[13px] text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent hover:border-gray-100 transition-colors group"
+                      >
+                        <span>{p}</span>
+                        <svg className="w-3 h-3 text-gray-300 group-hover:text-gray-400 shrink-0 ml-3 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                      </button>
+                    ))}
                   </div>
-                  <span className="text-[11px] text-gray-500 w-8 text-right">{p.pct}%</span>
-                </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="hero-actions -mx-4 px-4 py-1 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex items-center justify-start md:justify-center gap-2 min-w-max md:min-w-0 md:w-full">
+                {QUICK_ACTIONS.slice(0, 4).map(a => {
+                  const Ic = a.icon;
+                  return (
+                    <button key={a.id}
+                      onClick={() => { setSelectedAgent(a.id); setSelectedScenario(null); }}
+                      className="qa-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm whitespace-nowrap shrink-0">
+                      <Ic /> {a.label}
+                    </button>
+                  );
+                })}
+                <button className="qa-pill px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:shadow-sm whitespace-nowrap shrink-0">
+                  More
+                </button>
               </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
+
+      {/* ── Use Cases — only on top-level, hidden when an agent is active ── */}
+      {!selectedAgent && (
+        <div className="px-4 pb-10 pt-8 max-w-[640px] w-full mx-auto">
+          <div className="flex items-center gap-2 mb-4">
+            <span style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 2, backgroundColor: 'var(--accent)', flexShrink: 0 }} />
+            <h2 className="text-[12px] font-bold text-gray-500 uppercase tracking-widest">Explore Use Cases</h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {USE_CASES.map(uc => (
+              <button
+                key={uc.id}
+                onClick={() => setChatMessage(uc.prompt)}
+                className="usecase-card group text-left bg-white border border-gray-100 rounded-xl p-3 cursor-pointer"
+              >
+                <div className="w-6 h-6 rounded-md bg-gray-50 flex items-center justify-center text-gray-400 mb-2">{UseCaseIcons[uc.id] ? React.createElement(UseCaseIcons[uc.id]) : null}</div>
+                <h3 className="text-[12px] font-semibold text-gray-900 mb-0.5 leading-snug">{uc.title}</h3>
+                <p className="text-[11px] text-gray-400 leading-snug mb-2">{uc.desc}</p>
+                <div className="flex flex-wrap gap-1">
+                  {uc.tags.map(tag => (
+                    <span key={tag} className="px-1.5 py-px rounded bg-gray-50 text-[10px] font-medium text-gray-400">{tag}</span>
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Featured Groups — only on top-level ── */}
+      {!selectedAgent && (() => {
+        const avatarColors = ['bg-blue-400', 'bg-emerald-400', 'bg-violet-400', 'bg-amber-400', 'bg-rose-400', 'bg-cyan-400', 'bg-indigo-400'];
+        return (
+          <div className="pb-12 px-4 max-w-[640px] w-full mx-auto">
+            <div className="flex items-center gap-2 mb-4">
+              <span style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 2, backgroundColor: 'var(--accent)', flexShrink: 0 }} />
+              <h2 className="text-[12px] font-bold text-gray-500 uppercase tracking-widest">Featured Groups</h2>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {FEATURED_GROUPS.map(g => (
+                <button key={g.id}
+                  onClick={() => navigate(`/chat?group=${g.id}`)}
+                  className="group w-full text-left bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200 overflow-hidden cursor-pointer"
+                >
+                  <div className="px-4 py-3.5">
+                    <div className="flex items-center gap-3 mb-2">
+                      {/* Stacked member avatars */}
+                      <div className="relative shrink-0 flex items-center h-7" style={{ width: Math.min(g.avatars.length, 4) * 18 + 12 }}>
+                        {g.avatars.slice(0, 4).map((initials, i) => (
+                          <div key={i} className={`absolute w-7 h-7 rounded-full ${avatarColors[i % avatarColors.length]} text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white shadow-sm transition-transform hover:-translate-y-0.5`} style={{ left: i * 16, zIndex: 10 - i }}>{initials}</div>
+                        ))}
+                        {g.avatars.length > 4 && (
+                          <div className="absolute w-7 h-7 rounded-full bg-gray-50 text-gray-400 text-[9px] font-bold flex items-center justify-center ring-2 ring-white shadow-sm" style={{ left: 4 * 16, zIndex: 0 }}>
+                            +{g.avatars.length - 4}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13px] font-bold text-gray-900 leading-tight truncate">{g.name}</p>
+                          <span className="text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0" style={{ color: 'var(--accent)' }}>View →</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-400 leading-snug line-clamp-1 mb-2.5">{g.desc}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
+                        {g.memberCount} members
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg>
+                        {g.agentCount} agents
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-500">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                        {g.online} online
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 };
@@ -456,11 +850,13 @@ type GroupMemberData = {
   members: { name: string; online: boolean }[];
   isAdmin: boolean; // whether the current user is admin
   adminName: string; // which member is the admin
+  isMember?: boolean;
 };
 const MOCK_GROUP_MEMBERS: Record<string, GroupMemberData> = {
-  g1: { isAdmin: true, adminName: 'Alex Chen', agents: ['Loka Agent', 'Risk Analyzer'], members: [{ name: 'Alex Chen', online: true }, { name: 'Sarah Kim', online: false }, { name: 'CryptoWhale88', online: true }] },
-  g2: { isAdmin: false, adminName: 'Marcus Rivera', agents: ['Loka Agent'], members: [{ name: 'Marcus Rivera', online: true }, { name: 'Emily Zhang', online: true }, { name: 'RWA_Bull', online: false }] },
-  g3: { isAdmin: true, adminName: 'David Park', agents: ['Loka Agent', 'Market Research'], members: [{ name: 'David Park', online: false }, { name: 'AlphaTrader', online: true }] },
+  g1: { isMember: false, isAdmin: false, adminName: 'Alex Chen', agents: ['Loka Agent', 'Risk Analyzer'], members: [{ name: 'Alex Chen', online: true }, { name: 'Sarah Kim', online: false }, { name: 'CryptoWhale88', online: true }] },
+  g2: { isMember: false, isAdmin: false, adminName: 'Marcus Rivera', agents: ['Loka Agent'], members: [{ name: 'Marcus Rivera', online: true }, { name: 'Emily Zhang', online: true }, { name: 'RWA_Bull', online: false }] },
+  g3: { isMember: false, isAdmin: false, adminName: 'David Park', agents: ['Loka Agent', 'Market Research'], members: [{ name: 'David Park', online: false }, { name: 'AlphaTrader', online: true }] },
+  g4: { isMember: false, isAdmin: false, adminName: 'Nina Patel', agents: ['Macro Bot'], members: [{ name: 'Nina Patel', online: true }, { name: 'James Liu', online: true }] },
 };
 
 const MOCK_CHAT_MESSAGES: Record<string, { role: string, name: string, text: string, time: string, tag?: string }[]> = {
@@ -479,6 +875,12 @@ const MOCK_CHAT_MESSAGES: Record<string, { role: string, name: string, text: str
     { role: 'agent', name: 'Loka Agent', tag: 'AI Agent', text: '📊 Weekly Market Report: BTC dominance ↑ 2.3%, DeFi TVL ↑ 4.1%. AI sector outperforming by +12%.', time: '8:00 AM' },
     { role: 'user', name: 'David Park', tag: 'Research', text: 'The on-chain metrics suggest a bullish accumulation pattern. Volume is confirming the move.', time: '9:15 AM' },
     { role: 'system', name: 'Loka Agent', text: 'New signal generated: Long ETH/USD at $2,840 — risk/reward 1:3.2. Confidence: 78%.', time: '10:00 AM' },
+  ],
+  g4: [
+    { role: 'agent', name: 'Macro Bot', tag: 'AI Agent', text: '🏦 FOMC decision expected at 2pm ET today. Markets pricing in 72% chance of hold. Key: dot plot projections.', time: '8:30 AM' },
+    { role: 'user', name: 'James Liu', text: 'Treasury yields inverted again overnight. 2Y/10Y spread at -18bps. Classic recession signal.', time: '9:00 AM' },
+    { role: 'user', name: 'Nina Patel', text: 'BOJ just surprised with a 10bp rate hike. Yen surging. Watch carry trade unwind risk.', time: '9:45 AM' },
+    { role: 'agent', name: 'Macro Bot', tag: 'AI Agent', text: '📊 Updated cross-asset correlation matrix: Gold/USD correlation flipped negative. Posting full report in 10 min.', time: '10:15 AM' },
   ],
   c1: [
     { role: 'user', name: 'Alex Chen', text: 'Check out this DeFi project — 15.5% APY, 60-day term. Verified by Loka.', time: '10:00 AM' },
@@ -709,6 +1111,7 @@ const AddMemberModal: React.FC<{
 
 const ChatsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [filter, setFilter] = useState<'All' | 'People' | 'Groups'>('All');
   const [selected, setSelected] = useState<string | null>(null);
   const [conversations, setConversations] = useState(MOCK_MESSAGES);
@@ -722,6 +1125,29 @@ const ChatsPage: React.FC = () => {
   const [mktCat, setMktCat] = useState('All');
   const [plusMenu, setPlusMenu] = useState(false);
   const [plusModal, setPlusModal] = useState<'friend' | 'group' | null>(null);
+
+  // Auto-select group from URL param (e.g. /chat?group=g1)
+  useEffect(() => {
+    const groupParam = searchParams.get('group');
+    if (groupParam) {
+      setSelected(groupParam);
+      // Auto-add group to active chats if not already there
+      const existing = conversations.find(c => c.id === groupParam);
+      if (!existing) {
+        const groupData = FEATURED_GROUPS.find(g => g.id === groupParam);
+        if (groupData) {
+          setConversations(prev => [...prev, {
+            ...groupData,
+            role: '',
+            lastMsg: 'Viewing as guest',
+            time: 'Now',
+            unread: 0,
+            isGroup: true
+          }]);
+        }
+      }
+    }
+  }, [searchParams, conversations]);
 
   const MKT_CATS = ['All', 'Risk Management', 'Investment Analysis', 'Operations', 'DeFi & On-chain'];
   const MKT_AGENTS = [
@@ -835,7 +1261,7 @@ const ChatsPage: React.FC = () => {
               </div>
               <p className="text-[13px] font-bold text-gray-900 mb-1">No chats yet</p>
               <p className="text-[11px] text-gray-400 mb-4 max-w-[180px] leading-relaxed">Discover people and build your network</p>
-              <button 
+              <button
                 onClick={() => navigate('/discover')}
                 className="px-4 py-2 bg-gray-900 text-white text-[12px] font-bold rounded-xl hover:bg-gray-800 transition-all active:scale-95 flex items-center gap-2 shadow-sm inline-flex"
               >
@@ -975,89 +1401,106 @@ const ChatsPage: React.FC = () => {
               />
             )}
 
-            {/* Input */}
-            <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0 relative">
-              {/* Attach popup menu */}
-              {showAttachMenu && (
-                <div className="absolute bottom-[calc(100%+6px)] right-4 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden w-40 z-10 animate-fadeIn"
-                  onClick={() => setShowAttachMenu(false)}>
-                  {/* Photo / Video */}
-                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors">
-                    <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                      <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    </div>
-                    <span className="text-[12px] font-semibold text-gray-700">Photo or Video</span>
-                    <input type="file" accept="image/*,video/*" className="hidden" onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = ev => setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'image', content: ev.target?.result as string }]);
-                      reader.readAsDataURL(file);
-                      e.target.value = '';
-                    }} />
-                  </label>
-                  {/* Document */}
-                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-t border-gray-50">
-                    <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
-                      <svg className="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                    </div>
-                    <span className="text-[12px] font-semibold text-gray-700">Document</span>
-                    <input type="file" className="hidden" onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'file', content: file.name }]);
-                      e.target.value = '';
-                    }} />
-                  </label>
-                  {/* Poll — group only */}
-                  {sel.isGroup && (
-                    <button onClick={() => { setShowPoll(true); setShowAttachMenu(false); }}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors w-full text-left border-t border-gray-50">
-                      <div className="w-6 h-6 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                        <svg className="w-3.5 h-3.5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            {/* Input — guest mode if not a member */}
+            {selected && members && members.isMember === false ? (
+              <div className="px-5 py-8 border-t border-gray-50 bg-gray-50/50 shrink-0 flex flex-col items-center justify-center">
+                <button
+                  onClick={() => {
+                    setGroupMembersState(prev => ({
+                      ...prev,
+                      [selected]: { ...prev[selected], isMember: true }
+                    }));
+                  }}
+                  className="px-10 py-2.5 rounded-full text-[13px] font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-md bg-blue-600"
+                >
+                  Join Group
+                </button>
+                <p className="mt-3 text-[11px] text-gray-400 font-medium">Join this group to participate in the conversation</p>
+              </div>
+            ) : (
+              <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0 relative">
+                {/* Attach popup menu */}
+                {showAttachMenu && (
+                  <div className="absolute bottom-[calc(100%+6px)] right-4 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden w-40 z-10 animate-fadeIn"
+                    onClick={() => setShowAttachMenu(false)}>
+                    {/* Photo / Video */}
+                    <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors">
+                      <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                        <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                       </div>
-                      <span className="text-[12px] font-semibold text-gray-700">Poll</span>
+                      <span className="text-[12px] font-semibold text-gray-700">Photo or Video</span>
+                      <input type="file" accept="image/*,video/*" className="hidden" onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = ev => setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'image', content: ev.target?.result as string }]);
+                        reader.readAsDataURL(file);
+                        e.target.value = '';
+                      }} />
+                    </label>
+                    {/* Document */}
+                    <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-t border-gray-50">
+                      <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                        <svg className="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                      </div>
+                      <span className="text-[12px] font-semibold text-gray-700">Document</span>
+                      <input type="file" className="hidden" onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'file', content: file.name }]);
+                        e.target.value = '';
+                      }} />
+                    </label>
+                    {/* Poll — group only */}
+                    {sel.isGroup && (
+                      <button onClick={() => { setShowPoll(true); setShowAttachMenu(false); }}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors w-full text-left border-t border-gray-50">
+                        <div className="w-6 h-6 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                          <svg className="w-3.5 h-3.5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        </div>
+                        <span className="text-[12px] font-semibold text-gray-700">Poll</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* Click-away backdrop */}
+                {showAttachMenu && <div className="fixed inset-0 z-[9]" onClick={() => setShowAttachMenu(false)} />}
+
+                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3.5 py-2.5 focus-within:border-gray-300 transition-all">
+                  {/* Text input */}
+                  <input value={input} onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
+                        e.preventDefault();
+                        setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
+                        setInput('');
+                      }
+                    }}
+                    placeholder="Message..."
+                    className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400 min-w-0"
+                  />
+                  {/* Attach button */}
+                  <button onClick={() => setShowAttachMenu(v => !v)}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all shrink-0 ${showAttachMenu ? 'text-gray-700 bg-gray-100' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                  </button>
+                  {/* Mic / Send */}
+                  {input.trim() ? (
+                    <button onClick={() => {
+                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
+                      setInput('');
+                    }} className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-900 text-white transition-all shrink-0 hover:bg-gray-700">
+                      <I.Send />
+                    </button>
+                  ) : (
+                    <button title="Voice input (coming soon)"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all shrink-0">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                     </button>
                   )}
                 </div>
-              )}
-              {/* Click-away backdrop */}
-              {showAttachMenu && <div className="fixed inset-0 z-[9]" onClick={() => setShowAttachMenu(false)} />}
-
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3.5 py-2.5 focus-within:border-gray-300 transition-all">
-                {/* Text input */}
-                <input value={input} onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
-                      e.preventDefault();
-                      setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
-                      setInput('');
-                    }
-                  }}
-                  placeholder="Message..."
-                  className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400 min-w-0"
-                />
-                {/* Attach button */}
-                <button onClick={() => setShowAttachMenu(v => !v)}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all shrink-0 ${showAttachMenu ? 'text-gray-700 bg-gray-100' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                </button>
-                {/* Mic / Send */}
-                {input.trim() ? (
-                  <button onClick={() => {
-                    setLocalMsgs(prev => [...prev, { id: Date.now().toString(), type: 'text', content: input.trim() }]);
-                    setInput('');
-                  }} className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-900 text-white transition-all shrink-0 hover:bg-gray-700">
-                    <I.Send />
-                  </button>
-                ) : (
-                  <button title="Voice input (coming soon)"
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all shrink-0">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                  </button>
-                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* ── Right: members sidebar (groups only, desktop only) ── */}
@@ -1462,16 +1905,16 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Cross-Check config
   const [ccDomain, setCcDomain] = useState<string[]>([]);
   const [ccThreshold, setCcThreshold] = useState(67);
-  const [ccMode, setCcMode] = useState<'consensus'|'collaboration'>('consensus');
-  const [ccDepth, setCcDepth] = useState<1|2|3>(2);
+  const [ccMode, setCcMode] = useState<'consensus' | 'collaboration'>('consensus');
+  const [ccDepth, setCcDepth] = useState<1 | 2 | 3>(2);
   // MirrorFish config
   const [mfSeed, setMfSeed] = useState('');
   const [mfTask, setMfTask] = useState('');
   const [mfFiles, setMfFiles] = useState<File[]>([]);
   const [mfTemperature, setMfTemperature] = useState(50);
-  const [mfDuration, setMfDuration] = useState<24|72|168>(72);
+  const [mfDuration, setMfDuration] = useState<24 | 72 | 168>(72);
   // Multi-agent model panel: [{modelId, count}]
-  const [agentPanel, setAgentPanel] = useState<{modelId: string; count: number}[]>([
+  const [agentPanel, setAgentPanel] = useState<{ modelId: string; count: number }[]>([
     { modelId: 'gpt-4o', count: 1 }
   ]);
   const totalAgentCount = agentPanel.reduce((s, r) => s + r.count, 0);
@@ -1487,21 +1930,21 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const canNext = step === 'type'
     ? (agentType === 'single' || multiMode !== null)
     : step === 'behavior'
-    ? (agentType === 'multi' && multiMode === 'mirrorfish' ? mfSeed.trim().length > 0 : prompt.trim().length > 0)
-    : step === 'info'
-    ? name.trim().length > 0
-    : true;
+      ? (agentType === 'multi' && multiMode === 'mirrorfish' ? mfSeed.trim().length > 0 : prompt.trim().length > 0)
+      : step === 'info'
+        ? name.trim().length > 0
+        : true;
 
 
   const MODELS = [
-    { id: 'gpt-4o',          label: 'GPT-4o',           provider: 'OpenAI' },
-    { id: 'gpt-4-turbo',     label: 'GPT-4 Turbo',      provider: 'OpenAI' },
-    { id: 'gpt-3-5-turbo',   label: 'GPT-3.5 Turbo',    provider: 'OpenAI' },
-    { id: 'claude-3-5',      label: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
-    { id: 'claude-3-haiku',  label: 'Claude 3 Haiku',   provider: 'Anthropic' },
-    { id: 'gemini-1-5-pro',  label: 'Gemini 1.5 Pro',   provider: 'Google' },
-    { id: 'gemini-flash',    label: 'Gemini 1.5 Flash',  provider: 'Google' },
-    { id: 'loka-fast',       label: 'Loka Fast',         provider: 'Loka' },
+    { id: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
+    { id: 'gpt-4-turbo', label: 'GPT-4 Turbo', provider: 'OpenAI' },
+    { id: 'gpt-3-5-turbo', label: 'GPT-3.5 Turbo', provider: 'OpenAI' },
+    { id: 'claude-3-5', label: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+    { id: 'claude-3-haiku', label: 'Claude 3 Haiku', provider: 'Anthropic' },
+    { id: 'gemini-1-5-pro', label: 'Gemini 1.5 Pro', provider: 'Google' },
+    { id: 'gemini-flash', label: 'Gemini 1.5 Flash', provider: 'Google' },
+    { id: 'loka-fast', label: 'Loka Fast', provider: 'Loka' },
   ];
   const modelDotColor = (id: string) =>
     id.startsWith('gpt') ? 'bg-green-500' : id.startsWith('claude') ? 'bg-violet-500' : id.startsWith('gemini') ? 'bg-blue-500' : 'bg-indigo-400';
@@ -1564,9 +2007,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 {/* Single Agent Card */}
                 <button
                   onClick={() => { setAgentType('single'); setMultiMode(null); }}
-                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${
-                    agentType === 'single' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
-                  }`}
+                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${agentType === 'single' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
+                    }`}
                 >
                   <div className="relative">
                     <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
@@ -1586,9 +2028,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 {/* Multi-Agent Card */}
                 <button
                   onClick={() => setAgentType('multi')}
-                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${
-                    agentType === 'multi' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
-                  }`}
+                  className={`relative p-5 rounded-2xl border-2 text-left transition-all overflow-hidden group ${agentType === 'multi' ? 'border-gray-900 ring-1 ring-gray-900/5' : 'border-gray-100 hover:border-gray-300'
+                    }`}
                 >
                   <div className="relative">
                     <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
@@ -1618,36 +2059,34 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     {/* Cross-Check Precision */}
                     <div
                       onClick={() => setMultiMode('loka')}
-                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${
-                        multiMode === 'loka' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-150 hover:border-gray-200 bg-white'
-                      }`}
+                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${multiMode === 'loka' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-150 hover:border-gray-200 bg-white'
+                        }`}
                     >
                       {/* Hero: Cross-Check — compact triangle */}
                       <div className="h-28 bg-slate-50 flex items-center justify-center">
                         <svg viewBox="0 0 160 96" width="160" height="96" fill="none" xmlns="http://www.w3.org/2000/svg">
                           {/* 3 nodes: tight equilateral triangle */}
                           {/* A — top */}
-                          <circle cx="80" cy="20" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <path d="M76.5 20l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="80" cy="20" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <path d="M76.5 20l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           {/* B — bottom-left */}
-                          <circle cx="44" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <path d="M40.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="44" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <path d="M40.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           {/* C — bottom-right */}
-                          <circle cx="116" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <path d="M112.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="116" cy="78" r="10" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <path d="M112.5 78l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           {/* Edges */}
-                          <line x1="74" y1="29" x2="50" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3"/>
-                          <line x1="86" y1="29" x2="110" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3"/>
-                          <line x1="54" y1="78" x2="106" y2="78" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3"/>
+                          <line x1="74" y1="29" x2="50" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3" />
+                          <line x1="86" y1="29" x2="110" y2="69" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3" />
+                          <line x1="54" y1="78" x2="106" y2="78" stroke="#c7d2fe" strokeWidth="0.8" strokeDasharray="4 3" />
                         </svg>
                       </div>
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-[13px] font-semibold text-gray-900">Cross-Check Precision</p>
-                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${
-                            multiMode === 'loka' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
-                          }`}>
+                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${multiMode === 'loka' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
+                            }`}>
                             {multiMode === 'loka' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[3px]" />}
                           </div>
                         </div>
@@ -1676,38 +2115,37 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     {/* Predictive Insight */}
                     <div
                       onClick={() => setMultiMode('mirrorfish')}
-                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${
-                        multiMode === 'mirrorfish' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`relative rounded-2xl border text-left transition-all cursor-pointer overflow-hidden flex flex-col ${multiMode === 'mirrorfish' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
                     >
                       {/* Hero: Predictive — compact fan tree */}
                       <div className="h-28 bg-slate-50 flex items-center justify-center">
                         <svg viewBox="0 0 160 96" width="160" height="96" fill="none" xmlns="http://www.w3.org/2000/svg">
                           {/* Root */}
-                          <circle cx="80" cy="14" r="9" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                          <circle cx="80" cy="14" r="3.5" fill="#6366f1" opacity="0.35"/>
+                          <circle cx="80" cy="14" r="9" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                          <circle cx="80" cy="14" r="3.5" fill="#6366f1" opacity="0.35" />
                           {/* L1 branches */}
-                          <line x1="74" y1="22" x2="50" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5"/>
-                          <line x1="80" y1="23" x2="80" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5"/>
-                          <line x1="86" y1="22" x2="110" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5"/>
+                          <line x1="74" y1="22" x2="50" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5" />
+                          <line x1="80" y1="23" x2="80" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5" />
+                          <line x1="86" y1="22" x2="110" y2="46" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3.5 2.5" />
                           {/* L1 nodes */}
-                          <circle cx="50" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1"/>
-                          <circle cx="80" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1"/>
-                          <circle cx="110" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1"/>
+                          <circle cx="50" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1" />
+                          <circle cx="80" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1" />
+                          <circle cx="110" cy="48" r="6" fill="white" stroke="#818cf8" strokeWidth="1" />
                           {/* L2 branches from each */}
-                          <line x1="45" y1="54" x2="32" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="55" y1="54" x2="58" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="76" y1="54" x2="70" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="84" y1="54" x2="90" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="105" y1="54" x2="102" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
-                          <line x1="115" y1="54" x2="124" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2"/>
+                          <line x1="45" y1="54" x2="32" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="55" y1="54" x2="58" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="76" y1="54" x2="70" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="84" y1="54" x2="90" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="105" y1="54" x2="102" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
+                          <line x1="115" y1="54" x2="124" y2="76" stroke="#c7d2fe" strokeWidth="0.7" strokeDasharray="3 2" />
                           {/* L2 dots */}
-                          <circle cx="32" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="58" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="70" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="90" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="102" cy="78" r="3" fill="#c7d2fe"/>
-                          <circle cx="124" cy="78" r="3" fill="#c7d2fe"/>
+                          <circle cx="32" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="58" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="70" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="90" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="102" cy="78" r="3" fill="#c7d2fe" />
+                          <circle cx="124" cy="78" r="3" fill="#c7d2fe" />
                         </svg>
                       </div>
                       {/* Content */}
@@ -1717,9 +2155,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             <p className="text-[13px] font-semibold text-gray-900">Predictive Insight</p>
                             <span className="text-[8px] font-semibold text-indigo-400 bg-indigo-50 border border-indigo-100 px-1 py-0.5 rounded">Prediction</span>
                           </div>
-                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${
-                            multiMode === 'mirrorfish' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
-                          }`}>
+                          <div className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${multiMode === 'mirrorfish' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-200'
+                            }`}>
                             {multiMode === 'mirrorfish' && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[3px]" />}
                           </div>
                         </div>
@@ -1778,18 +2215,16 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   <div className="space-y-2">
                     {MODELS.map(m => (
                       <button key={m.id} onClick={() => setModel(m.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                          model === m.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                        }`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${model === m.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                          }`}
                       >
                         <div className={`w-2 h-2 rounded-full shrink-0 ${modelDotColor(m.id)}`} />
                         <div className="flex-1">
                           <p className="text-[13px] font-bold text-gray-900">{m.label}</p>
                           <p className="text-[12px] text-gray-400">{m.provider}</p>
                         </div>
-                        <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${
-                          model === m.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
-                        }`}>
+                        <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${model === m.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
+                          }`}>
                           {model === m.id && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
                         </div>
                       </button>
@@ -1824,11 +2259,10 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                   <button
                                     key={m.id}
                                     onClick={() => { updatePanelRow(idx, 'modelId', m.id); setOpenPanelDropdown(null); }}
-                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors ${
-                                      row.modelId === m.id
-                                        ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                                        : 'text-gray-700 hover:bg-gray-50'
-                                    }`}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors ${row.modelId === m.id
+                                      ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                                      : 'text-gray-700 hover:bg-gray-50'
+                                      }`}
                                   >
                                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${modelDotColor(m.id)}`} />
                                     <span className="flex-1">{m.label}</span>
@@ -1903,84 +2337,82 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     <div className="grid grid-cols-2 gap-2">
                       {/* Consensus card */}
                       <button onClick={() => setCcMode('consensus')}
-                        className={`rounded-xl border text-left transition-all overflow-hidden ${
-                          ccMode === 'consensus' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
-                        }`}
+                        className={`rounded-xl border text-left transition-all overflow-hidden ${ccMode === 'consensus' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
+                          }`}
                       >
                         {/* SVG: all agents output full answers, then debate → merge */}
                         <div className="h-20 bg-slate-50 flex items-center justify-center">
                           <svg viewBox="0 0 140 72" width="140" height="72" fill="none">
                             {/* 3 agent nodes on left */}
-                            <circle cx="22" cy="18" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="36" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="54" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
+                            <circle cx="22" cy="18" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="36" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="54" r="8" fill="white" stroke="#6366f1" strokeWidth="1.2" />
                             {/* Speech bubble dots = full answer */}
-                            {[18,36,54].map(y => <>
-                              <circle key={`d1-${y}`} cx="18" cy={y} r="1.2" fill="#6366f1"/>
-                              <circle key={`d2-${y}`} cx="22" cy={y} r="1.2" fill="#6366f1"/>
-                              <circle key={`d3-${y}`} cx="26" cy={y} r="1.2" fill="#6366f1"/>
+                            {[18, 36, 54].map(y => <>
+                              <circle key={`d1-${y}`} cx="18" cy={y} r="1.2" fill="#6366f1" />
+                              <circle key={`d2-${y}`} cx="22" cy={y} r="1.2" fill="#6366f1" />
+                              <circle key={`d3-${y}`} cx="26" cy={y} r="1.2" fill="#6366f1" />
                             </>)}
                             {/* Arrows right toward center discussion */}
-                            <line x1="30" y1="18" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2"/>
-                            <line x1="30" y1="36" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2"/>
-                            <line x1="30" y1="54" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2"/>
+                            <line x1="30" y1="18" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2" />
+                            <line x1="30" y1="36" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2" />
+                            <line x1="30" y1="54" x2="60" y2="36" stroke="#a5b4fc" strokeWidth="0.9" strokeDasharray="3 2" />
                             {/* Discussion circle */}
-                            <circle cx="75" cy="36" r="14" fill="white" stroke="#818cf8" strokeWidth="1"/>
+                            <circle cx="75" cy="36" r="14" fill="white" stroke="#818cf8" strokeWidth="1" />
                             {/* Debate arrows inside */}
-                            <path d="M67 33 Q75 28 83 33" stroke="#818cf8" strokeWidth="0.9" fill="none" markerEnd="url(#arr)"/>
-                            <path d="M83 39 Q75 44 67 39" stroke="#818cf8" strokeWidth="0.9" fill="none"/>
+                            <path d="M67 33 Q75 28 83 33" stroke="#818cf8" strokeWidth="0.9" fill="none" markerEnd="url(#arr)" />
+                            <path d="M83 39 Q75 44 67 39" stroke="#818cf8" strokeWidth="0.9" fill="none" />
                             {/* Arrow out to result */}
-                            <line x1="89" y1="36" x2="112" y2="36" stroke="#6366f1" strokeWidth="1"/>
-                            <polygon points="112,33 118,36 112,39" fill="#6366f1"/>
+                            <line x1="89" y1="36" x2="112" y2="36" stroke="#6366f1" strokeWidth="1" />
+                            <polygon points="112,33 118,36 112,39" fill="#6366f1" />
                             {/* Result node */}
-                            <circle cx="126" cy="36" r="8" fill="#eef2ff" stroke="#6366f1" strokeWidth="1.2"/>
-                            <path d="M122.5 36l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="126" cy="36" r="8" fill="#eef2ff" stroke="#6366f1" strokeWidth="1.2" />
+                            <path d="M122.5 36l2.5 2.5 5-5" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                         <div className="p-3">
-                          <p className={`text-[13px] font-semibold mb-0.5 ${ ccMode === 'consensus' ? 'text-indigo-700' : 'text-gray-700' }`}>Consensus</p>
+                          <p className={`text-[13px] font-semibold mb-0.5 ${ccMode === 'consensus' ? 'text-indigo-700' : 'text-gray-700'}`}>Consensus</p>
                           <p className="text-[11px] text-gray-400 leading-tight">Each agent produces a full answer, then agents debate until agreement is reached.</p>
                         </div>
                       </button>
 
                       {/* Collaboration card */}
                       <button onClick={() => setCcMode('collaboration')}
-                        className={`rounded-xl border text-left transition-all overflow-hidden ${
-                          ccMode === 'collaboration' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
-                        }`}
+                        className={`rounded-xl border text-left transition-all overflow-hidden ${ccMode === 'collaboration' ? 'border-indigo-300 shadow-sm shadow-indigo-100' : 'border-gray-100 hover:border-gray-200'
+                          }`}
                       >
                         {/* SVG: 4 agents each handle one part → combined output */}
                         <div className="h-20 bg-slate-50 flex items-center justify-center">
                           <svg viewBox="0 0 140 72" width="140" height="72" fill="none">
                             {/* 4 agent nodes stacked */}
-                            <circle cx="22" cy="12" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="28" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="44" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
-                            <circle cx="22" cy="60" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2"/>
+                            <circle cx="22" cy="12" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="28" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="44" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
+                            <circle cx="22" cy="60" r="7" fill="white" stroke="#6366f1" strokeWidth="1.2" />
                             {/* Partial output bars (each has 1 bar = one part) */}
-                            <rect x="33" y="10" width="20" height="4" rx="2" fill="#c7d2fe"/>
-                            <rect x="33" y="26" width="20" height="4" rx="2" fill="#a5b4fc"/>
-                            <rect x="33" y="42" width="20" height="4" rx="2" fill="#818cf8"/>
-                            <rect x="33" y="58" width="20" height="4" rx="2" fill="#6366f1"/>
+                            <rect x="33" y="10" width="20" height="4" rx="2" fill="#c7d2fe" />
+                            <rect x="33" y="26" width="20" height="4" rx="2" fill="#a5b4fc" />
+                            <rect x="33" y="42" width="20" height="4" rx="2" fill="#818cf8" />
+                            <rect x="33" y="58" width="20" height="4" rx="2" fill="#6366f1" />
                             {/* Merge arrows */}
-                            <line x1="53" y1="12" x2="82" y2="30" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
-                            <line x1="53" y1="28" x2="82" y2="33" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
-                            <line x1="53" y1="44" x2="82" y2="39" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
-                            <line x1="53" y1="60" x2="82" y2="42" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2"/>
+                            <line x1="53" y1="12" x2="82" y2="30" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
+                            <line x1="53" y1="28" x2="82" y2="33" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
+                            <line x1="53" y1="44" x2="82" y2="39" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
+                            <line x1="53" y1="60" x2="82" y2="42" stroke="#a5b4fc" strokeWidth="0.8" strokeDasharray="3 2" />
                             {/* Assembled output block */}
-                            <rect x="82" y="26" width="28" height="4" rx="2" fill="#c7d2fe"/>
-                            <rect x="82" y="32" width="28" height="4" rx="2" fill="#a5b4fc"/>
-                            <rect x="82" y="38" width="28" height="4" rx="2" fill="#818cf8"/>
-                            <rect x="82" y="44" width="28" height="4" rx="2" fill="#6366f1"/>
+                            <rect x="82" y="26" width="28" height="4" rx="2" fill="#c7d2fe" />
+                            <rect x="82" y="32" width="28" height="4" rx="2" fill="#a5b4fc" />
+                            <rect x="82" y="38" width="28" height="4" rx="2" fill="#818cf8" />
+                            <rect x="82" y="44" width="28" height="4" rx="2" fill="#6366f1" />
                             {/* Border around assembled */}
-                            <rect x="81" y="24" width="30" height="26" rx="3" stroke="#6366f1" strokeWidth="1" fill="none"/>
+                            <rect x="81" y="24" width="30" height="26" rx="3" stroke="#6366f1" strokeWidth="1" fill="none" />
                             {/* Arrow to final */}
-                            <line x1="111" y1="36" x2="124" y2="36" stroke="#6366f1" strokeWidth="1"/>
-                            <polygon points="124,33 130,36 124,39" fill="#6366f1"/>
+                            <line x1="111" y1="36" x2="124" y2="36" stroke="#6366f1" strokeWidth="1" />
+                            <polygon points="124,33 130,36 124,39" fill="#6366f1" />
                           </svg>
                         </div>
                         <div className="p-3">
-                          <p className={`text-[13px] font-semibold mb-0.5 ${ ccMode === 'collaboration' ? 'text-indigo-700' : 'text-gray-700' }`}>Collaboration</p>
+                          <p className={`text-[13px] font-semibold mb-0.5 ${ccMode === 'collaboration' ? 'text-indigo-700' : 'text-gray-700'}`}>Collaboration</p>
                           <p className="text-[11px] text-gray-400 leading-tight">Each agent handles one segment; results are assembled into a unified output.</p>
                         </div>
                       </button>
@@ -1999,7 +2431,7 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <input type="range" min={50} max={95} step={5} value={ccThreshold}
                           onChange={e => setCcThreshold(Number(e.target.value))}
                           className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                          style={{background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${(ccThreshold-50)/45*100}%, #e5e7eb ${(ccThreshold-50)/45*100}%, #e5e7eb 100%)`}}
+                          style={{ background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${(ccThreshold - 50) / 45 * 100}%, #e5e7eb ${(ccThreshold - 50) / 45 * 100}%, #e5e7eb 100%)` }}
                         />
                         <div className="flex justify-between mt-1">
                           <span className="text-[11px] text-gray-400">Lenient 50%</span>
@@ -2015,16 +2447,15 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                       <label className="text-[13px] font-semibold text-gray-500 mb-2 block">Analysis Depth</label>
                       <div className="grid grid-cols-3 gap-2">
                         {[
-                          { rounds: 1 as const, label: 'Fast',     sub: '1 round' },
+                          { rounds: 1 as const, label: 'Fast', sub: '1 round' },
                           { rounds: 2 as const, label: 'Standard', sub: '2 rounds' },
-                          { rounds: 3 as const, label: 'Deep',     sub: '3 rounds' },
+                          { rounds: 3 as const, label: 'Deep', sub: '3 rounds' },
                         ].map(d => (
                           <button key={d.rounds} onClick={() => setCcDepth(d.rounds)}
-                            className={`p-2.5 rounded-xl border text-left transition-all ${
-                              ccDepth === d.rounds ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
-                            }`}
+                            className={`p-2.5 rounded-xl border text-left transition-all ${ccDepth === d.rounds ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
+                              }`}
                           >
-                            <p className={`text-[13px] font-semibold mb-0.5 ${ ccDepth === d.rounds ? 'text-indigo-700' : 'text-gray-700' }`}>{d.label}</p>
+                            <p className={`text-[13px] font-semibold mb-0.5 ${ccDepth === d.rounds ? 'text-indigo-700' : 'text-gray-700'}`}>{d.label}</p>
                             <p className="text-[11px] text-gray-400">{d.sub}</p>
                           </button>
                         ))}
@@ -2109,7 +2540,7 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     <input type="range" min={0} max={100} step={5} value={mfTemperature}
                       onChange={e => setMfTemperature(Number(e.target.value))}
                       className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                      style={{background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${mfTemperature}%, #e5e7eb ${mfTemperature}%, #e5e7eb 100%)`}}
+                      style={{ background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${mfTemperature}%, #e5e7eb ${mfTemperature}%, #e5e7eb 100%)` }}
                     />
                     <div className="flex justify-between mt-1">
                       <span className="text-[11px] text-gray-400">Conservative</span>
@@ -2127,11 +2558,10 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         { h: 168 as const, label: 'Deep', sub: '7 days' },
                       ].map(d => (
                         <button key={d.h} onClick={() => setMfDuration(d.h)}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
-                            mfDuration === d.h ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
-                          }`}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${mfDuration === d.h ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
+                            }`}
                         >
-                          <p className={`text-[13px] font-semibold mb-0.5 ${ mfDuration === d.h ? 'text-indigo-700' : 'text-gray-700' }`}>{d.label}</p>
+                          <p className={`text-[13px] font-semibold mb-0.5 ${mfDuration === d.h ? 'text-indigo-700' : 'text-gray-700'}`}>{d.label}</p>
                           <p className="text-[11px] text-gray-400">{d.sub}</p>
                         </button>
                       ))}
@@ -2146,13 +2576,11 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="grid grid-cols-2 gap-2">
                   {CAPS.map(c => (
                     <button key={c} onClick={() => toggleCap(c)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all ${
-                        capabilities.has(c) ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                      }`}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all ${capabilities.has(c) ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                        }`}
                     >
-                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${
-                        capabilities.has(c) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'
-                      }`}>
+                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${capabilities.has(c) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'
+                        }`}>
                         {capabilities.has(c) && <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                       </div>
                       <span className="text-[11px] font-medium text-gray-700">{c}</span>
@@ -2224,9 +2652,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map(c => (
                     <button key={c} onClick={() => setCategory(c)}
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
-                        category === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}>{c}</button>
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${category === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}>{c}</button>
                   ))}
                 </div>
               </div>
@@ -2241,26 +2668,30 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <label className="text-[13px] font-semibold text-gray-500 mb-2 block">Visibility</label>
                 <div className="space-y-2">
                   {([
-                    { id: 'public'  as const, label: 'Public',  desc: 'Anyone on Loka can discover and use this agent.',
-                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="1.5"/><path strokeLinecap="round" strokeWidth="1.5" d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg> },
-                    { id: 'group'   as const, label: 'Group',   desc: 'Only members of your groups can access this agent.',
-                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg> },
-                    { id: 'private' as const, label: 'Private', desc: 'Only you can see and use this agent.',
-                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" strokeWidth="1.5"/><path strokeLinecap="round" strokeWidth="1.5" d="M7 11V7a5 5 0 0110 0v4"/></svg> },
+                    {
+                      id: 'public' as const, label: 'Public', desc: 'Anyone on Loka can discover and use this agent.',
+                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="1.5" /><path strokeLinecap="round" strokeWidth="1.5" d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" /></svg>
+                    },
+                    {
+                      id: 'group' as const, label: 'Group', desc: 'Only members of your groups can access this agent.',
+                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    },
+                    {
+                      id: 'private' as const, label: 'Private', desc: 'Only you can see and use this agent.',
+                      icon: <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" strokeWidth="1.5" /><path strokeLinecap="round" strokeWidth="1.5" d="M7 11V7a5 5 0 0110 0v4" /></svg>
+                    },
                   ]).map(v => (
                     <button key={v.id} onClick={() => setVisibility(v.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                        visibility === v.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                      }`}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${visibility === v.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                        }`}
                     >
                       {v.icon}
                       <div className="flex-1">
                         <p className="text-[13px] font-bold text-gray-900">{v.label}</p>
                         <p className="text-[12px] text-gray-400">{v.desc}</p>
                       </div>
-                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${
-                        visibility === v.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
-                      }`}>
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${visibility === v.id ? 'border-gray-900 bg-gray-900' : 'border-gray-200'
+                        }`}>
                         {visibility === v.id && <div className="w-1.5 h-1.5 rounded-full bg-white mx-auto mt-[2px]" />}
                       </div>
                     </button>
@@ -2273,9 +2704,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <label className="text-[13px] font-semibold text-gray-500 mb-2 block">Creator Premium</label>
                 <div className="space-y-2">
                   <button onClick={() => setPricing('free')}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      pricing === 'free' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${pricing === 'free' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
                   >
                     <div className="flex-1">
                       <p className="text-[13px] font-bold text-gray-900">Free</p>
@@ -2286,9 +2716,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </div>
                   </button>
                   <button onClick={() => setPricing('subscription')}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      pricing === 'subscription' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${pricing === 'subscription' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
                   >
                     <div className="flex-1">
                       <p className="text-[13px] font-bold text-gray-900">Subscription</p>
@@ -2312,9 +2741,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </div>
                   )}
                   <button onClick={() => setPricing('pay_per_use')}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      pricing === 'pay_per_use' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${pricing === 'pay_per_use' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'
+                      }`}
                   >
                     <div className="flex-1">
                       <p className="text-[13px] font-bold text-gray-900">Pay per use</p>
@@ -2343,81 +2771,80 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           )}
         </div>}
 
-          {/* ── Done: Success screen ── */}
-          {step === 'done' && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
+        {/* ── Done: Success screen ── */}
+        {step === 'done' && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
 
-              {/* Celebration icon */}
-              <div className="relative mb-6"
-                style={{animation: 'scaleIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards'}}>
-                {/* Outer glow ring */}
-                <div className="w-24 h-24 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center">
-                    {/* Sparkle / check */}
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      style={{strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.4s ease 0.35s forwards'}}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-                {/* Decorative dots */}
-                <span style={{position:'absolute', top:'-4px', right:'4px', width:8, height:8, borderRadius:'50%', background:'#6366f1', animation:'popIn 0.3s ease 0.5s both'}} />
-                <span style={{position:'absolute', top:'10px', right:'-8px', width:5, height:5, borderRadius:'50%', background:'#a5b4fc', animation:'popIn 0.3s ease 0.6s both'}} />
-                <span style={{position:'absolute', bottom:'4px', right:'-6px', width:6, height:6, borderRadius:'50%', background:'#4f46e5', animation:'popIn 0.3s ease 0.7s both'}} />
-                <span style={{position:'absolute', top:'-2px', left:'6px', width:6, height:6, borderRadius:'50%', background:'#c7d2fe', animation:'popIn 0.3s ease 0.55s both'}} />
-                <span style={{position:'absolute', bottom:'2px', left:'-6px', width:5, height:5, borderRadius:'50%', background:'#818cf8', animation:'popIn 0.3s ease 0.65s both'}} />
-              </div>
-
-              <h2 className="text-[20px] font-bold text-gray-900 mb-1.5">Agent published!</h2>
-              <p className="text-[13px] text-gray-400 mb-6 max-w-[220px] leading-relaxed">
-                <span className="font-semibold text-gray-700">{name || 'Your agent'}</span> is now live
-                {visibility === 'public' ? ' and discoverable by everyone' : visibility === 'group' ? ' for your group members' : ' (private)'}.
-              </p>
-
-              {/* Summary chips */}
-              <div className="flex flex-wrap gap-2 justify-center mb-8">
-                {agentType === 'multi' && multiMode && (
-                  <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold">
-                    {multiMode === 'loka' ? 'Cross-check' : 'MirrorFace'}
-                  </span>
-                )}
-                {agentType !== 'multi' && (
-                  <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
-                    {MODELS.find(m => m.id === model)?.label}
-                  </span>
-                )}
-                {category && (
-                  <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
-                    {category}
-                  </span>
-                )}
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                  pricing === 'free' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
-                }`}>
-                  {pricing === 'free' ? 'Free' : pricing === 'subscription' ? `${premiumPrice || '—'} USDC/mo` : `${premiumPrice || '—'} USDC/msg`}
-                </span>
-              </div>
-
-              {/* CTAs */}
-              <div className="flex gap-2.5">
-                <button
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-500 hover:bg-gray-50 transition-all"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-bold transition-all active:scale-[0.98] flex items-center gap-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            {/* Celebration icon */}
+            <div className="relative mb-6"
+              style={{ animation: 'scaleIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards' }}>
+              {/* Outer glow ring */}
+              <div className="w-24 h-24 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center">
+                  {/* Sparkle / check */}
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.4s ease 0.35s forwards' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
-                  Chat with Agent
-                </button>
+                </div>
               </div>
+              {/* Decorative dots */}
+              <span style={{ position: 'absolute', top: '-4px', right: '4px', width: 8, height: 8, borderRadius: '50%', background: '#6366f1', animation: 'popIn 0.3s ease 0.5s both' }} />
+              <span style={{ position: 'absolute', top: '10px', right: '-8px', width: 5, height: 5, borderRadius: '50%', background: '#a5b4fc', animation: 'popIn 0.3s ease 0.6s both' }} />
+              <span style={{ position: 'absolute', bottom: '4px', right: '-6px', width: 6, height: 6, borderRadius: '50%', background: '#4f46e5', animation: 'popIn 0.3s ease 0.7s both' }} />
+              <span style={{ position: 'absolute', top: '-2px', left: '6px', width: 6, height: 6, borderRadius: '50%', background: '#c7d2fe', animation: 'popIn 0.3s ease 0.55s both' }} />
+              <span style={{ position: 'absolute', bottom: '2px', left: '-6px', width: 5, height: 5, borderRadius: '50%', background: '#818cf8', animation: 'popIn 0.3s ease 0.65s both' }} />
+            </div>
 
-              <style>{`
+            <h2 className="text-[20px] font-bold text-gray-900 mb-1.5">Agent published!</h2>
+            <p className="text-[13px] text-gray-400 mb-6 max-w-[220px] leading-relaxed">
+              <span className="font-semibold text-gray-700">{name || 'Your agent'}</span> is now live
+              {visibility === 'public' ? ' and discoverable by everyone' : visibility === 'group' ? ' for your group members' : ' (private)'}.
+            </p>
+
+            {/* Summary chips */}
+            <div className="flex flex-wrap gap-2 justify-center mb-8">
+              {agentType === 'multi' && multiMode && (
+                <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold">
+                  {multiMode === 'loka' ? 'Cross-check' : 'MirrorFace'}
+                </span>
+              )}
+              {agentType !== 'multi' && (
+                <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
+                  {MODELS.find(m => m.id === model)?.label}
+                </span>
+              )}
+              {category && (
+                <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold">
+                  {category}
+                </span>
+              )}
+              <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${pricing === 'free' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                }`}>
+                {pricing === 'free' ? 'Free' : pricing === 'subscription' ? `${premiumPrice || '—'} USDC/mo` : `${premiumPrice || '—'} USDC/msg`}
+              </span>
+            </div>
+
+            {/* CTAs */}
+            <div className="flex gap-2.5">
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-500 hover:bg-gray-50 transition-all"
+              >
+                Close
+              </button>
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-bold transition-all active:scale-[0.98] flex items-center gap-1.5"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Chat with Agent
+              </button>
+            </div>
+
+            <style>{`
                 @keyframes scaleIn {
                   from { transform: scale(0.5); opacity: 0; }
                   to   { transform: scale(1);   opacity: 1; }
@@ -2430,8 +2857,8 @@ const CreateAgentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   to   { transform: scale(1); opacity: 1; }
                 }
               `}</style>
-            </div>
-          )}
+          </div>
+        )}
 
         {/* Footer — hidden on done screen */}
         {step !== 'done' && <div className="mt-6 flex justify-end">
@@ -2833,7 +3260,7 @@ const ContactsPage: React.FC = () => {
 
 const DiscoverPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'Agents' | 'Groups' | 'People'>('Agents');
+  const [activeTab, setActiveTab] = useState<'Agents' | 'Groups' | 'People'>('Groups');
   const [agentCat, setAgentCat] = useState('All');
   const [selectedGroup, setSelectedGroup] = useState<typeof DISCOVER_GROUPS[0] | null>(null);
   const [joinedGroups, setJoinedGroups] = useState<Set<number>>(new Set());
@@ -2861,9 +3288,9 @@ const DiscoverPage: React.FC = () => {
   const PEOPLE_CATS = ['All', 'Investor', 'Founder', 'Contributor', 'Active'] as const;
   const filteredPeople = peopleCat === 'All' ? PEOPLE
     : peopleCat === 'Active' ? PEOPLE.filter(p => p.active)
-    : PEOPLE.filter(p => p.role === peopleCat);
+      : PEOPLE.filter(p => p.role === peopleCat);
 
-  const tabs = ['Agents', 'Groups', 'People'] as const;
+  const tabs = ['Groups', 'People'] as const;
   const filteredAgents = agentCat === 'All' ? DISCOVER_AGENTS : DISCOVER_AGENTS.filter(a => a.category === agentCat);
 
   const handleJoin = (group: typeof DISCOVER_GROUPS[0], e?: React.MouseEvent) => {
@@ -3021,12 +3448,12 @@ const DiscoverPage: React.FC = () => {
                 {/* Social links */}
                 <div className="flex items-center gap-2 mt-2">
                   <a href="#" onClick={(e) => e.preventDefault()} className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-[#0A66C2] transition-colors">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
                     LinkedIn
                   </a>
                   <span className="text-gray-200">·</span>
                   <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400">
-                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                     {selectedPerson.followers} followers
                   </div>
                 </div>
@@ -3214,51 +3641,50 @@ const DiscoverPage: React.FC = () => {
               {PEOPLE_CATS.map(c => (
                 <button key={c}
                   onClick={() => setPeopleCat(c)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${
-                    peopleCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
+                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all ${peopleCat === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
                 >
                   {c}
                 </button>
               ))}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredPeople.map((person, i) => (
-              <div
-                key={i}
-                onClick={() => setSelectedPerson(person)}
-                className="group cursor-pointer bg-white hover:shadow-lg hover:border-gray-200 transition-all duration-300 border border-gray-100 rounded-2xl p-5 flex flex-col items-center text-center"
-              >
-                {/* Circle avatar */}
-                <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${person.color} flex items-center justify-center text-[20px] font-black text-white shadow-md mb-3 group-hover:scale-105 transition-transform duration-300`}>
-                  {person.avatar}
-                </div>
-                {/* Name + role */}
-                <p className="text-[13px] font-bold text-gray-900 leading-tight mb-0.5 group-hover:text-blue-600 transition-colors">{person.name}</p>
-                <p className="text-[10px] text-gray-400 mb-2">{person.role} · {person.org}</p>
-                {/* Bio excerpt */}
-                <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-2 mb-3">{person.bio}</p>
-                {/* Footer: followers + LinkedIn always visible, Add on hover */}
-                <div className="flex items-center justify-between w-full mt-auto pt-3 border-t border-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <svg className="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                      <span className="text-[10px] font-semibold text-gray-500">{person.followers}</span>
-                    </div>
-                    <a href="#" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-[#0A66C2] transition-colors">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                    </a>
+              {filteredPeople.map((person, i) => (
+                <div
+                  key={i}
+                  onClick={() => setSelectedPerson(person)}
+                  className="group cursor-pointer bg-white hover:shadow-lg hover:border-gray-200 transition-all duration-300 border border-gray-100 rounded-2xl p-5 flex flex-col items-center text-center"
+                >
+                  {/* Circle avatar */}
+                  <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${person.color} flex items-center justify-center text-[20px] font-black text-white shadow-md mb-3 group-hover:scale-105 transition-transform duration-300`}>
+                    {person.avatar}
                   </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setSelectedPerson(person); }}
-                    className="flex items-center gap-1 text-[11px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 opacity-0 group-hover:opacity-100"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                    Add
-                  </button>
+                  {/* Name + role */}
+                  <p className="text-[13px] font-bold text-gray-900 leading-tight mb-0.5 group-hover:text-blue-600 transition-colors">{person.name}</p>
+                  <p className="text-[10px] text-gray-400 mb-2">{person.role} · {person.org}</p>
+                  {/* Bio excerpt */}
+                  <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-2 mb-3">{person.bio}</p>
+                  {/* Footer: followers + LinkedIn always visible, Add on hover */}
+                  <div className="flex items-center justify-between w-full mt-auto pt-3 border-t border-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                        <span className="text-[10px] font-semibold text-gray-500">{person.followers}</span>
+                      </div>
+                      <a href="#" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-[#0A66C2] transition-colors">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+                      </a>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedPerson(person); }}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-white bg-gray-900 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 opacity-0 group-hover:opacity-100"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                      Add
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           </div>
         )}
