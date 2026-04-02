@@ -31,8 +31,7 @@
     "socket.io": "^4.8.1",
     "stripe": "^21.0.1",
     "uuid": "^13.0.0",
-    "zod": "^3.24.2",
-    "@steipete/sweet-cookie": "^1.0.0"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
