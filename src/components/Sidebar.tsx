@@ -134,6 +134,9 @@ export const Sidebar: React.FC<{
     socket.on('agent:research:progress', handleSocketProgress);
     socket.on('agent:research:done', handleSocketDone);
     socket.on('agent:research:error', handleSocketDone);
+    socket.on('agent:chat:consensus_done', handleSocketDone);
+    socket.on('agent:chat:stream_done', handleSocketDone);
+    socket.on('agent:chat:error', handleSocketDone);
 
     return () => {
       window.removeEventListener('session-started', handleStart);
@@ -141,6 +144,9 @@ export const Sidebar: React.FC<{
       socket.off('agent:research:progress', handleSocketProgress);
       socket.off('agent:research:done', handleSocketDone);
       socket.off('agent:research:error', handleSocketDone);
+      socket.off('agent:chat:consensus_done', handleSocketDone);
+      socket.off('agent:chat:stream_done', handleSocketDone);
+      socket.off('agent:chat:error', handleSocketDone);
     };
   }, []);
 

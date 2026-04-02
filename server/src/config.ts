@@ -49,4 +49,7 @@ export const config = {
     encryptionKey: process.env.STRIPE_ENCRYPTION_KEY || '',
     syncIntervalMs: 60 * 60 * 1000, // 1 hour
   },
+  consensus: {
+    baseUrl: process.env.CONSENSUS_API_BASE || 'http://173.249.5.203:8000/api/v1',
+  },
 } as const;

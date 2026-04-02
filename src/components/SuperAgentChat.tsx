@@ -4,6 +4,10 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { api } from '../services/api';
+import { socket } from '../services/socket';
+import { renderMarkdownContent } from '../utils/markdown';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
@@ -50,50 +54,17 @@ interface ThinkingProcess {
 
 // ─── Agent Council Config ───────────────────────────────────
 const AGENT_COUNCIL = [
-    {
-        id: 'risk_assessor',
-        name: 'Risk Assessor',
-        icon: '🛡️',
-        color: 'orange',
-        steps: [
-            'Verifying revenue streams & financial statements',
-            'Evaluating credit score & default probability',
-            'Analyzing market position & competitive landscape',
-            'Generating risk assessment report',
-        ],
-    },
-    {
-        id: 'market_analyst',
-        name: 'Market Analyst',
-        icon: '📊',
-        color: 'blue',
-        steps: [
-            'Retrieving recent Stock OHLC Data',
-            'Analyzing revenue structure & market share',
-            'Reviewing active users & ARR growth',
-        ],
-    },
-    {
-        id: 'web_search',
-        name: 'Web Search Agent',
-        icon: '🌐',
-        color: 'green',
-        steps: [
-            'Finding recent news & events',
-            'Cross-referencing catalysts',
-            'Summarizing market sentiment',
-        ],
-    },
-    {
-        id: 'trading_strategist',
-        name: 'Trading Strategist',
-        icon: '📈',
-        color: 'purple',
-        steps: [
-            'Correlating technical indicators',
-            'Formulating short-term strategy',
-        ],
-    },
+    { id: 'agent_0', name: 'Fundamental Analyst', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', color: 'bg-emerald-500', steps: ['Ingesting 10-K & financial statements', 'Calculating DCF valuation models', 'Evaluating balance sheet health', 'Formulating core thesis'] },
+    { id: 'agent_1', name: 'Macro Strategist', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-blue-500', steps: ['Analyzing cross-asset correlations', 'Evaluating interest rate impact', 'Scanning global liquidity trends', 'Synthesizing macro regime context'] },
+    { id: 'agent_2', name: 'Sentiment Engine', icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z', color: 'bg-violet-500', steps: ['Parsing FinTwit & Retail sentiment', 'Scanning news & events momentum', 'Analyzing option market skew', 'Identifying market pivot risks'] },
+    { id: 'agent_3', name: 'Quant Tracker', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', color: 'bg-rose-500', steps: ['Processing Stock OHLC Data', 'Evaluating moving average bounds', 'Calculating RSI & Volatility bands', 'Detecting anomalous trading volume'] }
+];
+
+const MODES = [
+    { id: 'auto' as const, label: 'Auto', desc: 'System picks the best mode for you', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
+    { id: 'fast' as const, label: 'Fast', desc: 'Single agent, quick response', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
+    { id: 'collaborate' as const, label: 'Collaborate', desc: 'Agents split work, assemble one answer', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
+    { id: 'roundtable' as const, label: 'Roundtable', desc: 'Multi-agent debate & cross-validation', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M14 5.5a7.5 7.5 0 014.5 12" /><path d="M17 19.5H7" /><path d="M5.5 17A7.5 7.5 0 0110 5.5" /></svg> },
 ];
 
 // ─── Knowledge Graph Types ──────────────────────────────────
@@ -552,23 +523,7 @@ const ThinkingProcessPanel: React.FC<{
 };
 
 
-// ─── Markdown-like renderer for AI responses ────────────────
-const renderMarkdown = (text: string) => {
-    if (!text) return null;
-    // Simple markdown: bold, headers, lists
-    const lines = text.split('\n');
-    return lines.map((line, i) => {
-        if (line.startsWith('### ')) return <h3 key={i} className="text-sm font-bold text-gray-900 mt-4 mb-2">{line.slice(4)}</h3>;
-        if (line.startsWith('## ')) return <h2 key={i} className="text-base font-bold text-gray-900 mt-5 mb-2">{line.slice(3)}</h2>;
-        if (line.startsWith('# ')) return <h1 key={i} className="text-lg font-bold text-gray-900 mt-6 mb-3">{line.slice(2)}</h1>;
-        if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="text-sm text-gray-700 leading-relaxed ml-4 list-disc">{line.slice(2)}</li>;
-        if (line.match(/^\d+\.\s/)) return <li key={i} className="text-sm text-gray-700 leading-relaxed ml-4 list-decimal">{line.replace(/^\d+\.\s/, '')}</li>;
-        if (line.trim() === '') return <br key={i} />;
-        // Bold text
-        const boldParsed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        return <p key={i} className="text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: boldParsed }} />;
-    });
-};
+
 
 // ═════════════════════════════════════════════════════════════
 // SuperAgentChat — Main Component
@@ -578,21 +533,62 @@ interface SuperAgentChatProps {
     restoreSessionId?: string;
     onBack: () => void;
     agentCount?: number;   // how many agents to use (default 2)
+    mode?: 'auto' | 'fast' | 'collaborate' | 'roundtable';
 }
 
-const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restoreSessionId, onBack, agentCount = 2 }) => {
+const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restoreSessionId, onBack, agentCount = 2, mode = 'auto' }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const [thinkingProcesses, setThinkingProcesses] = useState<Record<number, ThinkingProcess>>({});
-    const [sessionId] = useState(() => restoreSessionId || crypto.randomUUID());
+    
+    // Mode tracking
+    const [currentMode, setCurrentMode] = useState<'auto' | 'fast' | 'collaborate' | 'roundtable'>(mode);
+    const [modeOpen, setModeOpen] = useState(false);
+    const modeRef = useRef<HTMLDivElement>(null);
+
+    // Stable session tracking
+    const [generatedId] = useState(() => crypto.randomUUID());
+    const activeSessionId = restoreSessionId || generatedId;
+    
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [justCreatedId] = useState(() => ({ current: null as string | null }));
+
+    // Keep URL in sync for new sessions via React Router
+    useEffect(() => {
+        if (!restoreSessionId && !searchParams.get('session')) {
+            justCreatedId.current = activeSessionId;
+            setSearchParams({ session: activeSessionId }, { replace: true });
+        }
+    }, [activeSessionId, restoreSessionId, searchParams, setSearchParams]);
+
+    useEffect(() => {
+        if (!modeOpen) return;
+        const h = (e: MouseEvent) => { if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [modeOpen]);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const hasSentInitial = useRef(false);
 
     useEffect(() => {
         if (!restoreSessionId) return;
+        
+        // Bypass fetching history if we *just* created this session and the URL update triggered a prop change.
+        if (justCreatedId.current === restoreSessionId) {
+            justCreatedId.current = null;
+            return;
+        }
+
         const fetchHistory = async () => {
+             // Reset state to avoid leakage from previous sessions
+            setMessages([]);
+            setThinkingProcesses({});
+            setActiveGraphMsgIdx(null);
+            setShowGraphPanel(false);
+
             try {
                 const token = sessionStorage.getItem('loka_token') || localStorage.getItem('loka_token');
                 const headers: Record<string, string> = {};
@@ -600,11 +596,85 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                 const res = await fetch(`${API_BASE}/chat/history?sessionId=${restoreSessionId}`, { headers });
                 if (res.ok) {
                     const data = await res.json();
-                    setMessages(data.map((m: any) => ({
-                        role: m.role,
-                        content: m.content,
-                        timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    })));
+                    const newThinking: Record<number, ThinkingProcess> = {};
+                    const lastAssistantIdx = data.map((d: any)=>d.role).lastIndexOf('assistant');
+
+                    setMessages(data.map((m: any, idx: number) => {
+                        if (m.metadata) {
+                            try {
+                                const parsedMeta = JSON.parse(m.metadata);
+                                if (parsedMeta && parsedMeta.mode === 'collaborate' || parsedMeta.mode === 'roundtable') {
+                                    const agents = AGENT_COUNCIL.map((a, aIdx) => {
+                                        const r = parsedMeta.agentResponses && parsedMeta.agentResponses[aIdx];
+                                        return {
+                                            agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
+                                            status: r ? 'completed' : 'waiting',
+                                            summary: r ? r.answer.slice(0, 150) : '',
+                                            details: r ? r.answer : '',
+                                            confidence: r ? Math.round(r.confidence * 100) : 0,
+                                            verdict: r && r.confidence > 0.7 ? 'bullish' : 'neutral',
+                                            steps: [ { label: r ? `${a.name} responded` : 'No response', status: 'done' } ],
+                                        };
+                                    });
+                                    newThinking[idx] = {
+                                        agents: agents as any,
+                                        isActive: false,
+                                        phase: 'persuading',
+                                        consensus: {
+                                            verdict: parsedMeta.confidence > 0.7 ? 'bullish' : 'neutral',
+                                            confidence: Math.round(parsedMeta.confidence * 100),
+                                            duration: parsedMeta.executionTime,
+                                        }
+                                    };
+                                }
+                            } catch (e) {}
+                        }
+                        return {
+                            role: m.role,
+                            content: m.content,
+                            timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        };
+                    }));
+
+                    setThinkingProcesses(newThinking);
+                    if (Object.keys(newThinking).length > 0) {
+                        const maxIdx = Math.max(...Object.keys(newThinking).map(Number));
+                        setActiveGraphMsgIdx(maxIdx);
+                        setShowGraphPanel(true);
+                    }
+
+                    // Reconnection check
+                    if (data.length > 0 && data[data.length - 1].role === 'user') {
+                        socket.emit('agent:chat:check', { sessionId: restoreSessionId }, (res: { isRunning: boolean; mode?: string }) => {
+                            if (res.isRunning) {
+                                setIsStreaming(true);
+                                const msgIdx = data.length;
+                                
+                                setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
+                                
+                                const useConsensusEngine = res.mode === 'collaborate' || res.mode === 'roundtable';
+                                if (useConsensusEngine) {
+                                    const council = AGENT_COUNCIL;
+                                    const agents: AgentThought[] = council.map(a => ({
+                                        agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
+                                        status: 'analyzing' as const, summary: '', 
+                                        steps: [{ label: `${a.name} reconnecting...`, status: 'active' as const }],
+                                    }));
+                                    setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
+                                    setActiveGraphMsgIdx(msgIdx);
+                                    setShowGraphPanel(true);
+                                } else {
+                                    setActiveGraphMsgIdx(msgIdx);
+                                    setShowGraphPanel(true);
+                                    simulateThinking(msgIdx);
+                                }
+
+                                window.dispatchEvent(new CustomEvent('session-started', { 
+                                    detail: { id: restoreSessionId, title: data[0].content.slice(0, 60), agentId: 'superagent' } 
+                                }));
+                            }
+                        });
+                    }
                 }
             } catch (err) {
                 console.error('Failed to load chat history', err);
@@ -706,86 +776,170 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
         }));
     }, [agentCount]);
 
-    // ─── Send to AI (streaming) ─────────────────────────────
-    const sendToAI = useCallback(async (text: string, existingMessages?: Message[]) => {
-        setIsStreaming(true);
+    /* Socket listeners */
+    useEffect(() => {
+        const onStarted = (data: any) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setShowGraphPanel(true);
+            setIsStreaming(true);
+        };
 
-        // Compute correct index from actual current messages
+        const onProgress = (data: { content: string; sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (!last || last.role !== 'assistant') {
+                    updated.push({ role: 'assistant', content: data.content, timestamp: new Date().toLocaleTimeString(), isStreaming: true });
+                } else {
+                    updated[updated.length - 1] = { ...last, content: data.content };
+                }
+                return updated;
+            });
+        };
+
+        const onStreamDone = (data: { content: string; sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(false);
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (last && last.role === 'assistant') {
+                    updated[updated.length - 1] = { ...last, content: data.content, isStreaming: false };
+                }
+                return updated;
+            });
+            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
+        };
+
+        const onConsensusDone = (data: { result: any; sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(false);
+
+            setMessages(prev => {
+                const updated = [...prev];
+                const msgIdx = updated.length - 1; // Assuming the streaming blank message is last
+                if (updated[msgIdx] && updated[msgIdx].role === 'assistant') {
+                    const finalAnswer = data.result.consensus?.finalAnswer || 'No consensus reached.';
+                    updated[msgIdx] = { ...updated[msgIdx], content: finalAnswer, isStreaming: false, timestamp: new Date().toLocaleTimeString() };
+                }
+                return updated;
+            });
+
+            setThinkingProcesses(prev => {
+                const keys = Object.keys(prev).map(Number).sort((a,b)=>b-a);
+                if (keys.length === 0) return prev;
+                const msgIdx = keys[0];
+
+                const tp = prev[msgIdx];
+                if (!tp) return prev;
+
+                const updatedAgents = tp.agents.map((agent: any, idx: number) => {
+                    const realResponse = data.result.consensus.agentResponses[idx];
+                    if (realResponse) {
+                        return {
+                            ...agent,
+                            status: 'completed',
+                            summary: realResponse.answer.slice(0, 150),
+                            details: realResponse.answer,
+                            confidence: Math.round(realResponse.confidence * 100),
+                            verdict: realResponse.confidence > 0.7 ? 'bullish' : 'neutral',
+                            steps: [{ label: `${agent.agentName} responded`, status: 'done' }],
+                        };
+                    }
+                    return { ...agent, status: 'completed', steps: [{ label: 'No response', status: 'done' }] };
+                });
+
+                return {
+                    ...prev, [msgIdx]: {
+                        ...tp,
+                        agents: updatedAgents as any,
+                        isActive: false,
+                        phase: 'persuading',
+                        consensus: {
+                            verdict: data.result.consensus.confidence > 0.7 ? 'bullish' : 'neutral',
+                            confidence: Math.round(data.result.consensus.confidence * 100),
+                            duration: data.result.consensus.executionTime,
+                        },
+                    }
+                };
+            });
+            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
+        };
+
+        const onError = (data: { error: string; sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(false);
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (last && last.role === 'assistant') {
+                    updated[updated.length - 1] = { ...last, content: `⚠️ Error: ${data.error}`, isStreaming: false };
+                } else {
+                    updated.push({ role: 'assistant', content: `⚠️ Error: ${data.error}`, timestamp: new Date().toLocaleTimeString() });
+                }
+                return updated;
+            });
+            setThinkingProcesses(prev => {
+                const keys = Object.keys(prev).map(Number).sort((a,b)=>b-a);
+                if (keys.length === 0) return prev;
+                return { ...prev, [keys[0]]: { ...prev[keys[0]], isActive: false } };
+            });
+            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
+        };
+
+        socket.on('agent:chat:started', onStarted);
+        socket.on('agent:chat:progress', onProgress);
+        socket.on('agent:chat:stream_done', onStreamDone);
+        socket.on('agent:chat:consensus_done', onConsensusDone);
+        socket.on('agent:chat:error', onError);
+
+        return () => {
+            socket.off('agent:chat:started', onStarted);
+            socket.off('agent:chat:progress', onProgress);
+            socket.off('agent:chat:stream_done', onStreamDone);
+            socket.off('agent:chat:consensus_done', onConsensusDone);
+            socket.off('agent:chat:error', onError);
+        };
+    }, [restoreSessionId, activeSessionId, currentMode]);
+
+    // ─── Send to AI (WebSocket) ─────────────────────────────
+    const sendToAI = useCallback((text: string, existingMessages?: Message[]) => {
+        // Socket handles everything via server now!
         const currentMessages = existingMessages ?? [];
-        const msgIdx = currentMessages.length; // index where assistant msg will be
+        const msgIdx = currentMessages.length; // Will be the index for assistant bubble
+        
+        socket.emit('agent:chat', { content: text, mode: currentMode, sessionId: activeSessionId, agentId: 'superagent' });
+
+        window.dispatchEvent(new CustomEvent('session-started', { 
+            detail: { id: activeSessionId, title: text.slice(0, 60), agentId: 'superagent' } 
+        }));
 
         setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
-        
-        // Open graph automatically out of the box
-        setActiveGraphMsgIdx(msgIdx);
-        setShowGraphPanel(true);
 
-        // Run thinking simulation
-        await simulateThinking(msgIdx);
-
-        try {
-            const abortController = new AbortController();
-            abortControllerRef.current = abortController;
-
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-            const token = sessionStorage.getItem('loka_token');
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            const response = await fetch(`${API_BASE}/chat/stream`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ content: text, sessionId }),
-                signal: abortController.signal,
-            });
-
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const reader = response.body!.getReader();
-            const decoder = new TextDecoder();
-            let fullContent = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6).trim();
-                        if (data === '[DONE]') continue;
-                        try {
-                            const parsed = JSON.parse(data);
-                            if (parsed.content) {
-                                fullContent += parsed.content;
-                                setMessages(prev => {
-                                    const updated = [...prev];
-                                    updated[msgIdx] = { ...updated[msgIdx], content: fullContent };
-                                    return updated;
-                                });
-                            }
-                        } catch { /* skip malformed */ }
-                    }
-                }
-            }
-
-            setMessages(prev => {
-                const updated = [...prev];
-                updated[msgIdx] = { ...updated[msgIdx], isStreaming: false, timestamp: new Date().toLocaleTimeString() };
-                return updated;
-            });
-        } catch (err: any) {
-            if (err.name === 'AbortError') return;
-            // Fallback: show error
-            setMessages(prev => {
-                const updated = [...prev];
-                updated[msgIdx] = { ...updated[msgIdx], content: 'Sorry, I encountered an error. Please try again.', isStreaming: false };
-                return updated;
-            });
-        } finally {
-            setIsStreaming(false);
-            abortControllerRef.current = null;
+        const useConsensusEngine = currentMode === 'collaborate' || currentMode === 'roundtable';
+        if (useConsensusEngine) {
+            const council = AGENT_COUNCIL;
+            const agents: AgentThought[] = council.map(a => ({
+                agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
+                status: 'analyzing' as const, summary: '', 
+                steps: [{ label: `${a.name} is thinking...`, status: 'active' as const }],
+            }));
+            setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
+            setActiveGraphMsgIdx(msgIdx);
+            setShowGraphPanel(true);
+        } else {
+            setActiveGraphMsgIdx(msgIdx);
+            setShowGraphPanel(true);
+            simulateThinking(msgIdx); // purely visual for auto/fast mode
         }
-    }, [sessionId, simulateThinking]);
+    }, [activeSessionId, simulateThinking, currentMode]);
 
     // ─── Auto-send initial message ──────────────────────────
     useEffect(() => {
@@ -880,8 +1034,8 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                                     />
                                                 )}
                                                 {msg.content ? (
-                                                    <div className="text-[13px] text-gray-700 leading-relaxed space-y-1">
-                                                        {renderMarkdown(msg.content)}
+                                                    <div className="text-[13px] text-gray-700 leading-relaxed markdown-content">
+                                                        {renderMarkdownContent(msg.content)}
                                                     </div>
                                                 ) : msg.isStreaming ? (
                                                     <div className="flex items-center gap-1 py-1">
@@ -905,7 +1059,43 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                     {/* Input */}
                     <div className="shrink-0 pt-2 pb-8 px-4 md:px-8 bg-gradient-to-t from-white via-white to-transparent">
                         <div className="max-w-3xl mx-auto">
-                            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl shadow-sm px-4 py-2 focus-within:border-gray-300 focus-within:shadow-md transition-all">
+                            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl shadow-sm pl-2 pr-4 py-2 focus-within:border-gray-300 focus-within:shadow-md transition-all">
+                                <div className="relative shrink-0" ref={modeRef}>
+                                    <button
+                                        onClick={() => setModeOpen(v => !v)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-all"
+                                    >
+                                        {React.createElement(MODES.find(m => m.id === currentMode)!.icon)}
+                                        <span className="hidden sm:inline">{MODES.find(m => m.id === currentMode)?.label}</span>
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    </button>
+                                    {modeOpen && (
+                                        <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden z-30" style={{ animation: 'menu-pop 0.15s ease-out' }}>
+                                            {MODES.map(m => {
+                                                const MIcon = m.icon;
+                                                const isActive = currentMode === m.id;
+                                                return (
+                                                <button
+                                                    key={m.id}
+                                                    onClick={() => { setCurrentMode(m.id); setModeOpen(false); }}
+                                                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors ${isActive ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                                                >
+                                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                        <MIcon />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className={`text-[12px] font-semibold ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>{m.label}</p>
+                                                        <p className="text-[10px] text-gray-400 leading-tight">{m.desc}</p>
+                                                    </div>
+                                                    {isActive && (
+                                                        <svg className="w-3.5 h-3.5 text-gray-900 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                    )}
+                                                </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
                                 <input
                                     type="text"
                                     value={inputText}

@@ -104,6 +104,27 @@ class ApiClient {
     return this.request<{ url: string; appId: string }>('/voice/iflytek-token');
   }
 
+  async runConsensus(mode: string, message: string) {
+    return this.request<{
+      success: boolean;
+      groupId: string;
+      mode: string;
+      consensus: {
+        id: string;
+        finalAnswer: string;
+        confidence: number;
+        agentResponses: Array<{ agentId: string; answer: string; confidence: number }>;
+        weightedVotes: Record<string, number>;
+        roundsUsed: number;
+        executionTime: number;
+        consensusReached: boolean;
+      };
+    }>('/agents/consensus', {
+      method: 'POST',
+      body: JSON.stringify({ mode, message }),
+    });
+  }
+
   async syncPrivyUser(data: { email?: string; name?: string; avatar?: string }) {
     return this.request<any>('/auth/sync', {
       method: 'POST',

@@ -28,6 +28,7 @@ import uploadRoutes from './routes/upload.js';
 import enterpriseRoutes from './routes/enterprise.js';
 import stripeRoutes from './routes/stripe.js';
 import voiceRoutes from './routes/voice.js';
+import agentsRoutes from './routes/agents.js';
 import path from 'path';
 import prisma from './db.js';
 
@@ -112,6 +113,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/enterprise', enterpriseRoutes);
 app.use('/api/stripe', stripeRoutes);
 app.use('/api/voice', voiceRoutes);
+app.use('/api/agents', agentsRoutes);
 
 // Static file serving for uploads
 app.use('/api/uploads', express.static(path.join(process.cwd(), 'public/uploads')));

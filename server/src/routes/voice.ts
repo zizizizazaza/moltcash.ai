@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { verifyToken } from '../middleware/auth.js';
 import * as crypto from 'crypto';
 
 const router = Router();
 
-router.get('/iflytek-token', verifyToken, (req: Request, res: Response) => {
+router.get('/iflytek-token', (req: Request, res: Response) => {
   const appId = process.env.IFLYTEK_APPID;
   const apiKey = process.env.IFLYTEK_API_KEY;
   const apiSecret = process.env.IFLYTEK_API_SECRET;
