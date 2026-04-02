@@ -35,11 +35,11 @@ router.get('/conversations', authRequired, async (req: AuthRequest, res, next) =
     const messages = await prisma.chatMessage.findMany({
       where: { userId: req.userId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, sessionId: true, role: true, content: true, createdAt: true },
+      select: { id: true, sessionId: true, role: true, content: true, createdAt: true, agentId: true },
     });
 
     // Group by sessionId (null sessionId = legacy, group by time gap)
-    const sessionMap = new Map<string, { id: string; title: string; time: string; messageCount: number; firstMessageAt: string; lastMessageAt: string }>();
+    const sessionMap = new Map<string, { id: string; title: string; time: string; messageCount: number; firstMessageAt: string; lastMessageAt: string; agentId?: string }>();
 
     for (const msg of messages) {
       const sid = msg.sessionId || '__legacy__';
@@ -55,6 +55,7 @@ router.get('/conversations', authRequired, async (req: AuthRequest, res, next) =
           messageCount: 1,
           firstMessageAt: msg.createdAt.toISOString(),
           lastMessageAt: msg.createdAt.toISOString(),
+          agentId: msg.agentId || undefined,
         });
       } else {
         existing.messageCount++;

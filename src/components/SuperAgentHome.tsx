@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSpeechToText } from '../hooks/useSpeechToText';
 import { I, InputIcons, UseCaseIcons } from './Icons';
 import { QUICK_ACTIONS, USE_CASES, AGENT_GUIDES, FEATURED_GROUPS } from '../constants';
 import SuperAgentChat from './SuperAgentChat';
 
 const SuperAgentHome: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sessionToRestore = searchParams.get('session');
   const [input, setInput] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
@@ -13,6 +16,11 @@ const SuperAgentHome: React.FC = () => {
   const [modeOpen, setModeOpen] = useState(false);
   const modeRef = useRef<HTMLDivElement>(null);
   const [chatMessage, setChatMessage] = useState<string | null>(null);
+
+  const { isListening, startListening, stopListening, isAvailable } = useSpeechToText({
+    onResult: (text) => setInput(text),
+    language: 'zh-CN'
+  });
   const [phIdx, setPhIdx] = useState(0);
 
   const PLACEHOLDERS = [
@@ -44,6 +52,10 @@ const SuperAgentHome: React.FC = () => {
     return () => document.removeEventListener('mousedown', h);
   }, [modeOpen]);
 
+  if (sessionToRestore) {
+    return <SuperAgentChat restoreSessionId={sessionToRestore} onBack={() => { setSearchParams({}); }} />;
+  }
+
   if (chatMessage) {
     return <SuperAgentChat initialMessage={chatMessage} onBack={() => setChatMessage(null)} />;
   }
@@ -67,7 +79,6 @@ const SuperAgentHome: React.FC = () => {
           {/* Input Box */}
           <div className="input-box hero-input bg-white border border-gray-200 rounded-2xl" style={{ boxShadow: '0 2px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)' }}>
             <textarea
-              key={phIdx}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => {
@@ -82,7 +93,7 @@ const SuperAgentHome: React.FC = () => {
               }}
               placeholder={PLACEHOLDERS[phIdx]}
               rows={3}
-              className="ph-fade-in w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none"
+              className="w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none transition-colors"
             />
             {/* Input toolbar */}
             <div className="flex items-center justify-between px-3 pb-3">
@@ -143,18 +154,33 @@ const SuperAgentHome: React.FC = () => {
                 })()}
               </div>
               <div className="flex items-center gap-2">
-                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Attach file">
-                  <InputIcons.Attach />
-                </button>
-                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Add image">
-                  <InputIcons.Image />
-                </button>
-                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Voice input">
-                  <InputIcons.Mic />
-                </button>
+                {selectedAgent !== 'research' && (
+                  <>
+                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Attach file">
+                      <InputIcons.Attach />
+                    </button>
+                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Add image">
+                      <InputIcons.Image />
+                    </button>
+                  </>
+                )}
+                {isAvailable && (
+                  <button 
+                    onClick={isListening ? stopListening : startListening}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                      isListening ? 'text-red-500 bg-red-50 animate-pulse' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    }`} 
+                    title={isListening ? 'Stop recording' : 'Voice input'}
+                  >
+                    <InputIcons.Mic />
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (input.trim()) {
+                      // Stop listening if user manually sends
+                      if (isListening) stopListening();
+
                       if (selectedAgent === 'research') {
                         navigate('/signal-radar', { state: { initialTopic: input.trim() } });
                       } else {

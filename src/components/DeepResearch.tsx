@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../services/socket';
+import { api } from '../services/api';
 import * as d3 from 'd3';
 
 type Message = {
@@ -11,6 +12,7 @@ type Message = {
   logs?: string[];
   isRunning?: boolean;
   isError?: boolean;
+  timestamp?: string;
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -214,6 +216,8 @@ function parseLine(text: string): React.ReactNode {
 export default function DeepResearch() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionToRestore = searchParams.get('session');
   const initialTopic = location.state?.initialTopic || '';
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -235,53 +239,132 @@ export default function DeepResearch() {
 
   useEffect(() => { scrollToBottom(); }, [messages]);
 
+  const [sessionId] = useState(() => sessionToRestore || Date.now().toString());
+
   /* Socket listeners */
   useEffect(() => {
-    const onStarted = () => {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', content: '', logs: [], isRunning: true }]);
+    const onStarted = (data: any) => {
+      // Add if missing
+      setMessages(prev => {
+        if (!data.sessionId || sessionToRestore === data.sessionId || (!sessionToRestore && messages.some(m => m.isRunning))) {
+           // We might already have it or we are in the right session
+           return [...prev, { id: Date.now().toString(), role: 'agent', content: '', logs: [], isRunning: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }];
+        }
+        return prev;
+      });
       setShowGraph(true);
     };
-    const onProgress = (data: { log: string }) => {
+    const onProgress = (data: { log: string; sessionId?: string }) => {
+      // Validate we are looking at the right session
+      if (data.sessionId && sessionToRestore && data.sessionId !== sessionToRestore) return;
+      if (!sessionToRestore && data.sessionId && sessionId !== data.sessionId) return;
+      
       setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (!last || last.role !== 'agent' || !last.isRunning) return prev;
-        const updated = [...prev];
-        updated[updated.length - 1] = { ...last, logs: [...(last.logs || []), data.log] };
+        let updated = [...prev];
+        let last = updated[updated.length - 1];
+        // Reconnection magic: if we don't have an active agent message, inject it!
+        if (!last || last.role !== 'agent' || !last.isRunning) {
+          updated.push({ id: Date.now().toString(), role: 'agent', content: '', logs: [data.log], isRunning: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+        } else {
+          updated[updated.length - 1] = { ...last, logs: [...(last.logs || []), data.log] };
+        }
         return updated;
       });
     };
-    const onDone = (data: { summary: string }) => {
+    const onDone = (data: { summary: string; sessionId?: string }) => {
+      if (data.sessionId && sessionToRestore && data.sessionId !== sessionToRestore) return;
+      if (!sessionToRestore && data.sessionId && sessionId !== data.sessionId) return;
+
       setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (!last || last.role !== 'agent') return prev;
-        const updated = [...prev];
-        updated[updated.length - 1] = { ...last, content: data.summary, isRunning: false };
+        let updated = [...prev];
+        let last = updated[updated.length - 1];
+        if (!last || last.role !== 'agent') {
+          updated.push({ id: Date.now().toString(), role: 'agent', content: data.summary, isRunning: false, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+        } else {
+          updated[updated.length - 1] = { ...last, content: data.summary, isRunning: false };
+        }
         return updated;
       });
+      window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || sessionId } }));
     };
-    const onError = (data: { error: string }) => {
+    const onError = (data: { error: string; sessionId?: string }) => {
+      if (data.sessionId && sessionToRestore && data.sessionId !== sessionToRestore) return;
+      if (!sessionToRestore && data.sessionId && sessionId !== data.sessionId) return;
+
       setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (!last || last.role !== 'agent') return prev;
-        const updated = [...prev];
-        updated[updated.length - 1] = { ...last, content: data.error, isError: true, isRunning: false };
+        let updated = [...prev];
+        let last = updated[updated.length - 1];
+        if (!last || last.role !== 'agent') {
+          updated.push({ id: Date.now().toString(), role: 'agent', content: data.error, isError: true, isRunning: false, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+        } else {
+          updated[updated.length - 1] = { ...last, content: data.error, isError: true, isRunning: false };
+        }
         return updated;
       });
+      window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || sessionId } }));
     };
     socket.on('agent:research:started', onStarted);
     socket.on('agent:research:progress', onProgress);
     socket.on('agent:research:done', onDone);
     socket.on('agent:research:error', onError);
     return () => { socket.off('agent:research:started', onStarted); socket.off('agent:research:progress', onProgress); socket.off('agent:research:done', onDone); socket.off('agent:research:error', onError); };
-  }, []);
+  }, [sessionToRestore, sessionId, messages.length]);
 
   const sendQuery = (query: string) => {
     if (!query.trim()) return;
-    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: query, topic: query }]);
-    socket.emit('agent:research', { topic: query, deep: isDeep, days });
+    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: query, topic: query, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+    socket.emit('agent:research', { topic: query, deep: isDeep, days, sessionId });
+    window.dispatchEvent(new CustomEvent('session-started', { 
+      detail: { id: sessionId, title: query.slice(0, 60), agentId: 'research' } 
+    }));
   };
 
-  useEffect(() => { if (initialTopic && !hasSentInitial.current) { hasSentInitial.current = true; sendQuery(initialTopic); } }, [initialTopic]);
+  useEffect(() => { 
+    if (sessionToRestore) return; // Don't auto-send if restoring
+    if (initialTopic && !hasSentInitial.current) { 
+      hasSentInitial.current = true; sendQuery(initialTopic); 
+    } 
+  }, [initialTopic, sessionToRestore]);
+
+  useEffect(() => {
+    if (!sessionToRestore) return;
+    const loadHistory = async () => {
+      try {
+        const history = await api.getChatHistory(undefined, undefined, sessionToRestore);
+        const formatted: Message[] = history.map(h => ({
+          id: h.id,
+          role: h.role === 'assistant' ? 'agent' : 'user',
+          content: h.content,
+          topic: h.role === 'user' ? h.content : undefined,
+          timestamp: new Date(h.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }));
+        setMessages(formatted);
+
+        // Reconnect active state if the last message was the user's and backend is still processing this session
+        if (formatted.length > 0 && formatted[formatted.length - 1].role === 'user') {
+          socket.emit('agent:research:check', { sessionId: sessionToRestore }, (res: { isRunning: boolean }) => {
+            if (res.isRunning) {
+              setMessages(prev => {
+                // Double check if we haven't received a progress/done in the fraction of a second since emit
+                const last = prev[prev.length - 1];
+                if (last && last.role === 'user') {
+                  return [...prev, { id: 'reconnected-check', role: 'agent', content: '', logs: ['AI Synthesis in progress...'], isRunning: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }];
+                }
+                return prev;
+              });
+              // Revive sidebar spinner
+              window.dispatchEvent(new CustomEvent('session-started', { 
+                detail: { id: sessionToRestore, title: formatted[0].content.slice(0, 60), agentId: 'research' } 
+              }));
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load deep research history', err);
+      }
+    };
+    loadHistory();
+  }, [sessionToRestore]);
 
   const handleSend = () => {
     const t = input.trim();
@@ -346,10 +429,11 @@ export default function DeepResearch() {
                 return (
                   <div key={msg.id}>
                     {isUser ? (
-                      <div className="flex justify-end">
+                      <div className="flex flex-col items-end w-full gap-1">
                         <div className="max-w-[72%] px-4 py-3 bg-gray-900 text-white rounded-2xl rounded-br-sm shadow-sm">
-                          <p className="text-[13px] leading-relaxed">{msg.content}</p>
+                          <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
                         </div>
+                        {msg.timestamp && <span className="text-[10px] text-gray-400 font-medium px-1">{msg.timestamp}</span>}
                       </div>
                     ) : (
                       <div className="flex items-start gap-3">
@@ -411,6 +495,9 @@ export default function DeepResearch() {
                             <div className="text-[13px] text-gray-700 leading-relaxed space-y-1">
                               {renderMarkdownContent(msg.content)}
                             </div>
+                          )}
+                          {!msg.isRunning && msg.timestamp && (
+                            <div className="mt-2 text-[10px] text-gray-400 font-medium">{msg.timestamp}</div>
                           )}
                         </div>
                       </div>

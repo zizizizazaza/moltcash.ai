@@ -4,11 +4,13 @@ import { config } from '../config.js';
 import { verifyToken } from '../middleware/auth.js';
 import prisma from '../db.js';
 import { researchService } from '../services/research.service.js';
+import * as crypto from 'crypto';
 
 let io: Server;
 
 // ── Online status tracking ──
 const onlineUsers = new Set<string>();
+const activeResearchSessions = new Set<string>();
 
 export function setupSocket(server: HttpServer) {
   io = new Server(server, {
@@ -86,21 +88,62 @@ export function setupSocket(server: HttpServer) {
       }
     });
 
+    socket.on('agent:research:check', (data: { sessionId: string }, callback: (res: { isRunning: boolean }) => void) => {
+      if (typeof callback === 'function') {
+        callback({ isRunning: activeResearchSessions.has(data.sessionId) });
+      }
+    });
+
     // ── Deep Research Agent ──
-    socket.on('agent:research', async (data: { topic: string; deep?: boolean; days?: number }) => {
+    socket.on('agent:research', async (data: { topic: string; deep?: boolean; days?: number; sessionId?: string }) => {
       if (!data?.topic) return;
       socket.emit('agent:research:started', { topic: data.topic });
+
+      const sessionId = data.sessionId || crypto.randomUUID();
+      activeResearchSessions.add(sessionId);
+
+      try {
+        await prisma.chatMessage.create({
+          data: {
+            userId,
+            sessionId,
+            role: 'user',
+            content: data.topic,
+            agentId: 'research'
+          }
+        });
+      } catch (dbErr) {
+        console.error('Failed to save user message:', dbErr);
+      }
+
       try {
         const result = await researchService.runDeepResearch(
           data.topic,
           { deep: data.deep, days: data.days },
           (log) => {
-            socket.emit('agent:research:progress', { topic: data.topic, log });
+            emitToUser(userId, 'agent:research:progress', { topic: data.topic, sessionId, log });
           }
         );
-        socket.emit('agent:research:done', result);
+
+        try {
+          await prisma.chatMessage.create({
+            data: {
+              userId,
+              sessionId,
+              role: 'assistant',
+              content: result.summary,
+              agentId: 'research'
+            }
+          });
+        } catch (dbErr) {
+          console.error('Failed to save assistant message:', dbErr);
+        }
+
+        emitToUser(userId, 'agent:research:done', { ...result, sessionId });
+        activeResearchSessions.delete(sessionId);
       } catch (err: any) {
-        socket.emit('agent:research:error', { topic: data.topic, error: err.message });
+        emitToUser(userId, 'agent:research:error', { topic: data.topic, sessionId, error: err.message });
+        activeResearchSessions.delete(sessionId);
       }
     });
 

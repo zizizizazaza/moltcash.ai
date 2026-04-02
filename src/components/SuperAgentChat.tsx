@@ -574,20 +574,44 @@ const renderMarkdown = (text: string) => {
 // SuperAgentChat — Main Component
 // ═════════════════════════════════════════════════════════════
 interface SuperAgentChatProps {
-    initialMessage: string;
+    initialMessage?: string;
+    restoreSessionId?: string;
     onBack: () => void;
     agentCount?: number;   // how many agents to use (default 2)
 }
 
-const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack, agentCount = 2 }) => {
+const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restoreSessionId, onBack, agentCount = 2 }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const [thinkingProcesses, setThinkingProcesses] = useState<Record<number, ThinkingProcess>>({});
-    const [sessionId] = useState(() => crypto.randomUUID());
+    const [sessionId] = useState(() => restoreSessionId || crypto.randomUUID());
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const hasSentInitial = useRef(false);
+
+    useEffect(() => {
+        if (!restoreSessionId) return;
+        const fetchHistory = async () => {
+            try {
+                const token = sessionStorage.getItem('loka_token') || localStorage.getItem('loka_token');
+                const headers: Record<string, string> = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                const res = await fetch(`${API_BASE}/chat/history?sessionId=${restoreSessionId}`, { headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    setMessages(data.map((m: any) => ({
+                        role: m.role,
+                        content: m.content,
+                        timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    })));
+                }
+            } catch (err) {
+                console.error('Failed to load chat history', err);
+            }
+        };
+        fetchHistory();
+    }, [restoreSessionId]);
     // ─── Knowledge Graph Panel ───────────────────────────────
     const [showGraphPanel, setShowGraphPanel] = useState(false);
     const [activeGraphMsgIdx, setActiveGraphMsgIdx] = useState<number | null>(null);
@@ -765,14 +789,14 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
 
     // ─── Auto-send initial message ──────────────────────────
     useEffect(() => {
-        if (hasSentInitial.current) return;
+        if (hasSentInitial.current || restoreSessionId || !initialMessage) return;
         hasSentInitial.current = true;
         const userMsg: Message = { role: 'user', content: initialMessage, timestamp: new Date().toLocaleTimeString() };
         const initialMessages = [userMsg];
         setMessages(initialMessages);
         // Pass the current messages array directly to avoid stale closure
         setTimeout(() => sendToAI(initialMessage, initialMessages), 50);
-    }, [initialMessage, sendToAI]);
+    }, [initialMessage, restoreSessionId, sendToAI]);
 
     // ─── Handle send ────────────────────────────────────────
     const handleSend = () => {
