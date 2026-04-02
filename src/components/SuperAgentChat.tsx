@@ -534,13 +534,22 @@ interface SuperAgentChatProps {
     onBack: () => void;
     agentCount?: number;   // how many agents to use (default 2)
     mode?: 'auto' | 'fast' | 'collaborate' | 'roundtable';
+    initialAgent?: string;
 }
 
-const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restoreSessionId, onBack, agentCount = 2, mode = 'auto' }) => {
+const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restoreSessionId, onBack, agentCount = 2, mode = 'auto', initialAgent }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const [thinkingProcesses, setThinkingProcesses] = useState<Record<number, ThinkingProcess>>({});
+    
+    // Two-Phase Workflow State
+    const [workflowPhase, setWorkflowPhase] = useState<'idle' | 'research' | 'consensus'>('idle');
+    const [researchLogs, setResearchLogs] = useState<string[]>([]);
+    const [researchSummary, setResearchSummary] = useState<string | null>(null);
+    const hasStartedResearch = useRef(false);
+    const [isRouting, setIsRouting] = useState(false);
+
     
     // Mode tracking
     const [currentMode, setCurrentMode] = useState<'auto' | 'fast' | 'collaborate' | 'roundtable'>(mode);
@@ -663,10 +672,6 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                     setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
                                     setActiveGraphMsgIdx(msgIdx);
                                     setShowGraphPanel(true);
-                                } else {
-                                    setActiveGraphMsgIdx(msgIdx);
-                                    setShowGraphPanel(true);
-                                    simulateThinking(msgIdx);
                                 }
 
                                 window.dispatchEvent(new CustomEvent('session-started', { 
@@ -695,86 +700,38 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, thinkingProcesses]);
 
-    // ─── Simulate thinking process ──────────────────────────
-    const simulateThinking = useCallback(async (msgIdx: number) => {
-        const council = AGENT_COUNCIL.slice(0, agentCount);
-        const agents: AgentThought[] = council.map(a => ({
-            agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
-            status: 'waiting', summary: '', steps: a.steps.map(s => ({ label: s, status: 'pending' as const })),
-        }));
-        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
+    // ─── Send to AI (WebSocket) ─────────────────────────────
+    const sendToAI = useCallback((text: string, existingMessages?: Message[]) => {
+        // Socket handles everything via server now!
+        const currentMessages = existingMessages ?? [];
+        const msgIdx = currentMessages.length; // Will be the index for assistant bubble
+        
+        socket.emit('agent:chat', { content: text, mode: currentMode, sessionId: activeSessionId, agentId: 'superagent' });
 
-        await Promise.all(agents.map(async (agent, aIdx) => {
-            // Set to analyzing
-            setThinkingProcesses(prev => {
-                const tp = { ...prev[msgIdx] };
-                const updatedAgents = [...tp.agents];
-                updatedAgents[aIdx] = { ...updatedAgents[aIdx], status: 'analyzing' };
-                return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
-            });
-
-            const steps = council[aIdx].steps;
-            for (let sIdx = 0; sIdx < steps.length; sIdx++) {
-                await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
-                setThinkingProcesses(prev => {
-                    const tp = { ...prev[msgIdx] };
-                    const updatedAgents = [...tp.agents];
-                    const updatedSteps = [...(updatedAgents[aIdx].steps || [])];
-                    if (sIdx > 0) updatedSteps[sIdx - 1] = { ...updatedSteps[sIdx - 1], status: 'done' };
-                    // Inject mock detailType for specific steps
-                    let detailType: 'table' | 'news' | undefined;
-                    if (updatedSteps[sIdx].label.includes('financial statements') || updatedSteps[sIdx].label.includes('Stock OHLC Data')) detailType = 'table';
-                    if (updatedSteps[sIdx].label.includes('competitive landscape') || updatedSteps[sIdx].label.includes('news & events')) detailType = 'news';
-                    updatedSteps[sIdx] = { ...updatedSteps[sIdx], status: 'active', detailType };
-                    updatedAgents[aIdx] = { ...updatedAgents[aIdx], steps: updatedSteps };
-                    return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
-                });
-            }
-
-            // Complete agent
-            await new Promise(r => setTimeout(r, 300));
-            const verdicts: ('bullish' | 'neutral')[] = ['bullish', 'neutral'];
-            const verdict = verdicts[Math.floor(Math.random() * 2)];
-            const confidence = 65 + Math.floor(Math.random() * 30);
-            const summaries = [
-                'Low default probability (2.3%). Revenue growth at 28% MoM exceeds benchmark.',
-                'Moderate risk detected. Revenue concentration >40% in single client. Profit margin adequate at 65%.',
-                'Strong credit profile. Consistent revenue history over 12 months. Diversified customer base across 50+ clients.',
-            ];
-            const summary = summaries[Math.floor(Math.random() * summaries.length)];
-            const details = `Risk Score: ${verdict === 'bullish' ? 'A+' : 'B+'} | Default Probability: ${(Math.random() * 5).toFixed(1)}% | Revenue Stability: ${(75 + Math.random() * 20).toFixed(0)}%`;
-
-            setThinkingProcesses(prev => {
-                const tp = { ...prev[msgIdx] };
-                const updatedAgents = [...tp.agents];
-                const completedSteps = (updatedAgents[aIdx].steps || []).map(s => ({ ...s, status: 'done' as const }));
-                updatedAgents[aIdx] = { ...updatedAgents[aIdx], status: 'completed', summary, details, verdict, confidence, steps: completedSteps };
-                return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
-            });
+        window.dispatchEvent(new CustomEvent('session-started', { 
+            detail: { id: activeSessionId, title: text.slice(0, 60), agentId: 'superagent' } 
         }));
 
-        // Move to evaluating phase
-        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], phase: 'evaluating' } }));
-        await new Promise(r => setTimeout(r, 1200));
+        setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
 
-        // Move to persuading phase
-        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], phase: 'persuading' } }));
-        await new Promise(r => setTimeout(r, 1500));
+        if (currentMode === 'auto') {
+            // Routing will take care of rendering the panel once it resolves
+            return;
+        }
 
-        // Generate consensus
-        setThinkingProcesses(prev => ({
-            ...prev,
-            [msgIdx]: {
-                ...prev[msgIdx],
-                isActive: false,
-                consensus: {
-                    verdict: Math.random() > 0.3 ? 'bullish' : 'neutral',
-                    confidence: 70 + Math.floor(Math.random() * 25),
-                    duration: 2 + Math.random() * 3,
-                },
-            },
-        }));
-    }, [agentCount]);
+        const useConsensusEngine = currentMode === 'collaborate' || currentMode === 'roundtable';
+        if (useConsensusEngine) {
+            const council = AGENT_COUNCIL;
+            const agents: AgentThought[] = council.map(a => ({
+                agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
+                status: 'analyzing' as const, summary: '', 
+                steps: [{ label: `${a.name} is thinking...`, status: 'active' as const }],
+            }));
+            setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
+            setActiveGraphMsgIdx(msgIdx);
+            setShowGraphPanel(true);
+        }
+    }, [activeSessionId, currentMode]);
 
     /* Socket listeners */
     useEffect(() => {
@@ -795,7 +752,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                 if (!last || last.role !== 'assistant') {
                     updated.push({ role: 'assistant', content: data.content, timestamp: new Date().toLocaleTimeString(), isStreaming: true });
                 } else {
-                    updated[updated.length - 1] = { ...last, content: data.content };
+                    updated[updated.length - 1] = { ...last, content: (last.content || '') + data.content };
                 }
                 return updated;
             });
@@ -894,11 +851,87 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
             window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
         };
 
+        const onResearchStarted = (data: any) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setResearchLogs([]);
+        };
+
+        const onResearchProgress = (data: { log: string; sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setResearchLogs(prev => [...prev, data.log]);
+        };
+
+        const onResearchDone = (data: { summary: string; sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            
+            setResearchSummary(data.summary);
+            setResearchLogs(prev => [...prev, '✓ Report generated successfully']);
+            setWorkflowPhase('consensus');
+
+            // Now automatically forward this summary to the multi-agent consensus network
+            // Note: Since we are in an effect callback, we use the initialMessage stored in state/props
+            const fullPrompt = `${initialMessage}\n\n[Signal Radar Intercepted Data]:\n${data.summary}`;
+            const existingMessages: Message[] = [{ role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() }];
+            sendToAI(fullPrompt, existingMessages);
+        };
+
+        const onResearchError = (data: { error: string; sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setResearchLogs(prev => [...prev, `⚠️ Error: ${data.error}`]);
+            setWorkflowPhase('consensus');
+            
+            // Still fallback to regular consensus even if research failed
+            const existingMessages: Message[] = [{ role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() }];
+            sendToAI(initialMessage || '', existingMessages);
+        };
+
+        const onChatRouting = (data: { sessionId: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsRouting(true);
+        };
+
+        const onChatRouted = (data: { sessionId: string; mode: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsRouting(false);
+            setCurrentMode(data.mode as any);
+            
+            // If it resolved to a consensus mode, inject the fake thinking panel now!
+            const useConsensusEngine = data.mode === 'collaborate' || data.mode === 'roundtable';
+            if (useConsensusEngine) {
+                setMessages(prev => {
+                    const msgIdx = prev.length - 1; // Assuming the streaming blank message is last
+                    const council = AGENT_COUNCIL;
+                    const agents: AgentThought[] = council.map(a => ({
+                        agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
+                        status: 'analyzing' as const, summary: '', 
+                        steps: [{ label: `${a.name} is thinking...`, status: 'active' as const }],
+                    }));
+                    setThinkingProcesses(tp => ({ ...tp, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
+                    setActiveGraphMsgIdx(msgIdx);
+                    setShowGraphPanel(true);
+                    return prev;
+                });
+            }
+        };
+
         socket.on('agent:chat:started', onStarted);
         socket.on('agent:chat:progress', onProgress);
         socket.on('agent:chat:stream_done', onStreamDone);
         socket.on('agent:chat:consensus_done', onConsensusDone);
         socket.on('agent:chat:error', onError);
+        socket.on('agent:chat:routing', onChatRouting);
+        socket.on('agent:chat:routed', onChatRouted);
+        
+        socket.on('agent:research:started', onResearchStarted);
+        socket.on('agent:research:progress', onResearchProgress);
+        socket.on('agent:research:done', onResearchDone);
+        socket.on('agent:research:error', onResearchError);
 
         return () => {
             socket.off('agent:chat:started', onStarted);
@@ -906,51 +939,39 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
             socket.off('agent:chat:stream_done', onStreamDone);
             socket.off('agent:chat:consensus_done', onConsensusDone);
             socket.off('agent:chat:error', onError);
+            socket.off('agent:chat:routing', onChatRouting);
+            socket.off('agent:chat:routed', onChatRouted);
+            
+            socket.off('agent:research:started', onResearchStarted);
+            socket.off('agent:research:progress', onResearchProgress);
+            socket.off('agent:research:done', onResearchDone);
+            socket.off('agent:research:error', onResearchError);
         };
-    }, [restoreSessionId, activeSessionId, currentMode]);
-
-    // ─── Send to AI (WebSocket) ─────────────────────────────
-    const sendToAI = useCallback((text: string, existingMessages?: Message[]) => {
-        // Socket handles everything via server now!
-        const currentMessages = existingMessages ?? [];
-        const msgIdx = currentMessages.length; // Will be the index for assistant bubble
-        
-        socket.emit('agent:chat', { content: text, mode: currentMode, sessionId: activeSessionId, agentId: 'superagent' });
-
-        window.dispatchEvent(new CustomEvent('session-started', { 
-            detail: { id: activeSessionId, title: text.slice(0, 60), agentId: 'superagent' } 
-        }));
-
-        setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
-
-        const useConsensusEngine = currentMode === 'collaborate' || currentMode === 'roundtable';
-        if (useConsensusEngine) {
-            const council = AGENT_COUNCIL;
-            const agents: AgentThought[] = council.map(a => ({
-                agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
-                status: 'analyzing' as const, summary: '', 
-                steps: [{ label: `${a.name} is thinking...`, status: 'active' as const }],
-            }));
-            setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
-            setActiveGraphMsgIdx(msgIdx);
-            setShowGraphPanel(true);
-        } else {
-            setActiveGraphMsgIdx(msgIdx);
-            setShowGraphPanel(true);
-            simulateThinking(msgIdx); // purely visual for auto/fast mode
-        }
-    }, [activeSessionId, simulateThinking, currentMode]);
+    }, [restoreSessionId, activeSessionId, currentMode, initialMessage, sendToAI]);
 
     // ─── Auto-send initial message ──────────────────────────
     useEffect(() => {
         if (hasSentInitial.current || restoreSessionId || !initialMessage) return;
         hasSentInitial.current = true;
+        
         const userMsg: Message = { role: 'user', content: initialMessage, timestamp: new Date().toLocaleTimeString() };
         const initialMessages = [userMsg];
         setMessages(initialMessages);
-        // Pass the current messages array directly to avoid stale closure
-        setTimeout(() => sendToAI(initialMessage, initialMessages), 50);
-    }, [initialMessage, restoreSessionId, sendToAI]);
+
+        if (initialAgent === 'research' && (currentMode === 'collaborate' || currentMode === 'roundtable')) {
+            setWorkflowPhase('research');
+            hasStartedResearch.current = true;
+            setTimeout(() => {
+                socket.emit('agent:research', { topic: initialMessage, deep: false, days: 30, sessionId: activeSessionId });
+                window.dispatchEvent(new CustomEvent('session-started', { 
+                    detail: { id: activeSessionId, title: initialMessage.slice(0, 60), agentId: 'superagent' } 
+                }));
+            }, 50);
+        } else {
+            setWorkflowPhase('consensus');
+            setTimeout(() => sendToAI(initialMessage, initialMessages), 50);
+        }
+    }, [initialMessage, restoreSessionId, sendToAI, initialAgent, currentMode, activeSessionId]);
 
     // ─── Handle send ────────────────────────────────────────
     const handleSend = () => {
@@ -1016,13 +1037,27 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                         <div className="flex justify-end">
                                             <div className="max-w-[72%] px-4 py-3 bg-gray-900 text-white rounded-2xl rounded-br-sm shadow-sm">
                                                 <p className="text-[13px] leading-relaxed">{msg.content}</p>
-                                                <p className="text-[9px] text-gray-500 mt-1.5 text-right">{msg.timestamp}</p>
+                                                <p className="text-[9px] text-gray-400 mt-1.5 text-right">{msg.timestamp}</p>
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="flex items-start gap-3">
                                             <div className="w-7 h-7 rounded-xl bg-gray-900 flex items-center justify-center text-white text-[10px] font-black shrink-0 mt-0.5">L</div>
                                             <div className="flex-1 min-w-0">
+                                                {(researchSummary && i === 1) && (
+                                                    <div className="mb-4">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className="w-3.5 h-3.5 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                                                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                            </div>
+                                                            <span className="text-[11px] font-semibold text-gray-600">Phase 1: Signal Radar Intelligence Assembled</span>
+                                                        </div>
+                                                        <div className="ml-5 text-[10px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg p-3 max-h-32 overflow-y-auto">
+                                                            <div className="font-semibold text-gray-700 mb-1">Raw Intelligence Report:</div>
+                                                            {researchSummary.slice(0, 300)}... <span className="text-blue-500 underline cursor-pointer" title={researchSummary}>Hover to view</span>
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 {thinkingProcesses[i] && (
                                                     <ThinkingProcessPanel
                                                         thinking={thinkingProcesses[i]}
@@ -1032,6 +1067,12 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                                             setShowGraphPanel(true);
                                                         }}
                                                     />
+                                                )}
+                                                {isRouting && msg.isStreaming && i === messages.length - 1 && (
+                                                    <div className="mb-3 mt-1 flex items-center gap-2 text-blue-500 font-mono text-[10px]">
+                                                        <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                                        Router Agent: Evaluating intent & scaling capacity...
+                                                    </div>
                                                 )}
                                                 {msg.content ? (
                                                     <div className="text-[13px] text-gray-700 leading-relaxed markdown-content">
@@ -1045,13 +1086,35 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                                     </div>
                                                 ) : null}
                                                 {!msg.isStreaming && msg.content && (
-                                                    <p className="text-[9px] text-gray-300 mt-2">{msg.timestamp}</p>
+                                                    <p className="text-[9px] text-gray-400 mt-2">{msg.timestamp}</p>
                                                 )}
                                             </div>
                                         </div>
                                     )}
                                 </div>
                             ))}
+                            {workflowPhase === 'research' && messages.length === 1 && (
+                                <div className="flex items-start gap-3">
+                                    <div className="w-7 h-7 rounded-xl bg-gray-900 flex items-center justify-center text-white text-[10px] font-black shrink-0 mt-0.5">L</div>
+                                    <div className="flex-1 min-w-0 mt-1">
+                                        <div className="mb-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                                <span className="text-[11px] font-semibold text-gray-500">Phase 1: Signal Radar acquiring intelligence... (This may take up to 5 minutes)</span>
+                                            </div>
+                                            <div className="pl-2 border-l-2 border-gray-100 ml-1.5 space-y-1.5 max-h-64 overflow-y-auto">
+                                                {researchLogs.map((log, lIdx) => (
+                                                    <div key={lIdx} className="text-[10px] text-gray-400 font-mono flex items-start gap-1.5 leading-relaxed">
+                                                        <span className="text-gray-300 mt-0.5">&gt;</span>
+                                                        <span className={log.includes('Error') || log.includes('error') ? 'text-red-400' : ''}>{log}</span>
+                                                    </div>
+                                                ))}
+                                                <div ref={messagesEndRef} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <div ref={messagesEndRef} />
                         </div>
                     </div>

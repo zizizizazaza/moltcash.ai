@@ -71,7 +71,7 @@ const SuperAgentHome: React.FC = () => {
   }
 
   if (chatMessage) {
-    return <SuperAgentChat initialMessage={chatMessage} mode={mode} onBack={() => setChatMessage(null)} />;
+    return <SuperAgentChat initialMessage={chatMessage} mode={mode} initialAgent={selectedAgent || undefined} onBack={() => setChatMessage(null)} />;
   }
 
   return (
@@ -98,7 +98,7 @@ const SuperAgentHome: React.FC = () => {
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
                   e.preventDefault();
-                  if (selectedAgent === 'research') {
+                  if (selectedAgent === 'research' && mode !== 'collaborate' && mode !== 'roundtable') {
                     navigate('/signal-radar', { state: { initialTopic: input.trim() } });
                   } else {
                     setChatMessage(input.trim());
@@ -195,7 +195,7 @@ const SuperAgentHome: React.FC = () => {
                       // Stop listening if user manually sends
                       if (isListening) stopListening();
 
-                      if (selectedAgent === 'research') {
+                      if (selectedAgent === 'research' && mode !== 'collaborate' && mode !== 'roundtable') {
                         navigate('/signal-radar', { state: { initialTopic: input.trim() } });
                       } else {
                         setChatMessage(input.trim());
