@@ -37,6 +37,20 @@ const SuperAgentHome: React.FC = () => {
     return () => clearInterval(id);
   }, [input]);
 
+  // Reset local state when URL is cleared (e.g., clicking "New Chat" in Sidebar)
+  useEffect(() => {
+    if (!sessionToRestore) {
+      setChatMessage(null);
+      setInput('');
+      setSelectedAgent(null);
+      setSelectedScenario(null);
+    } else {
+      // Once we have an active session, clear the temporary chatMessage
+      // so it doesn't linger and catch the render cycle when navigating back to home.
+      setChatMessage(null);
+    }
+  }, [sessionToRestore]);
+
   const MODES = [
     { id: 'auto' as const, label: 'Auto', desc: 'System picks the best mode for you', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
     { id: 'fast' as const, label: 'Fast', desc: 'Single agent, quick response', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
@@ -57,7 +71,7 @@ const SuperAgentHome: React.FC = () => {
   }
 
   if (chatMessage) {
-    return <SuperAgentChat initialMessage={chatMessage} onBack={() => setChatMessage(null)} />;
+    return <SuperAgentChat initialMessage={chatMessage} mode={mode} onBack={() => setChatMessage(null)} />;
   }
 
   return (

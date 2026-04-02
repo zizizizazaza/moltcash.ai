@@ -4,13 +4,17 @@ import { config } from '../config.js';
 import { verifyToken } from '../middleware/auth.js';
 import prisma from '../db.js';
 import { researchService } from '../services/research.service.js';
+import { LokaAIService } from '../services/ai.service.js';
+import { runConsensusEngine } from '../services/consensus.service.js';
 import * as crypto from 'crypto';
 
 let io: Server;
+const aiService = new LokaAIService();
 
 // ── Online status tracking ──
 const onlineUsers = new Set<string>();
 const activeResearchSessions = new Set<string>();
+const activeChatSessions = new Map<string, string>();
 
 export function setupSocket(server: HttpServer) {
   io = new Server(server, {
@@ -144,6 +148,137 @@ export function setupSocket(server: HttpServer) {
       } catch (err: any) {
         emitToUser(userId, 'agent:research:error', { topic: data.topic, sessionId, error: err.message });
         activeResearchSessions.delete(sessionId);
+      }
+    });
+
+    // ── SuperAgent Chat (Streaming & Consensus) ──
+    socket.on('agent:chat:check', (data: { sessionId: string }, callback: (res: { isRunning: boolean; mode?: string }) => void) => {
+      if (typeof callback === 'function') {
+        callback({ isRunning: activeChatSessions.has(data.sessionId), mode: activeChatSessions.get(data.sessionId) });
+      }
+    });
+
+    socket.on('agent:chat', async (data: { content: string; mode: string; sessionId?: string; agentId?: string }) => {
+      if (!data?.content) return;
+      
+      const sessionId = data.sessionId || crypto.randomUUID();
+      const mode = data.mode || 'auto';
+      const useConsensus = mode === 'collaborate' || mode === 'roundtable';
+      
+      activeChatSessions.set(sessionId, mode);
+
+      socket.emit('agent:chat:started', { content: data.content, sessionId, mode });
+
+      try {
+        await prisma.chatMessage.create({
+          data: {
+            userId,
+            sessionId,
+            role: 'user',
+            content: data.content,
+            agentId: data.agentId || 'superagent'
+          }
+        });
+      } catch (dbErr) {
+        console.error('Failed to save chat user message:', dbErr);
+      }
+
+      try {
+        if (useConsensus) {
+          // Consensus Mode
+          const result = await runConsensusEngine(userId, mode, data.content);
+          
+          try {
+            await prisma.chatMessage.create({
+              data: {
+                userId,
+                sessionId,
+                role: 'assistant',
+                content: result.consensus.finalAnswer || 'No consensus reached.',
+                agentId: data.agentId || 'superagent',
+                metadata: JSON.stringify({
+                  type: 'consensus',
+                  mode: result.mode,
+                  groupId: result.groupId,
+                  confidence: result.consensus.confidence,
+                  agentResponses: result.consensus.agentResponses,
+                  weightedVotes: result.consensus.weightedVotes,
+                  roundsUsed: result.consensus.roundsUsed,
+                  executionTime: result.consensus.executionTime,
+                  consensusReached: result.consensus.consensusReached,
+                })
+              }
+            });
+          } catch (dbErr) {
+            console.error('Failed to save chat assistant message:', dbErr);
+          }
+          
+          emitToUser(userId, 'agent:chat:consensus_done', { sessionId, result });
+          activeChatSessions.delete(sessionId);
+        } else {
+          // Streaming Mode (Auto/Fast)
+          const context = await prisma.chatMessage.findMany({
+            where: { userId, sessionId },
+            orderBy: { createdAt: 'asc' },
+            take: 20,
+          });
+          
+          // Map to format that AI service expects
+          const mappedContext = context.map(m => ({
+            role: m.role,
+            content: m.content,
+            agentId: m.agentId,
+          }));
+          
+          const stream = await aiService.chatStream(mappedContext, data.agentId || 'loka-agent');
+          const reader = stream.getReader();
+          const decoder = new TextDecoder();
+          let fullContent = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const sseData = line.slice(6).trim();
+                if (sseData === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(sseData);
+                  const delta = parsed.choices?.[0]?.delta?.content || '';
+                  if (delta) {
+                    fullContent += delta;
+                    emitToUser(userId, 'agent:chat:progress', { content: delta, sessionId });
+                  }
+                } catch (e) {
+                  // ignore parse error for incomplete chunk
+                }
+              }
+            }
+          }
+          
+          try {
+            await prisma.chatMessage.create({
+              data: {
+                userId,
+                sessionId,
+                role: 'assistant',
+                content: fullContent,
+                agentId: data.agentId || 'superagent'
+              }
+            });
+          } catch (dbErr) {
+            console.error('Failed to save chat assistant message:', dbErr);
+          }
+
+          emitToUser(userId, 'agent:chat:stream_done', { sessionId, content: fullContent });
+          activeChatSessions.delete(sessionId);
+        }
+      } catch (err: any) {
+        emitToUser(userId, 'agent:chat:error', { sessionId, error: err.message });
+        activeChatSessions.delete(sessionId);
       }
     });
 
