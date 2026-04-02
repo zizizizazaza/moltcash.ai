@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { config } from '../config.js';
 import { verifyToken } from '../middleware/auth.js';
 import prisma from '../db.js';
+import { researchService } from '../services/research.service.js';
 
 let io: Server;
 
@@ -82,6 +83,24 @@ export function setupSocket(server: HttpServer) {
     socket.on('get-online-users', (callback: (ids: string[]) => void) => {
       if (typeof callback === 'function') {
         callback(Array.from(onlineUsers));
+      }
+    });
+
+    // ── Deep Research Agent ──
+    socket.on('agent:research', async (data: { topic: string; deep?: boolean; days?: number }) => {
+      if (!data?.topic) return;
+      socket.emit('agent:research:started', { topic: data.topic });
+      try {
+        const result = await researchService.runDeepResearch(
+          data.topic,
+          { deep: data.deep, days: data.days },
+          (log) => {
+            socket.emit('agent:research:progress', { topic: data.topic, log });
+          }
+        );
+        socket.emit('agent:research:done', result);
+      } catch (err: any) {
+        socket.emit('agent:research:error', { topic: data.topic, error: err.message });
       }
     });
 

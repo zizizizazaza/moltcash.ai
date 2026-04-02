@@ -65,7 +65,7 @@ const ContactsPage: React.FC = () => {
 
       // Fetch suggested users (discover) and filter out existing friends
       const friendIds = new Set(friendsList.map((f: any) => f.id));
-      api.discoverUsers().then((discoverData: any[]) => {
+      return api.discoverUsers().then((discoverData: any[]) => {
         const suggestions = discoverData
           .filter((u: any) => !friendIds.has(u.id) && u.friendshipStatus !== 'accepted' && u.friendshipStatus !== 'pending')
           .map((u: any) => {
@@ -225,42 +225,67 @@ const ContactsPage: React.FC = () => {
             </div>
           </div>
           <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-            {filtered.map((c, idx) => {
-              const gradMap: Record<string, string> = { 'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500', 'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400', 'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500', 'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500', 'bg-orange-500': 'from-orange-400 to-amber-500' };
-              const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
-              return (
-                <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className={`flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer group ${idx !== 0 ? 'border-t border-gray-50' : ''}`}>
-                  {renderAvatar(c.avatar, c.initials, grad)}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
-                      {c.role && <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md leading-tight">{c.role}</span>}
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">{c.bio}</p>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={`sk-${i}`} className={`flex items-center gap-4 px-4 py-3.5 ${i !== 0 ? 'border-t border-gray-50' : ''} animate-pulse`}>
+                  <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0"></div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-2 bg-gray-100 rounded w-1/2"></div>
                   </div>
-                  <button onClick={(e) => handleMessage(e, c.id)} className="shrink-0 px-3 py-1.5 rounded-lg bg-gray-50 text-[11px] font-semibold text-gray-600 hover:bg-gray-900 hover:text-white transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1.5 shadow-sm">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                    Message
-                  </button>
                 </div>
-              );
-            })}
-            {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-10">No contacts found</p>}
+              ))
+            ) : (
+              <>
+                {filtered.map((c, idx) => {
+                  const gradMap: Record<string, string> = { 'bg-blue-500': 'from-blue-500 to-indigo-500', 'bg-violet-500': 'from-violet-500 to-purple-500', 'bg-emerald-500': 'from-emerald-500 to-teal-500', 'bg-amber-500': 'from-amber-400 to-orange-400', 'bg-rose-500': 'from-rose-500 to-pink-500', 'bg-cyan-500': 'from-cyan-500 to-sky-500', 'bg-indigo-500': 'from-indigo-500 to-blue-600', 'bg-pink-500': 'from-pink-500 to-rose-500', 'bg-orange-500': 'from-orange-400 to-amber-500' };
+                  const grad = gradMap[c.bgColor] ?? 'from-gray-400 to-gray-500';
+                  return (
+                    <div key={c.id} onClick={(e) => handleMessage(e, c.id)} className={`flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer group ${idx !== 0 ? 'border-t border-gray-50' : ''}`}>
+                      {renderAvatar(c.avatar, c.initials, grad)}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[13px] font-semibold text-gray-900 leading-tight">{c.name}</p>
+                          {c.role && <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md leading-tight">{c.role}</span>}
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-1 truncate">{c.bio}</p>
+                      </div>
+                      <button onClick={(e) => handleMessage(e, c.id)} className="shrink-0 px-3 py-1.5 rounded-lg bg-gray-50 text-[11px] font-semibold text-gray-600 hover:bg-gray-900 hover:text-white transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1.5 shadow-sm">
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                        Message
+                      </button>
+                    </div>
+                  );
+                })}
+                {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-10">No contacts found</p>}
+              </>
+            )}
           </div>
         </div>
 
         {/* ── Suggested for You — from real API data ── */}
-        {suggestions.length > 0 && (
+        {(loading || suggestions.length > 0) && (
           <div className="mb-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[13px] font-bold text-gray-900">Suggested for You</h2>
               <span className="text-[11px] font-medium text-gray-400">People you may know</span>
             </div>
-            <div className="flex gap-3.5 overflow-x-auto pb-4 -mx-1 px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-              {suggestions.map(s => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={`sks-${i}`} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-4 w-full animate-pulse">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 shrink-0"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-2 bg-gray-100 rounded w-1/3"></div>
+                      <div className="h-2 bg-gray-50 rounded w-1/4 mt-2"></div>
+                    </div>
+                  </div>
+                ))
+              ) : suggestions.map(s => {
                 const isFollowed = followedUp.has(s.id);
                 return (
-                  <div key={s.id} className="relative bg-white border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3.5 min-w-[260px] w-[260px] shrink-0 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 hover:border-gray-200 transition-all duration-300 ease-out cursor-pointer group">
+                  <div key={s.id} className="relative bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-4 w-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 hover:border-gray-200 transition-all duration-300 ease-out cursor-pointer group">
                     <button onClick={(e) => { e.stopPropagation(); setDismissed(prev => { const n = new Set(prev); n.add(s.id); return n; }); }}
                       className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-all opacity-0 group-hover:opacity-100">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
