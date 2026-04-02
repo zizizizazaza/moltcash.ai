@@ -11,7 +11,6 @@ import SuperAgentChat from './components/SuperAgentChat';
 import AuthModal from './components/AuthModal';
 import TxModal from './components/TxModal';
 import OAuthCallbackHandler from './components/OAuthCallbackHandler';
-import DiscoverPage from './components/DiscoverPage';
 import DeepResearch from './components/DeepResearch';
 import { api } from './services/api';
 import { socket } from './services/socket';
