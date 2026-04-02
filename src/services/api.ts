@@ -100,6 +100,10 @@ class ApiClient {
     return this.request('/auth/accept-risk', { method: 'POST' });
   }
 
+  async getIflytekToken() {
+    return this.request<{ url: string; appId: string }>('/voice/iflytek-token');
+  }
+
   async syncPrivyUser(data: { email?: string; name?: string; avatar?: string }) {
     return this.request<any>('/auth/sync', {
       method: 'POST',

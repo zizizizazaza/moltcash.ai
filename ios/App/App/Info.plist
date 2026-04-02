@@ -51,6 +51,8 @@
 	<!-- Microphone permission for voice input -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Loka Cash needs microphone access for voice input</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Loka Cash needs speech recognition to convert your voice to text.</string>
 
 	<!-- Custom URL scheme for OAuth redirects (lokacash://) -->
 	<key>CFBundleURLTypes</key>
