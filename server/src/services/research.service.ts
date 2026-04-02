@@ -21,6 +21,10 @@ export const researchService = {
       options.days ? `--days=${options.days}` : '--days=30',
     ].filter(Boolean) as string[];
 
+    if (process.env.EXA_API_KEY) {
+      args.push('--include-web');
+    }
+
     return new Promise<{ summary: string; topic: string; timestamp: string }>((resolve, reject) => {
       const isWin = process.platform === 'win32';
       const pythonExe = isWin ? 'python' : 'python3';
@@ -29,7 +33,7 @@ export const researchService = {
 
       const child = spawn(pythonExe, args, {
         cwd: LAST30DAYS_PATH,
-        env: { ...process.env },
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
       });
 
       let stdoutData = '';
@@ -105,7 +109,8 @@ Rules:
                   }
                 ],
                 temperature: 0.3
-              })
+              }),
+              signal: AbortSignal.timeout(60000) // 60s timeout to prevent infinite hang
             });
 
             if (response.ok) {

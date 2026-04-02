@@ -237,7 +237,7 @@ class ProgressDisplay:
             sys.stderr.write(f"{Colors.DIM}Topic: {Colors.RESET}{Colors.BOLD}{self.topic}{Colors.RESET}\n\n")
         else:
             # Simple text for non-TTY
-            sys.stderr.write(f"/last30days · researching: {self.topic}\n")
+            pass
         sys.stderr.flush()
 
     def start_reddit(self):
@@ -601,9 +601,8 @@ def show_diagnostic_banner(diag: dict):
 
     if IS_TTY:
         lines = _colorize_banner(lines)
-
-    sys.stderr.write("\n".join(lines) + "\n\n")
-    sys.stderr.flush()
+        sys.stderr.write("\n".join(lines) + "\n\n")
+        sys.stderr.flush()
 
 
 def print_phase(phase: str, message: str):

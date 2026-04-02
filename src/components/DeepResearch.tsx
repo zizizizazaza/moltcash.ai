@@ -228,6 +228,7 @@ export default function DeepResearch() {
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     requestAnimationFrame(() => {
+      if (logEndRef.current) logEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       if (feedRef.current) feedRef.current.scrollTo({ top: feedRef.current.scrollHeight, behavior });
     });
   };
