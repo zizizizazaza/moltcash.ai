@@ -244,4 +244,53 @@ export class LokaAIService {
 
     return response.body!;
   }
+
+  /**
+   * Intelligently routes queries based on complexity.
+   * Returns 'fast' for simple facts/chatter, and 'collaborate' for complex analytical requests.
+   */
+  async evaluateRouting(query: string): Promise<'fast' | 'collaborate'> {
+    if (!this.isConfigured) {
+      return 'fast'; // Fallback to fast if no API key
+    }
+
+    const routerPrompt = `You are a strict query routing engine for the Loka AI financial assistant.
+Analyze the following user query and output ONLY ONE WORD: either "fast" or "collaborate".
+
+RULES:
+- Return "fast" IF: The query is a greeting, small talk, simple definition (e.g. "What is Bitcoin?"), translation, basic math, or asking for platform help.
+- Return "collaborate" IF: The query requires complex reasoning, market analysis, reviewing financial health, predicting trends, cross-verifying arguments, or giving specific speculative investment advice.
+
+Query: "${query}"
+
+Return exactly one word, lowercase.`;
+
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: 'user', content: routerPrompt }],
+          max_tokens: 10,
+          temperature: 0,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json() as any;
+        const result = (data.choices?.[0]?.message?.content || '').trim().toLowerCase();
+        if (result === 'collaborate' || result.includes('collaborate')) {
+          return 'collaborate';
+        }
+      }
+    } catch (err) {
+      console.warn('evaluateRouting failed, fallback to fast:', err);
+    }
+    
+    return 'fast'; // Default
+  }
 }

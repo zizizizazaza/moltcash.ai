@@ -162,7 +162,17 @@ export function setupSocket(server: HttpServer) {
       if (!data?.content) return;
       
       const sessionId = data.sessionId || crypto.randomUUID();
-      const mode = data.mode || 'auto';
+      let mode = data.mode || 'auto';
+      
+      // Dynamic Routing for Auto mode
+      if (mode === 'auto') {
+        socket.emit('agent:chat:routing', { sessionId });
+        mode = await aiService.evaluateRouting(data.content);
+        socket.emit('agent:chat:routed', { sessionId, mode });
+        // Give frontend a tiny bit of time to render the switch if necessary
+        await new Promise(r => setTimeout(r, 300));
+      }
+
       const useConsensus = mode === 'collaborate' || mode === 'roundtable';
       
       activeChatSessions.set(sessionId, mode);
@@ -234,16 +244,35 @@ export function setupSocket(server: HttpServer) {
           const reader = stream.getReader();
           const decoder = new TextDecoder();
           let fullContent = '';
+          let streamBuffer = '';
 
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              // Flush any remaining flushable content
+              if (streamBuffer.trim().startsWith('data: ') && streamBuffer.trim() !== 'data: [DONE]') {
+                try {
+                   const parsed = JSON.parse(streamBuffer.trim().slice(6).trim());
+                   const delta = parsed.choices?.[0]?.delta?.content || '';
+                   if (delta) {
+                     fullContent += delta;
+                     emitToUser(userId, 'agent:chat:progress', { content: delta, sessionId });
+                   }
+                } catch(e) {}
+              }
+              break;
+            }
 
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            streamBuffer += decoder.decode(value, { stream: true });
+            
+            // SSE lines are separated by \n. We split and keep the last (potentially incomplete) piece in the buffer.
+            const lines = streamBuffer.split('\n');
+            streamBuffer = lines.pop() || ''; 
+
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const sseData = line.slice(6).trim();
+              const trimmed = line.trim();
+              if (trimmed.startsWith('data: ')) {
+                const sseData = trimmed.slice(6).trim();
                 if (sseData === '[DONE]') continue;
                 try {
                   const parsed = JSON.parse(sseData);
@@ -253,7 +282,7 @@ export function setupSocket(server: HttpServer) {
                     emitToUser(userId, 'agent:chat:progress', { content: delta, sessionId });
                   }
                 } catch (e) {
-                  // ignore parse error for incomplete chunk
+                  // ignore parse error if somehow SSE sends broken JSON on a full line
                 }
               }
             }
