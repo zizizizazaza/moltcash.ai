@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const page = (Object.keys(PAGE_PATHS).find(k => location.pathname === PAGE_PATHS[k] || (PAGE_PATHS[k] !== '/' && location.pathname.startsWith(PAGE_PATHS[k] + '/'))) as Page) || Page.SUPER_AGENT;
   const go = (p: Page) => navigate(PAGE_PATHS[p] || '/');
   const [expanded, setExpanded] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLaunch, setShowLaunch] = useState(true);
@@ -162,11 +163,27 @@ const App: React.FC = () => {
       {showAuthModal && <AuthModal onLogin={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />}
       <TxModal />
 
-      <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={go} isDark={isDark} onToggleDark={toggleDark}
-        isLoggedIn={isLoggedIn} onLogin={() => setShowAuthModal(true)} onLogout={logout}
-        userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
+      <Sidebar expanded={expanded} onToggle={() => setExpanded(!expanded)} page={page} go={(p: Page) => { go(p); setMobileDrawerOpen(false); }} isDark={isDark} onToggleDark={toggleDark}
+        isLoggedIn={isLoggedIn} onLogin={() => { setShowAuthModal(true); setMobileDrawerOpen(false); }} onLogout={logout}
+        userName={userName} userInitial={userInitial} userAvatar={userAvatar}
+        mobileDrawerOpen={mobileDrawerOpen} onCloseMobileDrawer={() => setMobileDrawerOpen(false)} />
 
-      <main className={`flex-1 flex flex-col overflow-hidden h-full pt-[max(env(safe-area-inset-top),32px)] md:pt-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0 ${mainBg}`}>
+      <main className={`flex-1 flex flex-col overflow-hidden h-full pt-0 md:pt-0 pb-[env(safe-area-inset-bottom,0px)] md:pb-0 ${mainBg}`}>
+        {/* Mobile top bar with hamburger */}
+        <div className="md:hidden flex items-center gap-3 px-4 shrink-0 bg-white/95 backdrop-blur-sm border-b border-gray-100/60 z-30" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: '8px' }}>
+          <button onClick={() => setMobileDrawerOpen(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-all" aria-label="Menu">
+            <svg className="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+          <span className="text-[15px] font-bold text-gray-900 tracking-tight select-none">Loka</span>
+          <div className="flex-1" />
+          {isLoggedIn ? (
+            <div onClick={() => { go(Page.PORTFOLIO); }} className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white cursor-pointer overflow-hidden hover:ring-2 hover:ring-emerald-300 transition-all">
+              {userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : userInitial}
+            </div>
+          ) : (
+            <button onClick={() => setShowAuthModal(true)} className="text-[12px] font-bold text-gray-500 hover:text-gray-900 transition-colors">Sign in</button>
+          )}
+        </div>
         <div className={`flex-1 overflow-y-auto flex flex-col md:m-0 ${location.pathname.startsWith('/market/startup/') ? 'bg-gray-50 md:bg-gray-100/80' : ''}`}>
           <Routes>
             <Route path="/" element={<SuperAgentHome />} />
@@ -184,26 +201,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Mobile bottom nav — 6-tab layout */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-around px-0 pt-1 z-50" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
-        {([
-          { key: Page.SUPER_AGENT, icon: I.Home, label: 'Home' },
-          { key: Page.CHATS, icon: I.Chat, label: 'Chat' },
-          { key: Page.CONTACTS, icon: I.People, label: 'Contacts' },
-          { key: Page.DISCOVER, icon: I.Compass, label: 'Discover' },
-          { key: Page.INVEST, icon: I.Market, label: 'Market' },
-          { key: Page.PORTFOLIO, icon: I.Profile, label: 'Me' },
-        ] as { key: Page; icon: React.FC; label: string }[]).map(({ key, icon: Icon, label }) => {
-          const isActive = page === key;
-          return (
-            <button key={key} onClick={() => go(key)}
-              className={`relative flex flex-col items-center gap-0.5 py-1.5 px-1.5 min-w-0 transition-all ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
-              <Icon />
-              <span className={`text-[8px] leading-tight ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* Bottom nav removed — replaced by mobile drawer */}
     </div>
   );
 };
