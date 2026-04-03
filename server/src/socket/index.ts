@@ -273,7 +273,7 @@ export function setupSocket(server: HttpServer) {
       }
     });
 
-    socket.on('agent:chat', async (data: { content: string; mode: string; sessionId?: string; agentId?: string }) => {
+    socket.on('agent:chat', async (data: { content: string; mode: string; sessionId?: string; agentId?: string; hidden?: boolean }) => {
       if (!data?.content) return;
       
       const sessionId = data.sessionId || crypto.randomUUID();
@@ -292,20 +292,22 @@ export function setupSocket(server: HttpServer) {
       
       activeChatSessions.set(sessionId, mode);
 
-      socket.emit('agent:chat:started', { content: data.content, sessionId, mode });
+      socket.emit('agent:chat:started', { content: data.content, sessionId, mode, hidden: !!data.hidden });
 
-      try {
-        await prisma.chatMessage.create({
-          data: {
-            userId,
-            sessionId,
-            role: 'user',
-            content: data.content,
-            agentId: data.agentId || 'superagent'
-          }
-        });
-      } catch (dbErr) {
-        console.error('Failed to save chat user message:', dbErr);
+      if (!data.hidden) {
+        try {
+          await prisma.chatMessage.create({
+            data: {
+              userId,
+              sessionId,
+              role: 'user',
+              content: data.content,
+              agentId: data.agentId || 'superagent'
+            }
+          });
+        } catch (dbErr) {
+          console.error('Failed to save chat user message:', dbErr);
+        }
       }
 
       try {

@@ -16,6 +16,7 @@ export interface Message {
   appLogs?: string[];
   isAppRunning?: boolean;
   appType?: string; // 'hedgefund' | 'stockanalysis' | etc.
+  collapsibleReport?: string; // Background report to render as a collapsible <details> block
 }
 
 // ─── Agent Thinking Process ─────────────────────────────────

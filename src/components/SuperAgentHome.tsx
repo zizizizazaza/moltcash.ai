@@ -125,8 +125,8 @@ const SuperAgentHome: React.FC = () => {
               className="w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none transition-colors"
             />
             {/* Input toolbar */}
-            <div className="flex items-center justify-between px-3 pb-3">
-              <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 px-3 pb-3">
+              <div className="flex items-center gap-1 flex-wrap">
                 <ModeSelector mode={mode} onModeChange={setMode} />
                 {/* Selected Agent tag */}
                 {selectedAgent && (() => {
@@ -134,7 +134,7 @@ const SuperAgentHome: React.FC = () => {
                   if (!ag) return null;
                   const AgIc = ag.icon;
                   return (
-                    <div className="agent-tag flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[12px] font-medium">
+                    <div className="agent-tag flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[12px] font-medium whitespace-nowrap">
                       <AgIc />
                       <span>{ag.label}</span>
                       <button
@@ -147,7 +147,7 @@ const SuperAgentHome: React.FC = () => {
                   );
                 })()}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2 shrink-0">
                 {selectedAgent !== 'research' && (
                   <>
                     <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Attach file">
@@ -226,7 +226,7 @@ const SuperAgentHome: React.FC = () => {
             </div>
           ) : (
             <div className="hero-actions -mx-4 px-4 py-1 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-              <div className="flex items-center justify-start md:justify-center gap-2 min-w-max md:min-w-0 md:w-full">
+              <div className="flex items-center justify-start md:justify-center md:flex-wrap gap-2 min-w-max md:min-w-0 md:w-full">
                 {QUICK_ACTIONS.slice(0, 5).map(a => {
                   const Ic = a.icon;
                   return (

@@ -68,8 +68,10 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   onBack,
 }) => {
   // ─── Resolve adapter ──────────────────────────────────────
-  const adapter = app ? getApp(app) : getApp('generic');
-  const isAppMode = !!app && app !== 'generic'; // dedicated app (HF, SA)
+  const [restoredApp, setRestoredApp] = useState<string | null>(null);
+  const activeApp = app || restoredApp;
+  const adapter = activeApp ? getApp(activeApp) : getApp('generic');
+  const isAppMode = !!activeApp && activeApp !== 'generic'; // dedicated app (HF, SA)
 
   // ─── Session ──────────────────────────────────────────────
   const { sessionId } = useSessionManager({ restoreSessionId });
@@ -94,7 +96,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitial = useRef(false);
   // Refs to break closure staleness in socket handlers
-  const sendGenericChatRef = useRef<(text: string, existingMessages?: Message[]) => void>(() => {});
+  const sendGenericChatRef = useRef<(text: string, existingMessages?: Message[], hidden?: boolean) => void>(() => {});
   const currentModeRef = useRef(mode);
 
   // Auto-scroll
@@ -103,9 +105,9 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   }, [messages, thinkingProcesses]);
 
   // ─── Send to AI (generic chat) ────────────────────────────
-  const sendGenericChat = useCallback((text: string, existingMessages?: Message[]) => {
+  const sendGenericChat = useCallback((text: string, existingMessages?: Message[], hidden?: boolean) => {
     const genericAdapter = getApp('generic')!;
-    genericAdapter.start({ query: text, sessionId, mode: currentMode });
+    genericAdapter.start({ query: text, sessionId, mode: currentMode, hidden });
 
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
 
@@ -248,12 +250,22 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
         const mode = currentModeRef.current;
         const needsPhase2 = mode !== 'fast';
 
-        // Mark Phase 1 complete — show the raw report
+        // Mark Phase 1 complete — show raw report or setup collapsible report
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last && last.role === 'assistant') {
-            updated[updated.length - 1] = { ...last, content: report, isStreaming: false, isAppRunning: false };
+            if (needsPhase2) {
+              updated[updated.length - 1] = {
+                ...last,
+                content: `> 📄 **System**: The underlying agent has completed the detailed data report. It is now included internally as context for the consensus engine.`,
+                collapsibleReport: report,
+                isStreaming: false,
+                isAppRunning: false,
+              };
+            } else {
+              updated[updated.length - 1] = { ...last, content: report, isStreaming: false, isAppRunning: false };
+            }
           }
           return updated;
         });
@@ -261,14 +273,14 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
         if (needsPhase2) {
           // Phase 2: Feed report to multi-agent chat engine
           setWorkflowPhase('consensus');
-          const fullPrompt = `${initialMessage}\n\n[${adapter?.name || 'Agent'} Analysis Report]:\n${report}`;
+          const fullPrompt = `${initialMessage}\n\n[${adapter?.name || 'Agent'} Analysis Report]:\n${report}\n\n[System Instruction]: The above report is provided as background data. Please analyze this data and discuss it with your peers. You MUST write all your responses and thoughts purely in ENGLISH.`;
           // Construct existingMessages to fix ThinkingPanel index calculation
           const existingMessages: Message[] = [
             { role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() },
             { role: 'assistant', content: report, timestamp: new Date().toLocaleTimeString() },
           ];
           setTimeout(() => {
-            sendGenericChatRef.current(fullPrompt, existingMessages);
+            sendGenericChatRef.current(fullPrompt, existingMessages, true);
           }, 200);
         } else {
           setIsStreaming(false);
@@ -328,6 +340,9 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
       setShowGraphPanel(false);
       try {
         const data = await fetchChatHistory(restoreSessionId);
+        if (data.length > 0 && data[0].agentId && data[0].agentId !== 'superagent' && data[0].agentId !== 'generic') {
+          setRestoredApp(data[0].agentId);
+        }
         const newThinking: Record<number, ThinkingProcess> = {};
         setMessages(data.map((m: any, idx: number) => {
           if (m.metadata) {
@@ -525,9 +540,22 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
 
                         {/* Message content */}
                         {msg.content ? (
-                          <div className="text-[13px] text-gray-700 leading-relaxed markdown-content">
-                            {renderMarkdownContent(msg.content)}
-                          </div>
+                          <>
+                            <div className="text-[13px] text-gray-700 leading-relaxed markdown-content">
+                              {renderMarkdownContent(msg.content)}
+                            </div>
+                            {msg.collapsibleReport && (
+                              <details className="mt-4 group border border-gray-200 rounded-xl bg-gray-50 overflow-hidden text-left relative z-10 transition-all hover:bg-gray-100/50">
+                                <summary className="px-4 py-3 cursor-pointer text-[12px] font-bold text-gray-700 flex items-center gap-2 select-none">
+                                  <svg className="w-4 h-4 text-gray-400 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                                  Expand to view the raw background data report
+                                </summary>
+                                <div className="px-5 py-4 border-t border-gray-200 bg-white text-[13px] text-gray-700 leading-relaxed markdown-content">
+                                  {renderMarkdownContent(msg.collapsibleReport)}
+                                </div>
+                              </details>
+                            )}
+                          </>
                         ) : msg.isStreaming ? (
                           <div className="flex items-center gap-1 py-1">
                             <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />

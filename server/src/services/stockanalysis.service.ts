@@ -65,23 +65,28 @@ class StockAnalysisService extends EventEmitter {
         env: env as NodeJS.ProcessEnv
       });
 
-    let jsonBuffer = '';
+    const jsonChunks: Buffer[] = [];
 
     // Standard output captures the final JSON report
-    pythonProcess.stdout.on('data', (data) => {
-      jsonBuffer += data.toString();
+    pythonProcess.stdout.on('data', (data: Buffer) => {
+      jsonChunks.push(data);
     });
 
     // Standard error captures the real-time thinking logs
     pythonProcess.stderr.on('data', (data) => {
-      const logs = data.toString().split('\\n');
+      const logs = data.toString().split('\n');
       for (const logLine of logs) {
-        if (logLine.trim()) {
-          console.log(`[StockAnalysis Log] ${logLine.trim()}`);
+        const cleanLog = logLine.trim();
+        if (cleanLog) {
+          // Suppress specific annoying logs
+          if (cleanLog.includes('Tushare Token') || cleanLog.includes('通知渠道')) {
+            continue;
+          }
+          console.log(`[StockAnalysis Log] ${cleanLog}`);
           if (socket) {
             socket.emit('agent:stockanalysis:progress', {
               sessionId,
-              log: logLine.trim()
+              log: cleanLog
             });
           }
         }
@@ -100,17 +105,25 @@ class StockAnalysisService extends EventEmitter {
         return;
       }
 
+      let jsonBuffer = '';
       try {
-        const jsonMatch = jsonBuffer.match(/\\{.*\\}/s);
-        const reportData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(jsonBuffer);
+        jsonBuffer = Buffer.concat(jsonChunks).toString('utf-8');
+        
+        // Remove trailing or leading non-JSON garbage if needed
+        const jsonMatch = jsonBuffer.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error("No JSON object found in output");
+        }
+        
+        const reportData = JSON.parse(jsonMatch[0]);
         
         // build combined markdown response
         let finalReport = "";
         for (const [ticker, data] of Object.entries((reportData as any))) {
            if ((data as any).markdown) {
-               finalReport += `\\n${(data as any).markdown}\\n`;
+               finalReport += `\n${(data as any).markdown}\n`;
            } else if ((data as any).error) {
-               finalReport += `\\n**⚠️ Error analyzing ${ticker}:** ${(data as any).error}\\n`;
+               finalReport += `\n**⚠️ Error analyzing ${ticker}:** ${(data as any).error}\n`;
            }
         }
         
@@ -125,7 +138,17 @@ class StockAnalysisService extends EventEmitter {
         resolve();
       } catch (e: any) {
         console.error(`[StockAnalysis] Failed to parse output! Error: ${e.message}`);
-        console.error(`[StockAnalysis] Buffer size: ${jsonBuffer.length} chars. Starts with: ${jsonBuffer.slice(0, 50)}`);
+        console.error(`[StockAnalysis] Buffer size: ${jsonBuffer.length} chars.`);
+        
+        // Dump the buffer to a file for diagnosis
+        try {
+          const dumpPath = path.join(process.cwd(), 'failed_stock_analysis.json');
+          fs.writeFileSync(dumpPath, jsonBuffer, 'utf-8');
+          console.error(`[StockAnalysis] Raw output dumped to ${dumpPath}`);
+        } catch (dumpErr) {
+          console.error('Failed to dump output:', dumpErr);
+        }
+
         if (socket) {
           socket.emit('agent:stockanalysis:error', {
             sessionId,

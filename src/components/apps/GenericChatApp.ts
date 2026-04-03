@@ -21,11 +21,12 @@ const GenericChatApp: AgentAppAdapter = {
     return true; // Generic chat handles any input
   },
 
-  start({ query, sessionId, mode }) {
+  start({ query, sessionId, mode, hidden }) {
     socket.emit('agent:chat', {
       content: query,
       mode,
       sessionId,
+      hidden,
       agentId: 'superagent',
     });
 

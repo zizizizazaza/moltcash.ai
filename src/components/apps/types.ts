@@ -35,6 +35,7 @@ export interface AgentAppAdapter {
     query: string;
     sessionId: string;
     mode: ChatMode;
+    hidden?: boolean;
   }): void;
 
   /**
