@@ -86,13 +86,16 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   const [showGraphPanel, setShowGraphPanel] = useState(false);
   const [activeGraphMsgIdx, setActiveGraphMsgIdx] = useState<number | null>(null);
 
-  // Research two-phase workflow
-  const [workflowPhase, setWorkflowPhase] = useState<'idle' | 'research' | 'consensus'>('idle');
+  // Research / App two-phase workflow
+  const [workflowPhase, setWorkflowPhase] = useState<'idle' | 'research' | 'app' | 'consensus'>('idle');
   const [researchLogs, setResearchLogs] = useState<string[]>([]);
   const [researchSummary, setResearchSummary] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitial = useRef(false);
+  // Refs to break closure staleness in socket handlers
+  const sendGenericChatRef = useRef<(text: string, existingMessages?: Message[]) => void>(() => {});
+  const currentModeRef = useRef(mode);
 
   // Auto-scroll
   useEffect(() => {
@@ -121,6 +124,10 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
       setShowGraphPanel(true);
     }
   }, [sessionId, currentMode, messages]);
+
+  // Keep refs fresh
+  useEffect(() => { sendGenericChatRef.current = sendGenericChat; }, [sendGenericChat]);
+  useEffect(() => { currentModeRef.current = currentMode; }, [currentMode]);
 
   // ─── Multi-agent chat socket handlers ─────────────────────
   useMultiAgentSocket(sessionId, {
@@ -237,16 +244,36 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
         });
       },
       onDone: (data) => {
-        setIsStreaming(false);
+        const report = data.report || data.summary || '';
+        const mode = currentModeRef.current;
+        const needsPhase2 = mode !== 'fast';
+
+        // Mark Phase 1 complete — show the raw report
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last && last.role === 'assistant') {
-            updated[updated.length - 1] = { ...last, content: data.report || data.summary || '', isStreaming: false, isAppRunning: false };
+            updated[updated.length - 1] = { ...last, content: report, isStreaming: false, isAppRunning: false };
           }
           return updated;
         });
-        window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || sessionId } }));
+
+        if (needsPhase2) {
+          // Phase 2: Feed report to multi-agent chat engine
+          setWorkflowPhase('consensus');
+          const fullPrompt = `${initialMessage}\n\n[${adapter?.name || 'Agent'} Analysis Report]:\n${report}`;
+          // Construct existingMessages to fix ThinkingPanel index calculation
+          const existingMessages: Message[] = [
+            { role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() },
+            { role: 'assistant', content: report, timestamp: new Date().toLocaleTimeString() },
+          ];
+          setTimeout(() => {
+            sendGenericChatRef.current(fullPrompt, existingMessages);
+          }, 200);
+        } else {
+          setIsStreaming(false);
+          window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || sessionId } }));
+        }
       },
       onError: (data) => {
         setIsStreaming(false);
@@ -345,21 +372,24 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
     if (hasSentInitial.current || restoreSessionId || !initialMessage) return;
     hasSentInitial.current = true;
 
+    // Check if the app adapter can handle this query (e.g., contains valid tickers)
+    const appCanHandle = isAppMode && adapter && adapter.canHandle(initialMessage);
+
     const userMsg: Message = {
       role: 'user',
-      content: adapter ? adapter.formatUserMessage(initialMessage) : initialMessage,
+      content: appCanHandle ? adapter!.formatUserMessage(initialMessage) : initialMessage,
       timestamp: new Date().toLocaleTimeString(),
     };
     setMessages([userMsg]);
 
-    if (isAppMode && adapter) {
+    if (appCanHandle) {
       // Dedicated app: use adapter start
       setMessages(prev => [...prev, {
         role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(),
         isStreaming: true, appLogs: [], isAppRunning: true, appType: app || undefined,
       }]);
       setIsStreaming(true);
-      setTimeout(() => adapter.start({ query: initialMessage, sessionId, mode: currentMode }), 50);
+      setTimeout(() => adapter!.start({ query: initialMessage, sessionId, mode: currentMode }), 50);
     } else if (app === 'research' && (currentMode === 'collaborate' || currentMode === 'roundtable')) {
       // Signal Radar + consensus = two-phase
       setWorkflowPhase('research');
@@ -368,7 +398,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
         window.dispatchEvent(new CustomEvent('session-started', { detail: { id: sessionId, title: initialMessage.slice(0, 60), agentId: 'superagent' } }));
       }, 50);
     } else {
-      // Generic chat
+      // Generic chat (fallback for apps that can't handle the input)
       setWorkflowPhase('consensus');
       setTimeout(() => sendGenericChat(initialMessage, [userMsg]), 50);
     }

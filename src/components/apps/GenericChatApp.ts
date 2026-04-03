@@ -17,6 +17,10 @@ const GenericChatApp: AgentAppAdapter = {
   doneLabel: 'Response complete',
   initLabel: 'Processing...',
 
+  canHandle(): boolean {
+    return true; // Generic chat handles any input
+  },
+
   start({ query, sessionId, mode }) {
     socket.emit('agent:chat', {
       content: query,

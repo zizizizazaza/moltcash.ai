@@ -21,6 +21,13 @@ export interface AgentAppAdapter {
   accentColor: string;
 
   /**
+   * Check if user input is valid for this app.
+   * e.g., HedgeFund requires ticker symbols — "TSLA" → true, "你好" → false.
+   * Return false to fall back to generic chat.
+   */
+  canHandle(query: string): boolean;
+
+  /**
    * Start the app. Called when user sends a message.
    * The adapter emits the appropriate socket event.
    */

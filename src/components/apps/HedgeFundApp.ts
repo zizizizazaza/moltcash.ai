@@ -6,21 +6,29 @@ import type { AgentAppAdapter } from './types';
 import { registerApp } from './types';
 import { socket } from '../../services/socket';
 
+/** Extract valid tickers from a query string */
+function extractTickers(query: string): string[] {
+  return query.split(',')
+    .map(t => t.replace(/[^A-Za-z]/g, '').trim().toUpperCase())
+    .filter(t => t.length >= 1 && t.length <= 6); // valid ticker: 1-6 letters
+}
+
 const HedgeFundApp: AgentAppAdapter = {
   id: 'hedgefund',
   name: 'AI Hedge Fund',
-  supportedModes: [], // Ignores mode
+  supportedModes: ['auto', 'fast', 'collaborate', 'roundtable'],
   accentColor: 'emerald',
   socketPrefix: 'agent:hedgefund',
   runningLabel: 'Hedge Fund agents analyzing...',
   doneLabel: 'Analysis complete',
   initLabel: 'Initializing execution layer...',
 
+  canHandle(query: string): boolean {
+    return extractTickers(query).length > 0;
+  },
+
   start({ query, sessionId }) {
-    // Extract tickers: split by comma, remove non-alpha chars like " — Social Media"
-    const tickers = query.split(',')
-      .map(t => t.replace(/[^A-Za-z]/g, '').trim().toUpperCase())
-      .filter(Boolean);
+    const tickers = extractTickers(query);
 
     socket.emit('agent:hedgefund', {
       tickers,
@@ -34,12 +42,13 @@ const HedgeFundApp: AgentAppAdapter = {
   },
 
   formatUserMessage(query: string): string {
-    const tickers = query.split(',')
-      .map(t => t.replace(/[^A-Za-z]/g, '').trim().toUpperCase())
-      .filter(Boolean);
-    return `Analyze ${tickers.join(', ')} using AI Hedge Fund`;
+    const tickers = extractTickers(query);
+    return tickers.length > 0
+      ? `Analyze ${tickers.join(', ')} using AI Hedge Fund`
+      : query;
   },
 };
 
 registerApp(HedgeFundApp);
 export default HedgeFundApp;
+

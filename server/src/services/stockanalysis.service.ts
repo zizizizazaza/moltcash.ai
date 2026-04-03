@@ -123,15 +123,16 @@ class StockAnalysisService extends EventEmitter {
           });
         }
         resolve();
-      } catch (e) {
-        console.error(`[StockAnalysis] Failed to parse output: ${jsonBuffer}`);
+      } catch (e: any) {
+        console.error(`[StockAnalysis] Failed to parse output! Error: ${e.message}`);
+        console.error(`[StockAnalysis] Buffer size: ${jsonBuffer.length} chars. Starts with: ${jsonBuffer.slice(0, 50)}`);
         if (socket) {
           socket.emit('agent:stockanalysis:error', {
             sessionId,
-            error: 'Failed to parse AI output.'
+            error: `Failed to parse AI output: ${e.message}`
           });
         }
-        reject(new Error('Failed to parse AI output'));
+        reject(new Error(`Failed to parse AI output: ${e.message}`));
       }
     });
 
