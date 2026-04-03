@@ -3,7 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { I, InputIcons, UseCaseIcons } from './Icons';
 import { QUICK_ACTIONS, USE_CASES, AGENT_GUIDES, FEATURED_GROUPS } from '../constants';
-import SuperAgentChat from './SuperAgentChat';
+import ChatContainer from './chat/ChatContainer';
+import ModeSelector from './chat/ModeSelector';
+import type { ChatMode, ChatInitParams } from '../types/chat';
+
+// Import app registry so adapters are registered
+import '../components/apps';
 
 const SuperAgentHome: React.FC = () => {
   const navigate = useNavigate();
@@ -12,10 +17,10 @@ const SuperAgentHome: React.FC = () => {
   const [input, setInput] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
-  const [mode, setMode] = useState<'auto' | 'fast' | 'collaborate' | 'roundtable'>('auto');
-  const [modeOpen, setModeOpen] = useState(false);
-  const modeRef = useRef<HTMLDivElement>(null);
-  const [chatMessage, setChatMessage] = useState<string | null>(null);
+  const [mode, setMode] = useState<ChatMode>('auto');
+
+  // ── Chat init params (replaces the old string-prefix approach) ──
+  const [chatInit, setChatInit] = useState<ChatInitParams | null>(null);
 
   const { isListening, startListening, stopListening, isAvailable } = useSpeechToText({
     onResult: (text) => setInput(text),
@@ -40,40 +45,54 @@ const SuperAgentHome: React.FC = () => {
   // Reset local state when URL is cleared (e.g., clicking "New Chat" in Sidebar)
   useEffect(() => {
     if (!sessionToRestore) {
-      setChatMessage(null);
+      setChatInit(null);
       setInput('');
       setSelectedAgent(null);
       setSelectedScenario(null);
     } else {
-      // Once we have an active session, clear the temporary chatMessage
-      // so it doesn't linger and catch the render cycle when navigating back to home.
-      setChatMessage(null);
+      setChatInit(null);
     }
   }, [sessionToRestore]);
 
-  const MODES = [
-    { id: 'auto' as const, label: 'Auto', desc: 'System picks the best mode for you', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
-    { id: 'fast' as const, label: 'Fast', desc: 'Single agent, quick response', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
-    { id: 'collaborate' as const, label: 'Collaborate', desc: 'Agents split work, assemble one answer', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
-    { id: 'roundtable' as const, label: 'Roundtable', desc: 'Multi-agent debate & cross-validation', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M14 5.5a7.5 7.5 0 014.5 12" /><path d="M17 19.5H7" /><path d="M5.5 17A7.5 7.5 0 0110 5.5" /></svg> },
-  ];
-  const currentMode = MODES.find(m => m.id === mode)!;
+  // ── Submit handler — explicit app/mode/query, NO string prefixes ──
+  const handleSubmit = () => {
+    if (!input.trim()) return;
+    if (isListening) stopListening();
 
-  useEffect(() => {
-    if (!modeOpen) return;
-    const h = (e: MouseEvent) => { if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [modeOpen]);
+    if (selectedAgent === 'research' && mode !== 'collaborate' && mode !== 'roundtable') {
+      // Signal Radar standalone page
+      navigate('/signal-radar', { state: { initialTopic: input.trim() } });
+    } else {
+      // Use ChatContainer with explicit params
+      setChatInit({
+        app: selectedAgent === 'hedgefund' ? 'hedgefund'
+           : selectedAgent === 'stockanalysis' ? 'stockanalysis'
+           : selectedAgent === 'research' ? 'research'
+           : null,
+        mode,
+        query: input.trim(),
+      });
+    }
+  };
 
+  // ── Render: Active chat (NEW session — must check BEFORE sessionToRestore) ──
+  if (chatInit) {
+    return (
+      <ChatContainer
+        app={chatInit.app}
+        initialMessage={chatInit.query}
+        mode={chatInit.mode}
+        onBack={() => setChatInit(null)}
+      />
+    );
+  }
+
+  // ── Render: Restore session (from sidebar click) ──
   if (sessionToRestore) {
-    return <SuperAgentChat restoreSessionId={sessionToRestore} onBack={() => { setSearchParams({}); }} />;
+    return <ChatContainer restoreSessionId={sessionToRestore} onBack={() => setSearchParams({})} />;
   }
 
-  if (chatMessage) {
-    return <SuperAgentChat initialMessage={chatMessage} mode={mode} initialAgent={selectedAgent || undefined} onBack={() => setChatMessage(null)} />;
-  }
-
+  // ── Render: Home page ──
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
       {/* ── Hero + Input ── */}
@@ -98,11 +117,7 @@ const SuperAgentHome: React.FC = () => {
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
                   e.preventDefault();
-                  if (selectedAgent === 'research' && mode !== 'collaborate' && mode !== 'roundtable') {
-                    navigate('/signal-radar', { state: { initialTopic: input.trim() } });
-                  } else {
-                    setChatMessage(input.trim());
-                  }
+                  handleSubmit();
                 }
               }}
               placeholder={PLACEHOLDERS[phIdx]}
@@ -110,51 +125,16 @@ const SuperAgentHome: React.FC = () => {
               className="w-full bg-transparent outline-none text-[15px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 resize-none transition-colors"
             />
             {/* Input toolbar */}
-            <div className="flex items-center justify-between px-3 pb-3">
-              <div className="flex items-center gap-1">
-                <div className="relative" ref={modeRef}>
-                  <button
-                    onClick={() => setModeOpen(v => !v)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-all"
-                  >
-                    {React.createElement(currentMode.icon)}
-                    {currentMode.label}
-                    <InputIcons.Chevron />
-                  </button>
-                  {modeOpen && (
-                    <div className="absolute bottom-full left-0 mb-1.5 w-64 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30" style={{ animation: 'menu-pop 0.15s ease-out' }}>
-                      {MODES.map(m => {
-                        const MIcon = m.icon;
-                        const isActive = mode === m.id;
-                        return (
-                          <button
-                            key={m.id}
-                            onClick={() => { setMode(m.id); setModeOpen(false); }}
-                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors ${isActive ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
-                          >
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                              <MIcon />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className={`text-[12px] font-semibold ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>{m.label}</p>
-                              <p className="text-[10px] text-gray-400 leading-tight">{m.desc}</p>
-                            </div>
-                            {isActive && (
-                              <svg className="w-3.5 h-3.5 text-gray-900 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                {/* Selected Agent tag — sits right next to mode selector */}
+            <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 px-3 pb-3">
+              <div className="flex items-center gap-1 flex-wrap">
+                <ModeSelector mode={mode} onModeChange={setMode} />
+                {/* Selected Agent tag */}
                 {selectedAgent && (() => {
                   const ag = QUICK_ACTIONS.find(a => a.id === selectedAgent);
                   if (!ag) return null;
                   const AgIc = ag.icon;
                   return (
-                    <div className="agent-tag flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[12px] font-medium">
+                    <div className="agent-tag flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[12px] font-medium whitespace-nowrap">
                       <AgIc />
                       <span>{ag.label}</span>
                       <button
@@ -167,7 +147,7 @@ const SuperAgentHome: React.FC = () => {
                   );
                 })()}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2 shrink-0">
                 {selectedAgent !== 'research' && (
                   <>
                     <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Attach file">
@@ -190,20 +170,9 @@ const SuperAgentHome: React.FC = () => {
                   </button>
                 )}
                 <button
-                  onClick={() => {
-                    if (input.trim()) {
-                      // Stop listening if user manually sends
-                      if (isListening) stopListening();
-
-                      if (selectedAgent === 'research' && mode !== 'collaborate' && mode !== 'roundtable') {
-                        navigate('/signal-radar', { state: { initialTopic: input.trim() } });
-                      } else {
-                        setChatMessage(input.trim());
-                      }
-                    }
-                  }}
-                  className={`send-btn-active w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                    }`}>
+                  onClick={handleSubmit}
+                  className={`send-btn-active w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                >
                   <I.Send />
                 </button>
               </div>
@@ -215,7 +184,7 @@ const SuperAgentHome: React.FC = () => {
             <div className="hero-guide space-y-3" style={{ animation: 'fade-up 0.35s var(--ease-out-expo) both' }}>
               <p className="text-[13px] font-semibold text-gray-700">{AGENT_GUIDES[selectedAgent].desc}</p>
 
-              {/* Signal Radar: scenario pills */}
+              {/* Scenario pills */}
               {AGENT_GUIDES[selectedAgent].scenarios && (
                 <div className="flex flex-wrap gap-2">
                   {AGENT_GUIDES[selectedAgent].scenarios!.map(s => (
@@ -231,7 +200,7 @@ const SuperAgentHome: React.FC = () => {
                 </div>
               )}
 
-              {/* Prompt examples under selected scenario (or flat list for other agents) */}
+              {/* Prompt examples */}
               {(() => {
                 const guide = AGENT_GUIDES[selectedAgent];
                 const prompts = guide.scenarios
@@ -257,8 +226,8 @@ const SuperAgentHome: React.FC = () => {
             </div>
           ) : (
             <div className="hero-actions -mx-4 px-4 py-1 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-              <div className="flex items-center justify-start md:justify-center gap-2 min-w-max md:min-w-0 md:w-full">
-                {QUICK_ACTIONS.slice(0, 4).map(a => {
+              <div className="flex items-center justify-start md:justify-center md:flex-wrap gap-2 min-w-max md:min-w-0 md:w-full">
+                {QUICK_ACTIONS.slice(0, 5).map(a => {
                   const Ic = a.icon;
                   return (
                     <button key={a.id}
@@ -277,19 +246,18 @@ const SuperAgentHome: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Use Cases — only on top-level, hidden when an agent is active ── */}
+      {/* ── Use Cases ── */}
       {!selectedAgent && (
         <div className="px-4 pb-10 pt-8 max-w-[640px] w-full mx-auto">
           <div className="flex items-center gap-2 mb-4">
             <span style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 2, backgroundColor: 'var(--accent)', flexShrink: 0 }} />
             <h2 className="text-[12px] font-bold text-gray-500 uppercase tracking-widest">Explore Use Cases</h2>
           </div>
-
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {USE_CASES.map(uc => (
               <button
                 key={uc.id}
-                onClick={() => setChatMessage(uc.prompt)}
+                onClick={() => setChatInit({ app: null, mode: 'auto', query: uc.prompt })}
                 className="usecase-card group text-left bg-white border border-gray-100 rounded-xl p-3 cursor-pointer"
               >
                 <div className="w-6 h-6 rounded-md bg-gray-50 flex items-center justify-center text-gray-400 mb-2">{UseCaseIcons[uc.id] ? React.createElement(UseCaseIcons[uc.id]) : null}</div>
@@ -306,7 +274,7 @@ const SuperAgentHome: React.FC = () => {
         </div>
       )}
 
-      {/* ── Featured Groups — only on top-level ── */}
+      {/* ── Featured Groups ── */}
       {!selectedAgent && (() => {
         const avatarColors = ['bg-blue-400', 'bg-emerald-400', 'bg-violet-400', 'bg-amber-400', 'bg-rose-400', 'bg-cyan-400', 'bg-indigo-400'];
         return (
@@ -323,7 +291,6 @@ const SuperAgentHome: React.FC = () => {
                 >
                   <div className="px-4 py-3.5">
                     <div className="flex items-center gap-3 mb-2">
-                      {/* Stacked member avatars */}
                       <div className="relative shrink-0 flex items-center h-7" style={{ width: Math.min(g.avatars.length, 4) * 18 + 12 }}>
                         {g.avatars.slice(0, 4).map((initials, i) => (
                           <div key={i} className={`absolute w-7 h-7 rounded-full ${avatarColors[i % avatarColors.length]} text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white shadow-sm transition-transform hover:-translate-y-0.5`} style={{ left: i * 16, zIndex: 10 - i }}>{initials}</div>
@@ -363,7 +330,6 @@ const SuperAgentHome: React.FC = () => {
           </div>
         );
       })()}
-
     </div>
   );
 };
