@@ -318,13 +318,13 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
         setWorkflowPhase('consensus');
         const fullPrompt = `${initialMessage}\n\n[Signal Radar Intercepted Data]:\n${data.summary}`;
         const existingMessages: Message[] = [{ role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() }];
-        sendGenericChat(fullPrompt, existingMessages);
+        sendGenericChat(fullPrompt, existingMessages, true);
       },
       onError: (data) => {
         setResearchLogs(prev => [...prev, `⚠️ Error: ${data.error}`]);
         setWorkflowPhase('consensus');
         const existingMessages: Message[] = [{ role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() }];
-        sendGenericChat(initialMessage || '', existingMessages);
+        sendGenericChat(initialMessage || '', existingMessages, true);
       },
     },
     [initialMessage, sendGenericChat]
