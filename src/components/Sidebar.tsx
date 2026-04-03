@@ -23,7 +23,8 @@ const UserMenu: React.FC<{
   userName?: string;
   userInitial?: string;
   userAvatar?: string | null;
-}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial, userAvatar }) => {
+  onItemClick?: () => void;
+}> = ({ open, onClose, position = 'above', isDark, onToggleDark, onLogout, userName, userInitial, userAvatar, onItemClick }) => {
   const menuNav = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -57,7 +58,7 @@ const UserMenu: React.FC<{
   const dividerColor = isDark ? 'bg-white/10' : 'bg-gray-100';
 
   return (
-    <div ref={ref} className={`absolute ${posClass} z-50 ${widthClass} ${bg} rounded-xl border py-1.5`}
+    <div ref={ref} className={`absolute ${posClass} z-[100] ${widthClass} ${bg} rounded-xl border py-1.5`}
       style={{ animation: 'menu-pop 0.15s ease-out' }}>
       {/* User header */}
       <div className={`px-3.5 py-2.5 border-b ${headerBorder}`}>
@@ -75,7 +76,11 @@ const UserMenu: React.FC<{
           if (!item) return <div key={i} className={`my-1 h-px ${dividerColor}`} />;
           const Ic = item.icon;
           return (
-            <button key={i} onClick={() => { item.action(); if (!item.label.includes('Mode')) onClose(); }}
+            <button key={i} onClick={() => { 
+                item.action(); 
+                if (!item.label.includes('Mode')) onClose(); 
+                if (onItemClick) onItemClick();
+              }}
               className={`w-full flex items-center gap-3 px-3.5 py-2 text-[13px] transition-colors ${item.danger ? dangerColor : itemColor
                 }`}>
               <Ic />{item.label}
@@ -92,10 +97,12 @@ export const Sidebar: React.FC<{
   isDark: boolean; onToggleDark: () => void;
   isLoggedIn: boolean; onLogin: () => void; onLogout: () => void;
   userName?: string; userInitial?: string; userAvatar?: string | null;
-}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial, userAvatar }) => {
+  mobileDrawerOpen?: boolean; onCloseMobileDrawer?: () => void;
+}> = ({ expanded, onToggle, page, go, isDark, onToggleDark, isLoggedIn, onLogin, onLogout, userName, userInitial, userAvatar, mobileDrawerOpen, onCloseMobileDrawer }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [desktopUserMenuOpen, setDesktopUserMenuOpen] = useState(false);
+  const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeSessions, setActiveSessions] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, title: string } | null>(null);
@@ -199,8 +206,86 @@ export const Sidebar: React.FC<{
   const divider = isDark ? 'bg-white/8' : 'bg-gray-100';
   const avatarBg = isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-500';
 
+  /* ── Mobile Drawer Overlay ── */
+  const mobileOverlay = mobileDrawerOpen && (
+    <div className="md:hidden fixed inset-0 z-[90] flex">
+      {/* Backdrop */}
+      <div className="absolute inset-0 z-[1] bg-black/30 backdrop-blur-[2px]" onClick={onCloseMobileDrawer}
+        style={{ animation: 'fadeIn 0.2s ease-out' }} />
+      {/* Drawer panel */}
+      <div className="relative z-[2] w-[280px] max-w-[80vw] h-full bg-white flex flex-col shadow-2xl"
+        style={{ animation: 'drawerSlideIn 0.25s cubic-bezier(0.16,1,0.3,1)' }}>
+        
+        {/* Drawer Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}>
+          <span className="text-[15px] font-bold tracking-tight text-gray-900 select-none">Loka</span>
+          <button onClick={onCloseMobileDrawer} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-all">
+            <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* New chat */}
+        <div className="px-3 pb-1">
+          <SideLink icon={I.Plus} label="New chat" onClick={() => go(Page.SUPER_AGENT)} isDark={false} />
+        </div>
+
+        <div className="mx-4 my-2 h-px bg-gray-100" />
+
+        {/* Nav items */}
+        <div className="px-3 space-y-px">
+          {navItems.map(({ key, icon, label, anim }) => (
+            <SideLink key={key} icon={icon} label={label} active={page === key} anim={anim}
+              onClick={() => go(key)} isDark={false} />
+          ))}
+        </div>
+
+        <div className="mx-4 my-3 h-px bg-gray-100" />
+
+        {/* Recents */}
+        <div className="px-3 flex-1 overflow-y-auto min-h-0">
+          <p className="px-2 pb-2 text-[11px] font-medium text-gray-400 select-none">Recents</p>
+          {conversations.length > 0 ? (
+            conversations.map((c) => (
+              <div key={c.id} className="relative group/recent">
+                <button onClick={() => { navigate(c.agentId === 'research' ? `/signal-radar?session=${c.id}` : `/?session=${c.id}`); if (onCloseMobileDrawer) onCloseMobileDrawer(); }} title={c.title} className="w-full text-left flex items-center justify-between px-2 py-1.5 rounded-md text-[13px] text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-all">
+                  <span className="truncate pr-2">{c.title}</span>
+                  {activeSessions.has(c.id) && (
+                    <svg className="w-3.5 h-3.5 animate-spin text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  )}
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: c.id, title: c.title }); }}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center opacity-0 group-hover/recent:opacity-100 hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-all bg-white"
+                  title="Delete chat"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+              </div>
+            ))
+          ) : (
+            RECENTS.map((r, i) => (
+              <button key={i} className="w-full text-left px-2 py-1.5 rounded-md text-[13px] text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-all truncate">
+                {r}
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="px-3 py-3 relative" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}>
+          <div onClick={() => isLoggedIn ? setMobileUserMenuOpen(!mobileUserMenuOpen) : onLogin()} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 transition-all cursor-pointer group/user">
+            <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'} rounded-full flex items-center justify-center text-[10px] font-semibold overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
+            <span className="flex-1 text-[13px] font-medium text-gray-700 truncate">{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
+            <div className="opacity-0 group-hover/user:opacity-100 transition-opacity text-gray-400"><I.Dots /></div>
+          </div>
+          <UserMenu open={mobileUserMenuOpen} onClose={() => setMobileUserMenuOpen(false)} isDark={false} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} onItemClick={() => { if (mobileDrawerOpen && onCloseMobileDrawer) onCloseMobileDrawer(); }} />
+        </div>
+      </div>
+    </div>
+  );
+
   /* ── Collapsed: 56px icon rail with hover tooltips ── */
   if (!expanded) return (
+    <>
     <nav className={`hidden md:flex w-14 border-r flex-col items-center pt-3 pb-4 shrink-0 ${bg}`}>
       <button onClick={onToggle} className={`rail-btn w-9 h-9 rounded-lg flex items-center justify-center ${textSecondary} ${hoverBg} transition-all mb-1`}>
         <I.Panel /><span className="rail-tip">Expand</span>
@@ -222,16 +307,19 @@ export const Sidebar: React.FC<{
         ))}
       </div>
       <div className="relative">
-        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
+        <div onClick={() => isLoggedIn ? setDesktopUserMenuOpen(!desktopUserMenuOpen) : onLogin()} className={`w-8 h-8 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
+        <UserMenu open={desktopUserMenuOpen} onClose={() => setDesktopUserMenuOpen(false)} position="right" isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} onItemClick={() => { if (mobileDrawerOpen && onCloseMobileDrawer) onCloseMobileDrawer(); }} />
       </div>
     </nav>
+    {mobileOverlay}
+    </>
   );
 
   /* ── Expanded: 256px full sidebar ── */
   return (
-    <aside className={`hidden md:flex w-64 border-r flex-col shrink-0 ${bg}`}>
-      {/* Header */}
+    <>
+      <aside className={`hidden md:flex w-64 border-r flex-col shrink-0 ${bg}`}>
+        {/* Header */}
       <div className="flex items-center justify-between pl-5 pr-2 pt-5 pb-3">
         <span className={`text-[15px] font-bold tracking-tight ${textPrimary} cursor-default select-none`}>Loka</span>
         <div className="flex items-center gap-0.5">
@@ -289,12 +377,12 @@ export const Sidebar: React.FC<{
 
       {/* User */}
       <div className="px-3 py-3 relative">
-        <div onClick={() => isLoggedIn ? setUserMenuOpen(!userMenuOpen) : onLogin()} className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${hoverBg} transition-all cursor-pointer group/user`}>
+        <div onClick={() => isLoggedIn ? setDesktopUserMenuOpen(!desktopUserMenuOpen) : onLogin()} className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${hoverBg} transition-all cursor-pointer group/user`}>
           <div className={`w-7 h-7 ${isLoggedIn ? 'bg-emerald-500 text-white' : avatarBg} rounded-full flex items-center justify-center text-[10px] font-semibold overflow-hidden`}>{userAvatar ? <img src={userAvatar} alt="" className="w-full h-full object-cover" /> : (userInitial || 'U')}</div>
           <span className={`flex-1 text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>{isLoggedIn ? (userName || 'User') : 'Sign in'}</span>
           <div className={`opacity-0 group-hover/user:opacity-100 transition-opacity ${textMuted}`}><I.Dots /></div>
         </div>
-        <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} />
+        <UserMenu open={desktopUserMenuOpen} onClose={() => setDesktopUserMenuOpen(false)} isDark={isDark} onToggleDark={onToggleDark} onLogout={onLogout} userName={userName} userInitial={userInitial} userAvatar={userAvatar} onItemClick={() => { if (mobileDrawerOpen && onCloseMobileDrawer) onCloseMobileDrawer(); }} />
       </div>
 
       {/* Custom Delete Confirmation Modal */}
@@ -324,7 +412,10 @@ export const Sidebar: React.FC<{
           </div>
         </div>
       )}
-    </aside>
+      </aside>
+
+      {mobileOverlay}
+    </>
   );
 };
 
