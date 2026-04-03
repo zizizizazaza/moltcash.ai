@@ -24,6 +24,10 @@ interface Message {
     content: string;
     timestamp: string;
     isStreaming?: boolean;
+    hedgeFundLogs?: string[];
+    isHedgeFundRunning?: boolean;
+    stockAnalysisLogs?: string[];
+    isStockAnalysisRunning?: boolean;
 }
 
 interface AgentStep {
@@ -889,6 +893,116 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
             sendToAI(initialMessage || '', existingMessages);
         };
 
+        // ── AI Hedge Fund listeners ──
+        const onHedgefundStarted = (data: { sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(true);
+        };
+
+        const onHedgefundProgress = (data: { sessionId?: string; log: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (!last || last.role !== 'assistant') {
+                    updated.push({ role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, hedgeFundLogs: [data.log], isHedgeFundRunning: true });
+                } else {
+                    updated[updated.length - 1] = { ...last, hedgeFundLogs: [...(last.hedgeFundLogs || []), data.log] };
+                }
+                return updated;
+            });
+        };
+
+        const onHedgefundDone = (data: { sessionId?: string; report: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(false);
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (last && last.role === 'assistant') {
+                    updated[updated.length - 1] = { ...last, content: data.report, isStreaming: false, isHedgeFundRunning: false };
+                }
+                return updated;
+            });
+            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
+        };
+
+        const onHedgefundError = (data: { sessionId?: string; error: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(false);
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (last && last.role === 'assistant') {
+                    updated[updated.length - 1] = { ...last, content: `⚠️ Hedge Fund Error: ${data.error}`, isStreaming: false, isHedgeFundRunning: false };
+                } else {
+                    updated.push({ role: 'assistant', content: `⚠️ Hedge Fund Error: ${data.error}`, timestamp: new Date().toLocaleTimeString(), isHedgeFundRunning: false });
+                }
+                return updated;
+            });
+            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
+        };
+
+        // ── Stock Analysis listeners ──
+        const onStockAnalysisStarted = (data: { sessionId?: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(true);
+        };
+
+        const onStockAnalysisProgress = (data: { sessionId?: string; log: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (!last || last.role !== 'assistant') {
+                    updated.push({ role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, stockAnalysisLogs: [data.log], isStockAnalysisRunning: true });
+                } else {
+                    updated[updated.length - 1] = { ...last, stockAnalysisLogs: [...(last.stockAnalysisLogs || []), data.log] };
+                }
+                return updated;
+            });
+        };
+
+        const onStockAnalysisDone = (data: { sessionId?: string; report: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(false);
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (last && last.role === 'assistant') {
+                    updated[updated.length - 1] = { ...last, content: data.report, isStreaming: false, isStockAnalysisRunning: false };
+                }
+                return updated;
+            });
+            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
+        };
+
+        const onStockAnalysisError = (data: { sessionId?: string; error: string }) => {
+            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
+            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+            setIsStreaming(false);
+            setMessages(prev => {
+                let updated = [...prev];
+                let last = updated[updated.length - 1];
+                if (last && last.role === 'assistant') {
+                    updated[updated.length - 1] = { ...last, content: `⚠️ Stock Analysis Error: ${data.error}`, isStreaming: false, isStockAnalysisRunning: false };
+                } else {
+                    updated.push({ role: 'assistant', content: `⚠️ Stock Analysis Error: ${data.error}`, timestamp: new Date().toLocaleTimeString(), isStockAnalysisRunning: false });
+                }
+                return updated;
+            });
+            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
+        };
+
         const onChatRouting = (data: { sessionId: string }) => {
             if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
             if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
@@ -933,6 +1047,16 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
         socket.on('agent:research:done', onResearchDone);
         socket.on('agent:research:error', onResearchError);
 
+        socket.on('agent:hedgefund:started', onHedgefundStarted);
+        socket.on('agent:hedgefund:progress', onHedgefundProgress);
+        socket.on('agent:hedgefund:done', onHedgefundDone);
+        socket.on('agent:hedgefund:error', onHedgefundError);
+
+        socket.on('agent:stockanalysis:started', onStockAnalysisStarted);
+        socket.on('agent:stockanalysis:progress', onStockAnalysisProgress);
+        socket.on('agent:stockanalysis:done', onStockAnalysisDone);
+        socket.on('agent:stockanalysis:error', onStockAnalysisError);
+
         return () => {
             socket.off('agent:chat:started', onStarted);
             socket.off('agent:chat:progress', onProgress);
@@ -946,6 +1070,16 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
             socket.off('agent:research:progress', onResearchProgress);
             socket.off('agent:research:done', onResearchDone);
             socket.off('agent:research:error', onResearchError);
+
+            socket.off('agent:hedgefund:started', onHedgefundStarted);
+            socket.off('agent:hedgefund:progress', onHedgefundProgress);
+            socket.off('agent:hedgefund:done', onHedgefundDone);
+            socket.off('agent:hedgefund:error', onHedgefundError);
+
+            socket.off('agent:stockanalysis:started', onStockAnalysisStarted);
+            socket.off('agent:stockanalysis:progress', onStockAnalysisProgress);
+            socket.off('agent:stockanalysis:done', onStockAnalysisDone);
+            socket.off('agent:stockanalysis:error', onStockAnalysisError);
         };
     }, [restoreSessionId, activeSessionId, currentMode, initialMessage, sendToAI]);
 
@@ -958,7 +1092,38 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
         const initialMessages = [userMsg];
         setMessages(initialMessages);
 
-        if (initialAgent === 'research' && (currentMode === 'collaborate' || currentMode === 'roundtable')) {
+        // Check if this is a hedge fund request
+        if (initialMessage.startsWith('[HEDGEFUND] ')) {
+            const tickerInput = initialMessage.replace('[HEDGEFUND] ', '').trim();
+            // Extract tickers: split by comma, remove non-alpha chars like " — Social Media"
+            const tickers = tickerInput.split(',').map(t => t.replace(/[^A-Za-z]/g, '').trim().toUpperCase()).filter(Boolean);
+            
+            // Fix the displayed user message to be cleaner
+            setMessages([{ role: 'user', content: `Analyze ${tickers.join(', ')} using AI Hedge Fund`, timestamp: new Date().toLocaleTimeString() }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, hedgeFundLogs: [], isHedgeFundRunning: true }]);
+            setIsStreaming(true);
+            
+            setTimeout(() => {
+                socket.emit('agent:hedgefund', { tickers, sessionId: activeSessionId, showReasoning: true });
+                window.dispatchEvent(new CustomEvent('session-started', { 
+                    detail: { id: activeSessionId, title: `AI Hedge Fund: ${tickers.join(', ')}`, agentId: 'hedgefund' } 
+                }));
+            }, 50);
+        } else if (initialMessage.startsWith('[STOCKANALYSIS] ')) {
+            const tickerInput = initialMessage.replace('[STOCKANALYSIS] ', '').trim();
+            const tickers = tickerInput.split(',').map(t => t.replace(/[^A-Za-z0-9]/g, '').trim().toUpperCase()).filter(Boolean);
+            
+            setMessages([{ role: 'user', content: `Analyze ${tickers.join(', ')} using A/H/US Stock Tracker`, timestamp: new Date().toLocaleTimeString() }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, stockAnalysisLogs: [], isStockAnalysisRunning: true }]);
+            setIsStreaming(true);
+            
+            setTimeout(() => {
+                socket.emit('agent:stockanalysis', { tickers, sessionId: activeSessionId });
+                window.dispatchEvent(new CustomEvent('session-started', { 
+                    detail: { id: activeSessionId, title: `Stock Analysis: ${tickers.join(', ')}`, agentId: 'stockanalysis' } 
+                }));
+            }, 50);
+        } else if (initialAgent === 'research' && (currentMode === 'collaborate' || currentMode === 'roundtable')) {
             setWorkflowPhase('research');
             hasStartedResearch.current = true;
             setTimeout(() => {
@@ -1067,6 +1232,84 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                                             setShowGraphPanel(true);
                                                         }}
                                                     />
+                                                )}
+                                                {/* ── AI Hedge Fund Thinking Flow ── */}
+                                                {(msg.isHedgeFundRunning || (msg.hedgeFundLogs && msg.hedgeFundLogs.length > 0)) && (
+                                                    <div className="mb-4">
+                                                        <div className="flex items-center gap-1.5 mb-2">
+                                                            {msg.isHedgeFundRunning ? (
+                                                                <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                                                            ) : (
+                                                                <div className="w-3.5 h-3.5 rounded-full bg-emerald-100 flex items-center justify-center">
+                                                                    <svg className="w-2 h-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                                </div>
+                                                            )}
+                                                            <span className="text-[11px] font-semibold text-gray-500">{msg.isHedgeFundRunning ? 'Hedge Fund agents analyzing...' : 'Analysis complete'}</span>
+                                                        </div>
+                                                        <div className="pl-2 border-l-2 border-gray-100 ml-[7px] space-y-0.5 max-h-[350px] overflow-y-auto">
+                                                            {msg.hedgeFundLogs?.length === 0 && msg.isHedgeFundRunning && (
+                                                                <div className="flex items-center gap-1.5 py-0.5">
+                                                                    <div className="w-2.5 h-2.5 border border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                                                                    <span className="text-[11px] text-blue-600 font-bold">Initializing execution layer...</span>
+                                                                </div>
+                                                            )}
+                                                            {msg.hedgeFundLogs?.map((l, idx) => {
+                                                                const isLast = idx === (msg.hedgeFundLogs?.length ?? 0) - 1;
+                                                                const isDone = !msg.isHedgeFundRunning || !isLast;
+                                                                const cleanLog = l.replace(/\x1b\[[0-9;]*m/g, '').trim();
+                                                                if (!cleanLog) return null;
+                                                                return (
+                                                                    <div key={idx} className="flex items-center gap-1.5 py-0.5">
+                                                                        {isDone ? (
+                                                                            <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                                                        ) : (
+                                                                            <div className="w-2.5 h-2.5 border border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                                                                        )}
+                                                                        <span className={`text-[11px] leading-snug break-words flex-1 ${isDone ? 'text-gray-600 font-medium' : 'text-blue-600 font-bold'}`}>{cleanLog}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {/* ── Stock Analysis Flow ── */}
+                                                {(msg.isStockAnalysisRunning || (msg.stockAnalysisLogs && msg.stockAnalysisLogs.length > 0)) && (
+                                                    <div className="mb-4">
+                                                        <div className="flex items-center gap-1.5 mb-2">
+                                                            {msg.isStockAnalysisRunning ? (
+                                                                <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                                                            ) : (
+                                                                <div className="w-3.5 h-3.5 rounded-full bg-red-100 flex items-center justify-center">
+                                                                    <svg className="w-2 h-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                                </div>
+                                                            )}
+                                                            <span className="text-[11px] font-semibold text-gray-500">{msg.isStockAnalysisRunning ? 'Stock Analysis gathering data...' : 'Analysis complete'}</span>
+                                                        </div>
+                                                        <div className="pl-2 border-l-2 border-gray-100 ml-[7px] space-y-0.5 max-h-[350px] overflow-y-auto">
+                                                            {msg.stockAnalysisLogs?.length === 0 && msg.isStockAnalysisRunning && (
+                                                                <div className="flex items-center gap-1.5 py-0.5">
+                                                                    <div className="w-2.5 h-2.5 border border-red-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                                                                    <span className="text-[11px] text-red-600 font-bold">Initializing stock analysis module...</span>
+                                                                </div>
+                                                            )}
+                                                            {msg.stockAnalysisLogs?.map((l, idx) => {
+                                                                const isLast = idx === (msg.stockAnalysisLogs?.length ?? 0) - 1;
+                                                                const isDone = !msg.isStockAnalysisRunning || !isLast;
+                                                                const cleanLog = l.replace(/\x1b\[[0-9;]*m/g, '').trim();
+                                                                if (!cleanLog) return null;
+                                                                return (
+                                                                    <div key={idx} className="flex items-center gap-1.5 py-0.5">
+                                                                        {isDone ? (
+                                                                            <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                                                        ) : (
+                                                                            <div className="w-2.5 h-2.5 border border-red-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                                                                        )}
+                                                                        <span className={`text-[11px] leading-snug break-words flex-1 ${isDone ? 'text-gray-600 font-medium' : 'text-red-600 font-bold'}`}>{cleanLog}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
                                                 )}
                                                 {isRouting && msg.isStreaming && i === messages.length - 1 && (
                                                     <div className="mb-3 mt-1 flex items-center gap-2 text-blue-500 font-mono text-[10px]">

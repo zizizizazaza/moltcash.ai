@@ -1,0 +1,39 @@
+/**
+ * GenericChatApp — Default chat adapter for normal conversations.
+ * Handles auto/fast/collaborate/roundtable modes via the standard agent:chat socket.
+ */
+import type { AgentAppAdapter } from './types';
+import { registerApp } from './types';
+import { socket } from '../../services/socket';
+import type { ChatMode } from '../../types/chat';
+
+const GenericChatApp: AgentAppAdapter = {
+  id: 'generic',
+  name: 'Loka SuperAgent',
+  supportedModes: ['auto', 'fast', 'collaborate', 'roundtable'],
+  accentColor: 'blue',
+  socketPrefix: 'agent:chat',
+  runningLabel: 'Thinking...',
+  doneLabel: 'Response complete',
+  initLabel: 'Processing...',
+
+  start({ query, sessionId, mode }) {
+    socket.emit('agent:chat', {
+      content: query,
+      mode,
+      sessionId,
+      agentId: 'superagent',
+    });
+
+    window.dispatchEvent(new CustomEvent('session-started', {
+      detail: { id: sessionId, title: query.slice(0, 60), agentId: 'superagent' },
+    }));
+  },
+
+  formatUserMessage(query: string): string {
+    return query;
+  },
+};
+
+registerApp(GenericChatApp);
+export default GenericChatApp;

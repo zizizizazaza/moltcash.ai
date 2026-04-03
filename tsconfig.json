@@ -25,5 +25,9 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "server/tools/ai-hedge-fund/app/**",
+    "server/tools/ai-hedge-fund/tests/**"
+  ]
 }

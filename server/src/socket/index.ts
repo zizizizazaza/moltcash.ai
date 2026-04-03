@@ -4,6 +4,8 @@ import { config } from '../config.js';
 import { verifyToken } from '../middleware/auth.js';
 import prisma from '../db.js';
 import { researchService } from '../services/research.service.js';
+import { stockAnalysisService } from '../services/stockanalysis.service.js';
+import { hedgefundService } from '../services/hedgefund.service.js';
 import { LokaAIService } from '../services/ai.service.js';
 import { runConsensusEngine } from '../services/consensus.service.js';
 import * as crypto from 'crypto';
@@ -14,6 +16,8 @@ const aiService = new LokaAIService();
 // ── Online status tracking ──
 const onlineUsers = new Set<string>();
 const activeResearchSessions = new Set<string>();
+const activeHedgeFundSessions = new Set<string>();
+const activeStockAnalysisSessions = new Set<string>();
 const activeChatSessions = new Map<string, string>();
 
 export function setupSocket(server: HttpServer) {
@@ -148,6 +152,117 @@ export function setupSocket(server: HttpServer) {
       } catch (err: any) {
         emitToUser(userId, 'agent:research:error', { topic: data.topic, sessionId, error: err.message });
         activeResearchSessions.delete(sessionId);
+      }
+    });
+
+    // ── AI Hedge Fund Agent ──
+    socket.on('agent:hedgefund:check', (data: { sessionId: string }, callback: (res: { isRunning: boolean }) => void) => {
+      if (typeof callback === 'function') {
+        callback({ isRunning: activeHedgeFundSessions.has(data.sessionId) });
+      }
+    });
+
+    socket.on('agent:hedgefund', async (data: { tickers: string[]; sessionId?: string; showReasoning?: boolean }) => {
+      if (!data?.tickers?.length) return;
+
+      const sessionId = data.sessionId || crypto.randomUUID();
+      activeHedgeFundSessions.add(sessionId);
+
+      const tickerStr = data.tickers.join(', ');
+      emitToUser(userId, 'agent:hedgefund:started', { tickers: data.tickers, sessionId });
+
+      // Save user message
+      try {
+        await prisma.chatMessage.create({
+          data: {
+            userId,
+            sessionId,
+            role: 'user',
+            content: `Analyze ${tickerStr} using AI Hedge Fund`,
+            agentId: 'hedgefund'
+          }
+        });
+      } catch (dbErr) {
+        console.error('Failed to save hedgefund user message:', dbErr);
+      }
+
+      try {
+        const result = await hedgefundService.runAnalysis(
+          {
+            tickers: data.tickers,
+            showReasoning: data.showReasoning ?? true,
+          },
+          (log) => {
+            emitToUser(userId, 'agent:hedgefund:progress', { sessionId, log });
+          }
+        );
+
+        const report = hedgefundService.formatReport(result);
+
+        // Save assistant message
+        try {
+          await prisma.chatMessage.create({
+            data: {
+              userId,
+              sessionId,
+              role: 'assistant',
+              content: report,
+              agentId: 'hedgefund'
+            }
+          });
+        } catch (dbErr) {
+          console.error('Failed to save hedgefund assistant message:', dbErr);
+        }
+
+        emitToUser(userId, 'agent:hedgefund:done', { sessionId, report });
+        activeHedgeFundSessions.delete(sessionId);
+      } catch (err: any) {
+        emitToUser(userId, 'agent:hedgefund:error', { sessionId, error: err.message });
+        activeHedgeFundSessions.delete(sessionId);
+      }
+    });
+
+    // ── Stock Analysis Agent ──
+    socket.on('agent:stockanalysis:check', (data: { sessionId: string }, callback: (res: { isRunning: boolean }) => void) => {
+      if (typeof callback === 'function') {
+        callback({ isRunning: activeStockAnalysisSessions.has(data.sessionId) });
+      }
+    });
+
+    socket.on('agent:stockanalysis', async (data: { tickers: string[]; sessionId?: string }) => {
+      if (!data?.tickers?.length) return;
+
+      const sessionId = data.sessionId || crypto.randomUUID();
+      activeStockAnalysisSessions.add(sessionId);
+
+      const tickerStr = data.tickers.join(', ');
+      emitToUser(userId, 'agent:stockanalysis:started', { tickers: data.tickers, sessionId });
+
+      // Save user message
+      try {
+        await prisma.chatMessage.create({
+          data: {
+            userId,
+            sessionId,
+            role: 'user',
+            content: `Analyze ${tickerStr} using Stock Analysis Agent`,
+            agentId: 'stockanalysis'
+          }
+        });
+      } catch (dbErr) {
+        console.error('Failed to save stockanalysis user message:', dbErr);
+      }
+
+      try {
+        await stockAnalysisService.runAnalysis(
+          { tickers: data.tickers },
+          sessionId,
+          socket
+        );
+        activeStockAnalysisSessions.delete(sessionId);
+      } catch (err: any) {
+        emitToUser(userId, 'agent:stockanalysis:error', { sessionId, error: err.message });
+        activeStockAnalysisSessions.delete(sessionId);
       }
     });
 

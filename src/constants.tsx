@@ -127,6 +127,8 @@ export const FEATURED_GROUPS = [
 export const QUICK_ACTIONS = [
   { id: 'invest', icon: ActionIcons.Invest, label: 'Analyze Investment' },
   { id: 'research', icon: ActionIcons.Research, label: 'Signal Radar' },
+  { id: 'hedgefund', icon: ActionIcons.HedgeFund, label: 'AI Hedge Fund' },
+  { id: 'stockanalysis', icon: ActionIcons.StockAnalysis, label: 'A/H/US Stock' },
   { id: 'forecast', icon: ActionIcons.Forecast, label: 'Forecast' },
   { id: 'scout', icon: ActionIcons.Scout, label: 'Project Scout' },
   { id: 'sentiment', icon: ActionIcons.Sentiment, label: 'Check Sentiment' },
@@ -229,6 +231,57 @@ export const AGENT_GUIDES: Record<string, AgentGuide> = {
       'Show me correlation analysis of my top 5 holdings',
     ],
   },
+  hedgefund: {
+    desc: 'Multi-agent AI hedge fund analysis powered by legendary investors.',
+    scenarios: [
+      {
+        id: 'single', label: 'Single Stock',
+        prompts: [
+          'AAPL',
+          'TSLA',
+          'NVDA',
+          'MSFT',
+        ],
+      },
+      {
+        id: 'multi', label: 'Multi-Stock',
+        prompts: [
+          'AAPL, MSFT, GOOGL',
+          'TSLA, RIVN, NIO',
+          'NVDA, AMD, INTC',
+        ],
+      },
+      {
+        id: 'sector', label: 'Sector Play',
+        prompts: [
+          'META, SNAP, PINS — Social Media',
+          'JPM, GS, MS — Banking',
+          'XOM, CVX, COP — Energy',
+        ],
+      },
+    ],
+  },
+  stockanalysis: {
+    desc: 'Daily stock analysis for Asian and US markets, powered by data-driven insights.',
+    scenarios: [
+      {
+        id: 'ashare', label: 'A-Share',
+        prompts: [
+          '600519',
+          '000001',
+          '601318',
+        ],
+      },
+      {
+        id: 'usstock', label: 'US Equity',
+        prompts: [
+          'TSLA',
+          'AAPL',
+          'NVDA',
+        ],
+      },
+    ],
+  },
 };
 
 export type GroupMemberData = {
@@ -295,6 +348,7 @@ export const DISCOVER_AGENTS = [
   { id: 6, name: 'News Aggregator', desc: 'Curate and summarize financial news in real-time', category: 'Research', letter: 'N', color: 'bg-cyan-500' },
   { id: 7, name: 'Competitor Intelligence', desc: 'Monitor competitors, track pricing changes, and surface strategic insights', category: 'Research', letter: 'C', color: 'bg-indigo-500' },
   { id: 8, name: 'Revenue Forecaster', desc: 'Model revenue scenarios and forecast business performance using AI', category: 'Finance', letter: 'R', color: 'bg-pink-500' },
+  { id: 9, name: 'Stock Analysis', desc: 'Daily stock analysis for Asian and US markets', category: 'Finance', letter: 'S', color: 'bg-red-500' },
 ];
 
 export const DISCOVER_CONTACTS = [
