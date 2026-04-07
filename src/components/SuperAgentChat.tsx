@@ -41,78 +41,112 @@ interface Message {
     isStreaming?: boolean;
 }
 
-interface AgentStep {
+interface SearchSource {
+    favicon: string;
+    title: string;
+    domain: string;
+}
+
+interface DataProvider {
+    name: string;
+    status: 'pending' | 'active' | 'done';
+}
+
+// ─── Modular Thinking Flow ──────────────────────────────────
+interface SearchModuleData {
+    variant: 'social' | 'data_providers';
+    description?: string;
+    sources?: SearchSource[];
+    providers?: DataProvider[];
+    totalFound?: number;
+}
+
+interface AnalysisStage {
+    id: string;
     label: string;
-    status: 'done' | 'active' | 'pending';
-    detailType?: 'table' | 'news';
+    status: 'pending' | 'active' | 'done';
+    result?: { label: string; value: string; color?: string }[];
 }
 
-interface AgentThought {
-    agentId: string;
-    agentName: string;
-    agentIcon: string;
-    agentColor: string;
-    status: 'waiting' | 'analyzing' | 'completed';
-    summary: string;
-    details?: string;
-    verdict?: 'bullish' | 'bearish' | 'neutral';
+interface AnalysisModuleData {
+    stages: AnalysisStage[];
+    decision?: { verdict: string; score: number; color: string; action: string };
+}
+
+interface SimPanelist {
+    name: string;
+    avatar: string;
+    status: 'pending' | 'active' | 'done';
+    verdict?: string;
     confidence?: number;
-    steps?: AgentStep[];
 }
 
-interface ThinkingProcess {
-    agents: AgentThought[];
-    consensus?: { verdict: 'bullish' | 'bearish' | 'neutral'; confidence: number; duration: number };
+interface SimulationModuleData {
+    panelists: SimPanelist[];
+    prediction?: { verdict: string; confidence: number };
+}
+
+interface ConsensusModuleData {
+    round: number;
+    maxRounds: number;
+    status: 'building' | 'discussing' | 'concluded';
+    conclusion?: { verdict: string; confidence: number };
+}
+
+interface ThinkingModule {
+    type: 'search' | 'analysis' | 'simulation' | 'consensus' | 'done';
+    status: 'pending' | 'active' | 'completed';
+    data?: SearchModuleData | AnalysisModuleData | SimulationModuleData | ConsensusModuleData | { duration?: number };
+}
+
+interface ThinkingFlow {
+    modules: ThinkingModule[];
     isActive: boolean;
-    phase?: 'generating' | 'evaluating' | 'persuading';
+    route?: string;  // which agent route triggered this
 }
 
-// ─── Agent Council Config ───────────────────────────────────
-const AGENT_COUNCIL = [
-    {
-        id: 'risk_assessor',
-        name: 'Risk Assessor',
-        icon: '🛡️',
-        color: 'orange',
-        steps: [
-            'Verifying revenue streams & financial statements',
-            'Evaluating credit score & default probability',
-            'Analyzing market position & competitive landscape',
-            'Generating risk assessment report',
-        ],
-    },
-    {
-        id: 'market_analyst',
-        name: 'Market Analyst',
-        icon: '📊',
-        color: 'blue',
-        steps: [
-            'Retrieving recent Stock OHLC Data',
-            'Analyzing revenue structure & market share',
-            'Reviewing active users & ARR growth',
-        ],
-    },
-    {
-        id: 'web_search',
-        name: 'Web Search Agent',
-        icon: '🌐',
-        color: 'green',
-        steps: [
-            'Finding recent news & events',
-            'Cross-referencing catalysts',
-            'Summarizing market sentiment',
-        ],
-    },
-    {
-        id: 'trading_strategist',
-        name: 'Trading Strategist',
-        icon: '📈',
-        color: 'purple',
-        steps: [
-            'Correlating technical indicators',
-            'Formulating short-term strategy',
-        ],
-    },
+// ─── Module Config Pools ────────────────────────────────────
+const WEB_SOURCES_POOL: SearchSource[] = [
+    { favicon: 'web', title: 'Q4 2025 earnings beat expectations, revenue up 22%...', domain: 'www.reuters.com' },
+    { favicon: 'web', title: 'Institutional investors increase holdings by 15%...', domain: 'www.bloomberg.com' },
+    { favicon: 'web', title: 'New partnership announced with major cloud provider...', domain: 'www.coindesk.com' },
+    { favicon: 'web', title: 'Market cap surpasses $2T milestone amid AI boom...', domain: 'www.cnbc.com' },
+    { favicon: 'web', title: 'SEC filing reveals insider buying activity...', domain: 'www.sec.gov' },
+    { favicon: 'web', title: 'Analyst upgrades rating to Strong Buy, PT $950...', domain: 'www.tradingview.com' },
+    { favicon: 'web', title: 'Short interest drops 40% as bearish momentum fades...', domain: 'finance.yahoo.com' },
+    { favicon: 'web', title: 'Fed rate decision impact on high-growth tech stocks...', domain: 'www.wsj.com' },
+];
+
+const SOCIAL_SOURCES_POOL: SearchSource[] = [
+    { favicon: 'reddit', title: 'r/wallstreetbets — Massive bull run incoming? DD inside...', domain: 'reddit.com' },
+    { favicon: 'reddit', title: 'r/stocks — Earnings thread: beats estimates by 18%...', domain: 'reddit.com' },
+    { favicon: 'x', title: '@analyst_mike: Breaking down Q4 numbers, thread 🧵...', domain: 'x.com' },
+    { favicon: 'x', title: '@crypto_whale: Institutional flow data shows accumulation...', domain: 'x.com' },
+    { favicon: 'youtube', title: 'Graham Stephan: Why I just bought $500K worth...', domain: 'youtube.com' },
+    { favicon: 'youtube', title: 'Meet Kevin: Emergency livestream — market analysis...', domain: 'youtube.com' },
+    { favicon: 'telegram', title: 'Crypto Signals VIP — New entry alert with 3x target...', domain: 't.me' },
+    { favicon: 'discord', title: '#market-talk — Community consensus shifting bullish...', domain: 'discord.gg' },
+    { favicon: 'hackernews', title: 'Show HN: Real-time sentiment analysis dashboard...', domain: 'news.ycombinator.com' },
+    { favicon: 'weibo', title: '财经大V：A股联动分析，关注这个关键指标...', domain: 'weibo.com' },
+    { favicon: 'wechat', title: '市场早报：隔夜美股大涨，今日重点关注...', domain: 'mp.weixin.qq.com' },
+];
+
+const DATA_PROVIDERS_POOL: string[] = [
+    'Yahoo Finance', 'Bloomberg API', 'Alpha Vantage', 'Polygon.io', 'Finnhub',
+    'CoinGecko', 'TradingView', 'Morningstar', 'SEC EDGAR', 'Quandl',
+    'S&P Capital IQ', 'Refinitiv', 'CryptoCompare', 'Messari', 'Glassnode',
+    'Santiment', 'LunarCrush', 'DeFi Llama', 'Dune Analytics', 'CoinMetrics',
+    'MacroMicro', 'FRED', 'World Bank', 'Nansen', 'Token Terminal',
+    'Alternative.me', 'Fear & Greed', 'Polymarket API',
+];
+
+const SIM_PANELISTS = [
+    { name: 'Warren Buffett', avatar: '🎩' },
+    { name: 'Charlie Munger', avatar: '📚' },
+    { name: 'Ray Dalio', avatar: '🌊' },
+    { name: 'Cathie Wood', avatar: '🚀' },
+    { name: 'Peter Lynch', avatar: '📈' },
+    { name: 'George Soros', avatar: '🦅' },
 ];
 
 // ─── Knowledge Graph Types ──────────────────────────────────
@@ -323,254 +357,276 @@ const KnowledgeGraphView: React.FC<{ data: KnowledgeGraphData }> = ({ data }) =>
     );
 };
 
-// ─── AgentStepPanel Component ───────────────────────────────
-const AgentStepPanel: React.FC<{ agent: AgentThought; isExpanded: boolean; onToggle: () => void }> = ({ agent, isExpanded, onToggle }) => {
-    const isActive = agent.status === 'analyzing';
-    const isDone = agent.status === 'completed';
+// ─── ThinkingInlineTrigger (one-liner that opens right side panel) ───
+const ThinkingInlineTrigger: React.FC<{
+    thinking: ThinkingFlow;
+    onOpen: () => void;
+}> = ({ thinking, onOpen }) => {
+    const doneModule = thinking.modules.find(m => m.type === 'done');
+    const dur = doneModule?.status === 'completed' ? (doneModule.data as any)?.duration : null;
+    const activeModule = thinking.modules.find(m => m.status === 'active');
+    const labels: Record<string, string> = { search: 'Searching...', analysis: 'Analyzing...', simulation: 'Simulating...', consensus: 'Reaching consensus...' };
+    const label = thinking.isActive ? (activeModule ? labels[activeModule.type] || 'Processing...' : 'Processing...') : `Loka completed in ${dur || '?'}s`;
 
     return (
-        <div className={`transition-all duration-300`}>
-            <button onClick={onToggle} className="w-full flex items-center gap-3 py-2 text-left group">
-                {/* Status icon */}
-                <div className="shrink-0">
-                    {isActive ? (
-                        <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                    ) : isDone ? (
-                        <div className="w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
-                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                        </div>
-                    ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-gray-200" />
-                    )}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold text-gray-700">{agent.agentIcon} {agent.agentName}</span>
-                        {isActive && <span className="text-[10px] text-blue-500 font-medium animate-pulse">Thinking...</span>}
-                        {isDone && agent.verdict && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                                agent.verdict === 'bullish' ? 'bg-emerald-50 text-emerald-600' :
-                                agent.verdict === 'bearish' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'
-                            }`}>{agent.verdict === 'bullish' ? '↑ Low Risk' : agent.verdict === 'bearish' ? '↓ High Risk' : '— Moderate'}</span>
-                        )}
-                    </div>
-                    {isDone && agent.summary && (
-                        <p className="text-[10px] text-gray-400 mt-0.5 leading-relaxed">{agent.summary}</p>
-                    )}
-                </div>
-                {(isDone || isActive) && (
-                    <svg className={`w-3.5 h-3.5 text-gray-300 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                )}
-            </button>
+        <button onClick={onOpen} className="group flex items-center gap-2 py-1.5 mb-2 hover:opacity-80 transition-opacity">
+            {thinking.isActive ? (
+                <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+            ) : (
+                <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+            )}
+            <span className="text-[13px] font-medium text-gray-600">{label}</span>
+            <svg className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+        </button>
+    );
+};
 
-            {isExpanded && (isActive || isDone) && (
-                <div className="ml-8 mb-2 space-y-1">
-                    {agent.steps?.map((step, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                            {step.status === 'done' ? (
-                                <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                            ) : step.status === 'active' ? (
-                                <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                            ) : (
-                                <div className="w-3 h-3 rounded-full border border-gray-200 shrink-0" />
+// ─── Shared sub-components for SidePanel ────────────────────
+const StatusIcon: React.FC<{ status: string; size?: 'sm' | 'md' }> = ({ status, size = 'md' }) => {
+    const s = size === 'sm' ? 'w-3.5 h-3.5' : 'w-5 h-5';
+    const bw = size === 'sm' ? 'border-[1.5px]' : 'border-2';
+    if (status === 'done' || status === 'completed') return <svg className={`${s} text-emerald-500 shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>;
+    if (status === 'active' || status === 'analyzing') return <div className={`${s} ${bw} border-blue-400 border-t-transparent rounded-full animate-spin shrink-0`} />;
+    return <div className={`${size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} rounded-full border-2 border-gray-200 shrink-0`} />;
+};
+
+const PlatformLogo: React.FC<{ platform: string }> = ({ platform }) => {
+    const s = 'w-4 h-4 shrink-0';
+    switch (platform) {
+        case 'reddit': return <svg className={s} viewBox="0 0 24 24" fill="#FF4500"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 13.23c.04.24.06.48.06.72 0 3.22-3.53 5.82-7.88 5.82S1.31 17.17 1.31 13.95c0-.26.02-.51.06-.78-.74-.39-1.24-1.17-1.24-2.07 0-1.29 1.04-2.33 2.33-2.33.59 0 1.13.22 1.54.58 1.56-1.03 3.6-1.66 5.84-1.72l1.17-5.21.03-.01 3.7.87c.25-.58.83-.99 1.51-.99a1.67 1.67 0 0 1 0 3.33c-.88 0-1.6-.68-1.66-1.55l-3.18-.75-.95 4.22c2.15.09 4.1.72 5.62 1.72.41-.36.95-.57 1.54-.57 1.29 0 2.33 1.04 2.33 2.33 0 .88-.49 1.65-1.21 2.04z"/></svg>;
+        case 'x': return <svg className={s} viewBox="0 0 24 24" fill="#000"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
+        case 'youtube': return <svg className={s} viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>;
+        case 'telegram': return <svg className={s} viewBox="0 0 24 24" fill="#26A5E4"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.656 8.153c-.184 1.937-1.003 6.636-1.418 8.806-.176.918-.522 1.226-.856 1.256-.727.067-1.28-.48-1.984-.942-1.103-.722-1.726-1.173-2.797-1.878-1.238-.815-.435-1.264.27-1.997.185-.19 3.394-3.112 3.456-3.376.008-.033.015-.157-.058-.223-.074-.065-.182-.043-.261-.025-.112.025-1.9 1.207-5.36 3.545-.507.348-.966.518-1.378.509-.454-.01-1.326-.257-1.974-.468-.794-.258-1.426-.395-1.37-.834.028-.228.335-.463.92-.704 3.6-1.568 6-2.603 7.2-3.104 3.432-1.427 4.145-1.675 4.61-1.683.102-.002.332.024.48.144a.52.52 0 0 1 .175.334c.016.094.035.308.02.475z"/></svg>;
+        case 'discord': return <svg className={s} viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.12-.098.246-.198.373-.292a.074.074 0 0 1 .078.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078-.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>;
+        case 'hackernews': return <svg className={s} viewBox="0 0 24 24" fill="#F0652F"><path d="M0 0v24h24V0H0zm12.8 14.4V20h-1.6v-5.6L7 4h1.8l3.2 6.4L15.2 4H17l-4.2 10.4z"/></svg>;
+        case 'weibo': return <svg className={s} viewBox="0 0 24 24" fill="#E6162D"><path d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443z"/></svg>;
+        case 'wechat': return <svg className={s} viewBox="0 0 24 24" fill="#07C160"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.078.285-.022.58.143.802a.77.77 0 0 0 .63.326.687.687 0 0 0 .355-.096l1.862-1.095a.735.735 0 0 1 .563-.082 10.2 10.2 0 0 0 2.313.27c.236 0 .47-.012.7-.031a6.395 6.395 0 0 1-.236-1.709c0-3.605 3.36-6.53 7.499-6.53.254 0 .504.013.75.035C16.805 4.707 13.082 2.188 8.691 2.188z"/></svg>;
+        default: return <svg className={s} viewBox="0 0 24 24" fill="#6B7280"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>;
+    }
+};
+
+const SourceCard: React.FC<{ source: SearchSource }> = ({ source }) => (
+    <div className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+        <div className="shrink-0 w-5 h-5 flex items-center justify-center"><PlatformLogo platform={source.favicon} /></div>
+        <span className="text-[12px] text-gray-600 truncate flex-1 leading-snug">{source.title}</span>
+        <span className="text-[10px] text-gray-400 shrink-0 ml-2">{source.domain}</span>
+    </div>
+);
+
+// ─── ThinkingProcessSidePanel (modular right panel) ─────────
+const ThinkingProcessSidePanel: React.FC<{
+    thinking: ThinkingFlow;
+    onClose: () => void;
+}> = ({ thinking, onClose }) => {
+
+    // ── Search Module Renderer ──
+    const SearchModule: React.FC<{ mod: ThinkingModule }> = ({ mod }) => {
+        const d = mod.data as SearchModuleData | undefined;
+        if (!d) return null;
+        return (
+            <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                    <StatusIcon status={mod.status} />
+                    <span className="text-[14px] font-bold text-gray-900">{d.variant === 'social' ? 'Searching Web' : 'Fetching Data'}</span>
+                </div>
+                <div className="ml-7 space-y-3 mb-3">
+                    {d.description && <p className="text-[12px] text-gray-500 leading-relaxed">{d.description}</p>}
+                    {/* Social variant: source cards */}
+                    {d.variant === 'social' && d.sources && d.sources.length > 0 && (
+                        <div className="bg-gray-50 rounded-xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+                            {d.sources.map((src, i) => <SourceCard key={i} source={src} />)}
+                        </div>
+                    )}
+                    {/* Data provider variant: pill grid */}
+                    {d.variant === 'data_providers' && d.providers && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {d.providers.map((p, i) => (
+                                <span key={i} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                                    p.status === 'done' ? 'bg-emerald-50 text-emerald-700' :
+                                    p.status === 'active' ? 'bg-blue-50 text-blue-600 animate-pulse' :
+                                    'bg-gray-50 text-gray-300'
+                                }`}>
+                                    {p.status === 'done' ? '✓' : p.status === 'active' ? '⟳' : '·'} {p.name}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    {mod.status === 'completed' && d.totalFound && (
+                        <div className="flex items-center gap-1.5">
+                            <StatusIcon status="done" size="sm" />
+                            <span className="text-[11px] text-emerald-600 font-semibold">
+                                {d.variant === 'social' ? `Found ${d.totalFound} sources` : `${d.totalFound}/${d.totalFound} providers connected`}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    // ── Analysis Module Renderer ──
+    const AnalysisModule: React.FC<{ mod: ThinkingModule }> = ({ mod }) => {
+        const d = mod.data as AnalysisModuleData | undefined;
+        if (!d) return null;
+        return (
+            <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                    <StatusIcon status={mod.status} />
+                    <span className="text-[14px] font-bold text-gray-900">Analyzing</span>
+                </div>
+                <div className="ml-7 space-y-2 mb-3">
+                    {d.stages.map((stage, i) => (
+                        <div key={i}>
+                            <div className="flex items-start gap-2">
+                                <StatusIcon status={stage.status} size="sm" />
+                                <span className={`text-[12px] leading-snug ${
+                                    stage.status === 'done' ? 'text-gray-500' : stage.status === 'active' ? 'text-blue-600 font-medium' : 'text-gray-300'
+                                }`}>{stage.label}</span>
+                            </div>
+                            {stage.status === 'done' && stage.result && (
+                                <div className="ml-5 mt-1 flex flex-wrap gap-2">
+                                    {stage.result.map((r, j) => (
+                                        <span key={j} className={`text-[10px] px-2 py-0.5 rounded-md bg-gray-50 ${r.color || 'text-gray-600'}`}>
+                                            {r.label}: <b>{r.value}</b>
+                                        </span>
+                                    ))}
+                                </div>
                             )}
-                            <span className={`text-[10px] leading-relaxed ${
-                                step.status === 'done' ? 'text-gray-400 line-through' :
-                                step.status === 'active' ? 'text-blue-500 font-medium' : 'text-gray-300'
-                            }`}>{step.label}</span>
                         </div>
                     ))}
-                    {isDone && agent.details && (
-                        <div className="mt-2 text-[10px] text-gray-400 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed border border-gray-100">
-                            {agent.details}
+                    {d.decision && (
+                        <div className="mt-2 bg-gray-50 rounded-xl px-4 py-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className={`text-[13px] font-bold ${d.decision.color}`}>{d.decision.verdict}</span>
+                                <span className="text-[11px] text-gray-400">{d.decision.action}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                <div className={`h-1.5 rounded-full transition-all duration-700 ${d.decision.score > 60 ? 'bg-emerald-400' : d.decision.score > 40 ? 'bg-yellow-400' : 'bg-red-400'}`} style={{ width: `${d.decision.score}%` }} />
+                            </div>
+                            <div className="flex justify-between text-[10px] text-gray-400"><span>Score</span><span>{d.decision.score}/100</span></div>
                         </div>
                     )}
                 </div>
-            )}
-        </div>
-    );
-};
+            </div>
+        );
+    };
 
-// ─── CollaborationProcess Component ─────────────────────────────────
-const CollaborationProcess: React.FC<{ thinking: ThinkingProcess }> = ({ thinking }) => {
-    const p = thinking.phase;
-    const isDone = !thinking.isActive;
-    const activePhase = isDone ? 3 : p === 'persuading' ? 2 : p === 'evaluating' ? 1 : 0;
-    const steps = [
-        { id: 0, label: 'Generating Answers' },
-        { id: 1, label: 'Peer Evaluation' },
-        { id: 2, label: 'Reaching Consensus' },
-    ];
+    // ── Simulation Module Renderer ──
+    const SimulationModule: React.FC<{ mod: ThinkingModule }> = ({ mod }) => {
+        const d = mod.data as SimulationModuleData | undefined;
+        if (!d) return null;
+        return (
+            <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                    <StatusIcon status={mod.status} />
+                    <span className="text-[14px] font-bold text-gray-900">Simulating</span>
+                </div>
+                <div className="ml-7 space-y-2 mb-3">
+                    {d.panelists.map((p, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                            <span className="text-[16px]">{p.avatar}</span>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[12px] font-medium text-gray-700">{p.name}</span>
+                                    {p.status === 'active' && <span className="text-[10px] text-blue-500 animate-pulse">analyzing...</span>}
+                                </div>
+                                {p.status === 'done' && p.verdict && (
+                                    <span className={`text-[11px] ${p.verdict === 'Buy' ? 'text-emerald-600' : p.verdict === 'Sell' ? 'text-red-500' : 'text-yellow-600'}`}>
+                                        {p.verdict} · {p.confidence}% confidence
+                                    </span>
+                                )}
+                            </div>
+                            <StatusIcon status={p.status} size="sm" />
+                        </div>
+                    ))}
+                    {d.prediction && (
+                        <div className="mt-2 bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
+                            <span className="text-[11px] text-gray-500 font-medium">Prediction</span>
+                            <span className={`text-[12px] font-bold ${d.prediction.verdict === 'Buy' ? 'text-emerald-600' : 'text-yellow-600'}`}>
+                                {d.prediction.verdict} · {d.prediction.confidence}%
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    // ── Consensus Module Renderer ──
+    const ConsensusModule: React.FC<{ mod: ThinkingModule }> = ({ mod }) => {
+        const d = mod.data as ConsensusModuleData | undefined;
+        if (!d) return null;
+        const steps = ['Building consensus group', 'Discussion in progress', 'Reaching conclusion'];
+        const stepIdx = d.status === 'concluded' ? 3 : d.status === 'discussing' ? 1 + (d.round > 1 ? 1 : 0) : 0;
+        return (
+            <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                    <StatusIcon status={mod.status} />
+                    <span className="text-[14px] font-bold text-gray-900">Consensus</span>
+                </div>
+                <div className="ml-7 space-y-1.5 mb-3">
+                    {steps.map((label, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                            <StatusIcon status={stepIdx > i ? 'done' : stepIdx === i ? 'active' : 'pending'} size="sm" />
+                            <span className={`text-[12px] ${stepIdx > i ? 'text-gray-500' : stepIdx === i ? 'text-blue-600 font-medium' : 'text-gray-300'}`}>
+                                {label}{i === 1 && d.status === 'discussing' ? ` (Round ${d.round}/${d.maxRounds})` : ''}
+                            </span>
+                        </div>
+                    ))}
+                    {d.conclusion && (
+                        <div className="mt-2 bg-gray-50 rounded-xl px-4 py-3 space-y-1">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-gray-500 font-medium">Verdict</span>
+                                <span className="text-[12px] font-bold text-emerald-600">{d.conclusion.verdict}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-gray-500 font-medium">Confidence</span>
+                                <span className="text-[12px] font-semibold text-gray-700">{d.conclusion.confidence}%</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    // ── Done Module Renderer ──
+    const DoneModule: React.FC<{ mod: ThinkingModule }> = ({ mod }) => {
+        const dur = (mod.data as any)?.duration;
+        return (
+            <div className="pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2.5">
+                    <StatusIcon status="done" />
+                    <span className="text-[14px] font-bold text-gray-900">Done</span>
+                    {dur && <span className="text-[11px] text-gray-400 ml-auto">{dur}s</span>}
+                </div>
+            </div>
+        );
+    };
 
     return (
-        <div className="mt-3 pt-3 border-t border-gray-100 pb-1">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Agent Collaboration</span>
-            <div className="space-y-1.5 ml-1">
-                {steps.map(s => {
-                    const status = isDone || activePhase > s.id ? 'done' : activePhase === s.id ? 'active' : 'pending';
-                    return (
-                        <div key={s.id} className="flex items-center gap-2">
-                            {status === 'done' ? (
-                                <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                            ) : status === 'active' ? (
-                                <div className="w-2.5 h-2.5 border border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                            ) : (
-                                <div className="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0" />
-                            )}
-                            <span className={`text-[10px] ${
-                                status === 'done' ? 'text-gray-400 line-through' :
-                                status === 'active' ? 'text-blue-500 font-medium' : 'text-gray-300'
-                            }`}>{s.label}</span>
-                        </div>
-                    );
+        <div className="flex flex-col h-full bg-white">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h2 className="text-[14px] font-bold text-gray-900">Thinking Process</h2>
+                <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                {thinking.modules.filter(m => m.type !== 'done' || m.status === 'completed').map((mod, i) => {
+                    switch (mod.type) {
+                        case 'search': return <SearchModule key={i} mod={mod} />;
+                        case 'analysis': return <AnalysisModule key={i} mod={mod} />;
+                        case 'simulation': return <SimulationModule key={i} mod={mod} />;
+                        case 'consensus': return <ConsensusModule key={i} mod={mod} />;
+                        case 'done': return <DoneModule key={i} mod={mod} />;
+                        default: return null;
+                    }
                 })}
             </div>
-            {isDone && thinking.consensus && (
-                <div className="mt-3 bg-gray-50 rounded bg-opacity-50 p-2 flex items-center justify-between">
-                    <span className="text-[10px] text-gray-500 font-semibold uppercase">Final Verdict</span>
-                    <span className={`text-[10px] font-bold ${
-                        thinking.consensus.verdict === 'bullish' ? 'text-emerald-600' : 
-                        thinking.consensus.verdict === 'bearish' ? 'text-red-500' : 'text-gray-500'
-                    }`}>{thinking.consensus.verdict === 'bullish' ? '↑ Low Risk' : thinking.consensus.verdict === 'bearish' ? '↓ High Risk' : '— Moderate'} ({thinking.consensus.confidence}%)</span>
-                </div>
-            )}
         </div>
     );
 };
-
-// ─── ThinkingProcessPanel ───────────────────────────────────
-const ThinkingProcessPanel: React.FC<{
-    thinking: ThinkingProcess;
-    userQuery?: string;
-    onOpenGraph?: () => void;
-}> = ({ thinking, userQuery = '', onOpenGraph }) => {
-    const [collapsed, setCollapsed] = useState(false);
-    const completedCount = thinking.agents.filter(a => a.status === 'completed').length;
-    const allDone = !thinking.isActive && !!thinking.consensus;
-
-    useEffect(() => {
-        if (allDone) {
-            setCollapsed(false);
-        }
-    }, [allDone]);
-
-    const handleOpenGraph = () => {
-        onOpenGraph?.();
-    };
-    const kgData = allDone ? buildKnowledgeGraph() : null;
-
-    return (
-        <div className="mb-4">
-            {/* Header — single toggle */}
-            <button
-                onClick={() => setCollapsed(c => !c)}
-                className="flex items-center gap-2 mb-2 w-full text-left"
-            >
-                <div className="flex items-center gap-1.5">
-                    {thinking.isActive ? (
-                        <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                        <div className="w-3.5 h-3.5 rounded-full bg-gray-200 flex items-center justify-center">
-                            <svg className="w-2 h-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                        </div>
-                    )}
-                    <span className="text-[11px] font-semibold text-gray-500">
-                        {thinking.isActive ? 'Agents thinking...' : 'Analysis complete'}
-                    </span>
-                    <span className="text-[10px] text-gray-300">{completedCount}/{thinking.agents.length}</span>
-                </div>
-                <svg className={`w-3 h-3 text-gray-300 ml-auto transition-transform ${collapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-
-            {/* Body — flat list, no sub-collapse */}
-            {!collapsed && (
-                <div className="pl-2 border-l-2 border-gray-100 ml-2 space-y-3">
-                    {thinking.agents.map(agent => {
-                        const isActive = agent.status === 'analyzing';
-                        const isDone = agent.status === 'completed';
-                        return (
-                            <div key={agent.agentId}>
-                                {/* Flat step list */}
-                                <div className="space-y-0.5">
-                                    {agent.steps?.map((step, idx) => (
-                                        <div key={idx} className="flex flex-col gap-1.5">
-                                            <div className="flex items-center gap-1.5">
-                                                {step.status === 'done' ? (
-                                                    <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                                ) : step.status === 'active' ? (
-                                                    <div className="w-2.5 h-2.5 border border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                                                ) : (
-                                                    <div className="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0" />
-                                                )}
-                                                <span className={`text-[11px] ${
-                                                    step.status === 'done' ? 'text-gray-600 font-medium' :
-                                                    step.status === 'active' ? 'text-blue-600 font-bold' : 'text-gray-400'
-                                                }`}>{step.label}</span>
-                                            </div>
-                                            {/* Step Details rendering */}
-                                            {step.status !== 'pending' && step.detailType === 'table' && (
-                                                <div className="ml-4 mr-2 bg-gray-50 border border-gray-100 rounded p-2 overflow-x-auto">
-                                                    <table className="w-full text-left text-[9px] text-gray-500 whitespace-nowrap">
-                                                        <thead>
-                                                            <tr className="border-b border-gray-200 text-gray-400">
-                                                                <th className="pb-1 font-medium">Metric</th>
-                                                                <th className="pb-1 font-medium">Value</th>
-                                                                <th className="pb-1 font-medium">Benchmark</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr className="border-b border-gray-100 last:border-0"><td className="py-1">MoM Growth</td><td className="py-1 text-gray-700">28%</td><td className="py-1">15%</td></tr>
-                                                            <tr className="border-b border-gray-100 last:border-0"><td className="py-1">Default Prob</td><td className="py-1 text-gray-700">2.3%</td><td className="py-1">{'<'} 5.0%</td></tr>
-                                                            <tr className="border-b border-gray-100 last:border-0"><td className="py-1">Profit Margin</td><td className="py-1 text-gray-700">65%</td><td className="py-1">40%</td></tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                            {step.status !== 'pending' && step.detailType === 'news' && (
-                                                <div className="ml-4 mr-2 space-y-1.5">
-                                                    <div className="flex items-center gap-1.5 p-1.5 bg-gray-50 border border-gray-100 rounded">
-                                                        <div className="w-4 h-4 rounded bg-gray-200 shrink-0 flex items-center justify-center text-[8px]">📰</div>
-                                                        <span className="text-[9px] text-gray-600 truncate">Key executive departure impacts quarterly guidance</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 p-1.5 bg-gray-50 border border-gray-100 rounded">
-                                                        <div className="w-4 h-4 rounded bg-gray-200 shrink-0 flex items-center justify-center text-[8px]">📰</div>
-                                                        <span className="text-[9px] text-gray-600 truncate">Institutional accumulation accelerates across top funds</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {isDone && agent.summary && (
-                                        <p className="text-[10px] text-gray-400 mt-1">{agent.summary}</p>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                    <CollaborationProcess thinking={thinking} />
-                </div>
-            )}
-
-            {/* Collapsed summary */}
-            {collapsed && thinking.consensus && (
-                <div className="flex items-center gap-3 ml-6">
-                    <button onClick={() => setCollapsed(false)} className="flex items-center gap-2 text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
-                        <span className={`font-bold ${
-                            thinking.consensus.verdict === 'bullish' ? 'text-emerald-500' :
-                            thinking.consensus.verdict === 'bearish' ? 'text-red-400' : 'text-gray-500'
-                        }`}>
-                            {thinking.consensus.verdict === 'bullish' ? '↑ Low Risk' : thinking.consensus.verdict === 'bearish' ? '↓ High Risk' : '— Moderate'}
-                        </span>
-                        <span>· {thinking.consensus.confidence}% confidence</span>
-                        <span className="text-[9px] underline ml-1">Expand</span>
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
-
-
 // ─── Markdown-like renderer for AI responses ────────────────
 const renderMarkdown = (text: string) => {
     if (!text) return null;
@@ -603,13 +659,14 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
-    const [thinkingProcesses, setThinkingProcesses] = useState<Record<number, ThinkingProcess>>({});
+    const [thinkingProcesses, setThinkingProcesses] = useState<Record<number, ThinkingFlow>>({});
     const [sessionId] = useState(() => crypto.randomUUID());
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const hasSentInitial = useRef(false);
-    // ─── Knowledge Graph Panel ───────────────────────────────
+    // ─── Right Side Panel ─────────────────────────────────────
     const [showGraphPanel, setShowGraphPanel] = useState(false);
+    const [showThinkingPanel, setShowThinkingPanel] = useState(false);
     const [activeGraphMsgIdx, setActiveGraphMsgIdx] = useState<number | null>(null);
     const [chatMode, setChatMode] = useState<'auto'|'fast'|'collaborate'|'roundtable'>('auto');
     const [chatModeOpen, setChatModeOpen] = useState(false);
@@ -729,86 +786,225 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, thinkingProcesses]);
 
-    // ─── Simulate thinking process ──────────────────────────
-    const simulateThinking = useCallback(async (msgIdx: number) => {
-        const council = AGENT_COUNCIL.slice(0, agentCount);
-        const agents: AgentThought[] = council.map(a => ({
-            agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
-            status: 'waiting', summary: '', steps: a.steps.map(s => ({ label: s, status: 'pending' as const })),
-        }));
-        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
+    // ─── Simulate thinking process (modular) ──────────────────
+    const simulateThinking = useCallback(async (msgIdx: number, userText: string) => {
+        const t = userText.toLowerCase();
+        const startTime = Date.now();
+        // Intent routing
+        const isSearch = /sentiment|看法|舆情|搜索|search|signal/i.test(t);
+        const isDaily = /今天|行情|价格|today|daily|情况/i.test(t);
+        const isAnalysis = /分析|analysis|analyze|深度|背景|建议|invest/i.test(t);
+        const isSimulation = /模拟|simulate|巴菲特|buffett|hedge/i.test(t);
+        const isRoundtable = chatMode === 'roundtable';
+        const isGeneric = !isSearch && !isDaily && !isAnalysis && !isSimulation;
 
-        await Promise.all(agents.map(async (agent, aIdx) => {
-            // Set to analyzing
-            setThinkingProcesses(prev => {
-                const tp = { ...prev[msgIdx] };
-                const updatedAgents = [...tp.agents];
-                updatedAgents[aIdx] = { ...updatedAgents[aIdx], status: 'analyzing' };
-                return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
+        if (isGeneric) return; // no thinking flow for generic
+
+        // Build modules list
+        const modules: ThinkingModule[] = [];
+
+        // Search module
+        if (isSearch || isDaily || isAnalysis) {
+            modules.push({
+                type: 'search', status: 'pending',
+                data: {
+                    variant: isDaily || isAnalysis ? 'data_providers' : 'social',
+                    description: isDaily || isAnalysis
+                        ? 'Connecting to market data providers and financial APIs'
+                        : 'Searching for latest financial reports, analyst coverage, and market trends',
+                    providers: isDaily || isAnalysis
+                        ? DATA_PROVIDERS_POOL.slice(0, 12 + Math.floor(Math.random() * 10)).map(n => ({ name: n, status: 'pending' as const }))
+                        : undefined,
+                    sources: [],
+                } as SearchModuleData,
             });
+        }
 
-            const steps = council[aIdx].steps;
-            for (let sIdx = 0; sIdx < steps.length; sIdx++) {
-                await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
+        // Analysis module
+        if (isAnalysis) {
+            modules.push({
+                type: 'analysis', status: 'pending',
+                data: {
+                    stages: [
+                        { id: 'fundamental', label: 'Fundamental analysis', status: 'pending' },
+                        { id: 'technical', label: 'Technical analysis', status: 'pending' },
+                        { id: 'sentiment', label: 'Sentiment analysis', status: 'pending' },
+                        { id: 'decision', label: 'Decision engine', status: 'pending' },
+                    ],
+                } as AnalysisModuleData,
+            });
+        }
+
+        // Simulation module
+        if (isSimulation) {
+            const panelists = SIM_PANELISTS.slice(0, 4 + Math.floor(Math.random() * 2)).map(p => ({
+                ...p, status: 'pending' as const,
+            }));
+            modules.push({
+                type: 'simulation', status: 'pending',
+                data: { panelists } as SimulationModuleData,
+            });
+        }
+
+        // Consensus module (roundtable only)
+        if (isRoundtable) {
+            modules.push({
+                type: 'consensus', status: 'pending',
+                data: { round: 0, maxRounds: 3, status: 'building' } as ConsensusModuleData,
+            });
+        }
+
+        // Done module
+        modules.push({ type: 'done', status: 'pending' });
+
+        // Initialize flow
+        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { modules, isActive: true, route: isSearch ? 'signal_radar' : isDaily ? 'daily' : isAnalysis ? 'analysis' : 'simulation' } }));
+        setActiveGraphMsgIdx(msgIdx);
+
+        const updateModule = (idx: number, patch: Partial<ThinkingModule>) => {
+            setThinkingProcesses(prev => {
+                const flow = { ...prev[msgIdx] };
+                const mods = [...flow.modules];
+                mods[idx] = { ...mods[idx], ...patch };
+                return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+            });
+        };
+
+        const updateModuleData = (idx: number, dataPatch: any) => {
+            setThinkingProcesses(prev => {
+                const flow = { ...prev[msgIdx] };
+                const mods = [...flow.modules];
+                mods[idx] = { ...mods[idx], data: { ...mods[idx].data, ...dataPatch } };
+                return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+            });
+        };
+
+        // Animate each module sequentially
+        for (let mi = 0; mi < modules.length; mi++) {
+            const mod = modules[mi];
+            if (mod.type === 'done') break;
+
+            updateModule(mi, { status: 'active' });
+
+            if (mod.type === 'search') {
+                const sd = mod.data as SearchModuleData;
+                if (sd.variant === 'data_providers' && sd.providers) {
+                    // Animate providers connecting
+                    for (let pi = 0; pi < sd.providers.length; pi++) {
+                        await new Promise(r => setTimeout(r, 80 + Math.random() * 120));
+                        setThinkingProcesses(prev => {
+                            const flow = { ...prev[msgIdx] };
+                            const mods = [...flow.modules];
+                            const data = { ...(mods[mi].data as SearchModuleData) };
+                            const providers = [...(data.providers || [])];
+                            if (pi > 0) providers[pi - 1] = { ...providers[pi - 1], status: 'done' };
+                            providers[pi] = { ...providers[pi], status: 'active' };
+                            mods[mi] = { ...mods[mi], data: { ...data, providers } };
+                            return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                        });
+                    }
+                    // Complete all providers
+                    setThinkingProcesses(prev => {
+                        const flow = { ...prev[msgIdx] };
+                        const mods = [...flow.modules];
+                        const data = { ...(mods[mi].data as SearchModuleData) };
+                        const providers = (data.providers || []).map(p => ({ ...p, status: 'done' as const }));
+                        mods[mi] = { ...mods[mi], data: { ...data, providers, totalFound: providers.length } };
+                        return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                    });
+                } else {
+                    // Social search: web then social sources
+                    await new Promise(r => setTimeout(r, 800));
+                    const webSources = [...WEB_SOURCES_POOL].sort(() => Math.random() - 0.5).slice(0, 5);
+                    updateModuleData(mi, { sources: webSources, description: 'Searching for latest financial reports, analyst coverage, and market trends' });
+                    await new Promise(r => setTimeout(r, 1000));
+                    const socialSources = [...SOCIAL_SOURCES_POOL].sort(() => Math.random() - 0.5).slice(0, 5);
+                    updateModuleData(mi, { sources: [...webSources, ...socialSources], totalFound: webSources.length + socialSources.length });
+                }
+                updateModule(mi, { status: 'completed' });
+            }
+
+            if (mod.type === 'analysis') {
+                const stages = (mod.data as AnalysisModuleData).stages;
+                const stageResults = [
+                    [{ label: 'PE', value: '24.5x', color: 'text-emerald-600' }, { label: 'Revenue Growth', value: '+28%', color: 'text-emerald-600' }],
+                    [{ label: 'MA排列', value: '弱势多头', color: 'text-yellow-600' }, { label: 'Support', value: '175.76' }],
+                    [{ label: 'Sentiment', value: 'Mixed', color: 'text-yellow-600' }, { label: 'Sources', value: '12 articles' }],
+                    [],
+                ];
+                for (let si = 0; si < stages.length; si++) {
+                    await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
+                    setThinkingProcesses(prev => {
+                        const flow = { ...prev[msgIdx] };
+                        const mods = [...flow.modules];
+                        const data = { ...(mods[mi].data as AnalysisModuleData) };
+                        const newStages = [...data.stages];
+                        if (si > 0) newStages[si - 1] = { ...newStages[si - 1], status: 'done', result: stageResults[si - 1] };
+                        newStages[si] = { ...newStages[si], status: 'active' };
+                        mods[mi] = { ...mods[mi], data: { ...data, stages: newStages } };
+                        return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                    });
+                }
+                await new Promise(r => setTimeout(r, 800));
+                // Complete with decision
                 setThinkingProcesses(prev => {
-                    const tp = { ...prev[msgIdx] };
-                    const updatedAgents = [...tp.agents];
-                    const updatedSteps = [...(updatedAgents[aIdx].steps || [])];
-                    if (sIdx > 0) updatedSteps[sIdx - 1] = { ...updatedSteps[sIdx - 1], status: 'done' };
-                    // Inject mock detailType for specific steps
-                    let detailType: 'table' | 'news' | undefined;
-                    if (updatedSteps[sIdx].label.includes('financial statements') || updatedSteps[sIdx].label.includes('Stock OHLC Data')) detailType = 'table';
-                    if (updatedSteps[sIdx].label.includes('competitive landscape') || updatedSteps[sIdx].label.includes('news & events')) detailType = 'news';
-                    updatedSteps[sIdx] = { ...updatedSteps[sIdx], status: 'active', detailType };
-                    updatedAgents[aIdx] = { ...updatedAgents[aIdx], steps: updatedSteps };
-                    return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
+                    const flow = { ...prev[msgIdx] };
+                    const mods = [...flow.modules];
+                    const data = { ...(mods[mi].data as AnalysisModuleData) };
+                    const newStages = data.stages.map((s, i) => ({ ...s, status: 'done' as const, result: stageResults[i] }));
+                    const decision = { verdict: '🟡 Hold · Moderate', score: 55, color: 'text-yellow-600', action: 'Wait for confirmation' };
+                    mods[mi] = { ...mods[mi], status: 'completed', data: { ...data, stages: newStages, decision } };
+                    return { ...prev, [msgIdx]: { ...flow, modules: mods } };
                 });
             }
 
-            // Complete agent
-            await new Promise(r => setTimeout(r, 300));
-            const verdicts: ('bullish' | 'neutral')[] = ['bullish', 'neutral'];
-            const verdict = verdicts[Math.floor(Math.random() * 2)];
-            const confidence = 65 + Math.floor(Math.random() * 30);
-            const summaries = [
-                'Low default probability (2.3%). Revenue growth at 28% MoM exceeds benchmark.',
-                'Moderate risk detected. Revenue concentration >40% in single client. Profit margin adequate at 65%.',
-                'Strong credit profile. Consistent revenue history over 12 months. Diversified customer base across 50+ clients.',
-            ];
-            const summary = summaries[Math.floor(Math.random() * summaries.length)];
-            const details = `Risk Score: ${verdict === 'bullish' ? 'A+' : 'B+'} | Default Probability: ${(Math.random() * 5).toFixed(1)}% | Revenue Stability: ${(75 + Math.random() * 20).toFixed(0)}%`;
+            if (mod.type === 'simulation') {
+                const panelists = (mod.data as SimulationModuleData).panelists;
+                const verdicts = ['Buy', 'Hold', 'Buy', 'Sell', 'Hold', 'Buy'];
+                for (let pi = 0; pi < panelists.length; pi++) {
+                    await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
+                    setThinkingProcesses(prev => {
+                        const flow = { ...prev[msgIdx] };
+                        const mods = [...flow.modules];
+                        const data = { ...(mods[mi].data as SimulationModuleData) };
+                        const newPanelists = [...data.panelists];
+                        if (pi > 0) newPanelists[pi - 1] = { ...newPanelists[pi - 1], status: 'done', verdict: verdicts[pi - 1], confidence: 60 + Math.floor(Math.random() * 30) };
+                        newPanelists[pi] = { ...newPanelists[pi], status: 'active' };
+                        mods[mi] = { ...mods[mi], data: { ...data, panelists: newPanelists } };
+                        return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                    });
+                }
+                await new Promise(r => setTimeout(r, 500));
+                setThinkingProcesses(prev => {
+                    const flow = { ...prev[msgIdx] };
+                    const mods = [...flow.modules];
+                    const data = { ...(mods[mi].data as SimulationModuleData) };
+                    const newPanelists = data.panelists.map((p, i) => ({ ...p, status: 'done' as const, verdict: verdicts[i], confidence: 60 + Math.floor(Math.random() * 30) }));
+                    mods[mi] = { ...mods[mi], status: 'completed', data: { ...data, panelists: newPanelists, prediction: { verdict: 'Buy', confidence: 74 } } };
+                    return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                });
+            }
 
-            setThinkingProcesses(prev => {
-                const tp = { ...prev[msgIdx] };
-                const updatedAgents = [...tp.agents];
-                const completedSteps = (updatedAgents[aIdx].steps || []).map(s => ({ ...s, status: 'done' as const }));
-                updatedAgents[aIdx] = { ...updatedAgents[aIdx], status: 'completed', summary, details, verdict, confidence, steps: completedSteps };
-                return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
-            });
-        }));
+            if (mod.type === 'consensus') {
+                updateModuleData(mi, { status: 'building', round: 0 });
+                await new Promise(r => setTimeout(r, 800));
+                for (let round = 1; round <= 3; round++) {
+                    updateModuleData(mi, { status: 'discussing', round });
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+                updateModuleData(mi, { status: 'concluded', conclusion: { verdict: '↑ Low Risk', confidence: 78 } });
+                updateModule(mi, { status: 'completed' });
+            }
 
-        // Move to evaluating phase
-        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], phase: 'evaluating' } }));
-        await new Promise(r => setTimeout(r, 1200));
+            if (mod.type !== 'consensus') updateModule(mi, { status: 'completed' });
+        }
 
-        // Move to persuading phase
-        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], phase: 'persuading' } }));
-        await new Promise(r => setTimeout(r, 1500));
-
-        // Generate consensus
-        setThinkingProcesses(prev => ({
-            ...prev,
-            [msgIdx]: {
-                ...prev[msgIdx],
-                isActive: false,
-                consensus: {
-                    verdict: Math.random() > 0.3 ? 'bullish' : 'neutral',
-                    confidence: 70 + Math.floor(Math.random() * 25),
-                    duration: 2 + Math.random() * 3,
-                },
-            },
-        }));
-    }, [agentCount]);
+        // Done
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        const doneIdx = modules.length - 1;
+        updateModule(doneIdx, { status: 'completed', data: { duration } });
+        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], isActive: false } }));
+    }, [chatMode]);
 
     // ─── Send to AI (streaming) ─────────────────────────────
     const sendToAI = useCallback(async (text: string, existingMessages?: Message[]) => {
@@ -820,12 +1016,13 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
 
         setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
         
-        // Open graph automatically out of the box
+        // Open thinking process panel automatically
         setActiveGraphMsgIdx(msgIdx);
-        setShowGraphPanel(true);
+        setShowThinkingPanel(true);
+        setShowGraphPanel(false);
 
         // Run thinking simulation
-        await simulateThinking(msgIdx);
+        await simulateThinking(msgIdx, text);
 
         try {
             const abortController = new AbortController();
@@ -922,30 +1119,36 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
             {/* ══ Header: chat title + graph toggle ══ */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                 <h1 className="text-[13px] font-semibold text-gray-800 truncate max-w-[60%]">{chatTitle}</h1>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                    {/* Thinking Process toggle */}
+                    <button
+                        onClick={() => { setShowThinkingPanel(t => !t); if (!showThinkingPanel) setShowGraphPanel(false); }}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                            showThinkingPanel ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" />
+                        </svg>
+                        Thinking Process
+                    </button>
+                    {/* Graph toggle */}
                     {currentKgData && (
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowGraphPanel(g => !g)}>
-                            <svg className={`w-3.5 h-3.5 transition-colors ${showGraphPanel ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button
+                            onClick={() => { setShowGraphPanel(g => !g); if (!showGraphPanel) setShowThinkingPanel(false); }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                                showGraphPanel ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <circle cx="6" cy="6" r="3" strokeWidth="2"/>
                                 <circle cx="18" cy="6" r="3" strokeWidth="2"/>
                                 <circle cx="12" cy="18" r="3" strokeWidth="2"/>
-                                <line x1="8.83" y1="7.83" x2="15.17" y2="7.83" strokeWidth="1.5"/>
                                 <line x1="6.93" y1="8.5" x2="11.07" y2="15.5" strokeWidth="1.5"/>
                                 <line x1="17.07" y1="8.5" x2="12.93" y2="15.5" strokeWidth="1.5"/>
                             </svg>
-                            <span className="text-[11px] font-medium text-gray-500">Multi-Agent Graph</span>
-                            <button
-                                type="button"
-                                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                                    showGraphPanel ? 'bg-blue-500' : 'bg-gray-200'
-                                }`}
-                                aria-pressed={showGraphPanel}
-                            >
-                                <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform ${
-                                    showGraphPanel ? 'translate-x-[14px]' : 'translate-x-[2px]'
-                                }`} />
-                            </button>
-                        </div>
+                            Graph
+                        </button>
                     )}
                 </div>
             </div>
@@ -970,12 +1173,12 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
                                             <div className="w-7 h-7 rounded-xl bg-gray-900 flex items-center justify-center text-white text-[10px] font-black shrink-0 mt-0.5">L</div>
                                             <div className="flex-1 min-w-0">
                                                 {thinkingProcesses[i] && (
-                                                    <ThinkingProcessPanel
+                                                    <ThinkingInlineTrigger
                                                         thinking={thinkingProcesses[i]}
-                                                        userQuery={messages.slice(0, i).reverse().find(m => m.role === 'user')?.content ?? ''}
-                                                        onOpenGraph={() => {
+                                                        onOpen={() => {
                                                             setActiveGraphMsgIdx(i);
-                                                            setShowGraphPanel(true);
+                                                            setShowThinkingPanel(true);
+                                                            setShowGraphPanel(false);
                                                         }}
                                                     />
                                                 )}
@@ -1228,10 +1431,19 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
 
                 </div>
 
+                {/* Thinking Process Side Panel */}
+                {showThinkingPanel && currentThinking && (
+                    <div className="w-[360px] shrink-0 border-l border-gray-100 overflow-hidden">
+                        <ThinkingProcessSidePanel
+                            thinking={currentThinking}
+                            onClose={() => setShowThinkingPanel(false)}
+                        />
+                    </div>
+                )}
+
                 {/* Knowledge Graph Card */}
-                {showGraphPanel && currentKgData && (
+                {showGraphPanel && !showThinkingPanel && currentKgData && (
                     <div className="w-[400px] shrink-0 border-l border-gray-100 overflow-hidden relative">
-                        {/* Close button */}
                         <button
                             onClick={() => setShowGraphPanel(false)}
                             className="absolute top-2 right-2 z-20 w-7 h-7 rounded-lg bg-white/80 backdrop-blur border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all shadow-sm"
