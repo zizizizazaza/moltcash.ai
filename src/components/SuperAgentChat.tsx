@@ -2,7 +2,7 @@
  * SuperAgentChat — Chat Detail Page
  * Clean chat interface similar to Surf style, with multi-agent thinking process
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
 import { QUICK_ACTIONS } from '../constants';
 
@@ -28,10 +28,9 @@ const AGENT_NAMES: Record<string, string> = {
 const ChatChevron = () => <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>;
 
 const CHAT_MODES = [
-  { id: 'auto' as const,        label: 'Auto',        desc: 'System picks the best mode for you',     icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
+  { id: 'auto' as const,        label: 'Auto',        desc: 'Auto-route to the best agent mode',       icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
   { id: 'fast' as const,        label: 'Fast',        desc: 'Single agent, quick response',            icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
-  { id: 'collaborate' as const, label: 'Deep', desc: 'Agents split work, assemble one answer', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
-  { id: 'roundtable' as const,  label: 'Roundtable',  desc: 'Multi-agent debate & cross-validation',  icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M14 5.5a7.5 7.5 0 014.5 12" /><path d="M17 19.5H7" /><path d="M5.5 17A7.5 7.5 0 0110 5.5" /></svg> },
+  { id: 'roundtable' as const,  label: 'Roundtable',  desc: 'Multi-agent consensus after analysis',    icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M14 5.5a7.5 7.5 0 014.5 12" /><path d="M17 19.5H7" /><path d="M5.5 17A7.5 7.5 0 0110 5.5" /></svg> },
 ];
 
 interface Message {
@@ -53,12 +52,23 @@ interface DataProvider {
 }
 
 // ─── Modular Thinking Flow ──────────────────────────────────
+interface SearchSubSection {
+    id: 'social' | 'data_providers';
+    label: string;
+    status: 'pending' | 'active' | 'done';
+    sources?: SearchSource[];
+    providers?: DataProvider[];
+    totalFound?: number;
+}
+
 interface SearchModuleData {
-    variant: 'social' | 'data_providers';
+    variant: 'social' | 'data_providers' | 'combined';
     description?: string;
     sources?: SearchSource[];
     providers?: DataProvider[];
     totalFound?: number;
+    // Combined mode: multiple sub-sections
+    sections?: SearchSubSection[];
 }
 
 interface AnalysisStage {
@@ -141,12 +151,12 @@ const DATA_PROVIDERS_POOL: string[] = [
 ];
 
 const SIM_PANELISTS = [
-    { name: 'Warren Buffett', avatar: '🎩' },
-    { name: 'Charlie Munger', avatar: '📚' },
-    { name: 'Ray Dalio', avatar: '🌊' },
-    { name: 'Cathie Wood', avatar: '🚀' },
-    { name: 'Peter Lynch', avatar: '📈' },
-    { name: 'George Soros', avatar: '🦅' },
+    { name: 'Warren Buffett', avatar: '👤', initials: 'WB' },
+    { name: 'Charlie Munger', avatar: '👤', initials: 'CM' },
+    { name: 'Ray Dalio', avatar: '👤', initials: 'RD' },
+    { name: 'Cathie Wood', avatar: '👤', initials: 'CW' },
+    { name: 'Peter Lynch', avatar: '👤', initials: 'PL' },
+    { name: 'George Soros', avatar: '👤', initials: 'GS' },
 ];
 
 // ─── Knowledge Graph Types ──────────────────────────────────
@@ -419,10 +429,82 @@ const ThinkingProcessSidePanel: React.FC<{
     onClose: () => void;
 }> = ({ thinking, onClose }) => {
 
+    // ── Sub-section renderers for Search Module ──
+    const SocialSubSection: React.FC<{ section: SearchSubSection }> = ({ section }) => (
+        <div>
+            <div className="flex items-center gap-2 mb-2">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    section.status === 'done' ? 'bg-emerald-500' : section.status === 'active' ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
+                }`} />
+                <span className={`text-[12px] font-semibold ${
+                    section.status === 'done' ? 'text-gray-700' : section.status === 'active' ? 'text-blue-600' : 'text-gray-300'
+                }`}>{section.label}</span>
+                {section.status === 'done' && section.totalFound && (
+                    <span className="text-[10px] text-emerald-600 font-medium">{section.totalFound} sources</span>
+                )}
+            </div>
+            {section.sources && section.sources.length > 0 && (
+                <div className="ml-4 bg-gray-50 rounded-xl border border-gray-100 divide-y divide-gray-100 overflow-hidden mb-2">
+                    {section.sources.map((src, i) => <SourceCard key={i} source={src} />)}
+                </div>
+            )}
+        </div>
+    );
+
+    const DataProvidersSubSection: React.FC<{ section: SearchSubSection }> = ({ section }) => (
+        <div>
+            <div className="flex items-center gap-2 mb-2">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    section.status === 'done' ? 'bg-emerald-500' : section.status === 'active' ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
+                }`} />
+                <span className={`text-[12px] font-semibold ${
+                    section.status === 'done' ? 'text-gray-700' : section.status === 'active' ? 'text-blue-600' : 'text-gray-300'
+                }`}>{section.label}</span>
+                {section.status === 'done' && section.totalFound && (
+                    <span className="text-[10px] text-emerald-600 font-medium">{section.totalFound} connected</span>
+                )}
+            </div>
+            {section.providers && (
+                <div className="ml-4 flex flex-wrap gap-1.5 mb-2">
+                    {section.providers.map((p, i) => (
+                        <span key={i} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                            p.status === 'done' ? 'bg-emerald-50 text-emerald-700' :
+                            p.status === 'active' ? 'bg-blue-50 text-blue-600 animate-pulse' :
+                            'bg-gray-50 text-gray-300'
+                        }`}>
+                            {p.status === 'done' ? '✓' : p.status === 'active' ? '⟳' : '·'} {p.name}
+                        </span>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
     // ── Search Module Renderer ──
     const SearchModule: React.FC<{ mod: ThinkingModule }> = ({ mod }) => {
         const d = mod.data as SearchModuleData | undefined;
         if (!d) return null;
+
+        // Combined mode: render sub-sections
+        if (d.variant === 'combined' && d.sections) {
+            return (
+                <div>
+                    <div className="flex items-center gap-2.5 mb-3">
+                        <StatusIcon status={mod.status} />
+                        <span className="text-[14px] font-bold text-gray-900">Searching</span>
+                    </div>
+                    <div className="ml-7 space-y-4 mb-3">
+                        {d.sections.map((sec, i) =>
+                            sec.id === 'social'
+                                ? <SocialSubSection key={i} section={sec} />
+                                : <DataProvidersSubSection key={i} section={sec} />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Legacy single-variant mode
         return (
             <div>
                 <div className="flex items-center gap-2.5 mb-2">
@@ -431,13 +513,11 @@ const ThinkingProcessSidePanel: React.FC<{
                 </div>
                 <div className="ml-7 space-y-3 mb-3">
                     {d.description && <p className="text-[12px] text-gray-500 leading-relaxed">{d.description}</p>}
-                    {/* Social variant: source cards */}
                     {d.variant === 'social' && d.sources && d.sources.length > 0 && (
                         <div className="bg-gray-50 rounded-xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
                             {d.sources.map((src, i) => <SourceCard key={i} source={src} />)}
                         </div>
                     )}
-                    {/* Data provider variant: pill grid */}
                     {d.variant === 'data_providers' && d.providers && (
                         <div className="flex flex-wrap gap-1.5">
                             {d.providers.map((p, i) => (
@@ -522,9 +602,14 @@ const ThinkingProcessSidePanel: React.FC<{
                     <span className="text-[14px] font-bold text-gray-900">Simulating</span>
                 </div>
                 <div className="ml-7 space-y-2 mb-3">
-                    {d.panelists.map((p, i) => (
+                    {d.panelists.map((p, i) => {
+                        const colors = ['bg-blue-100 text-blue-700', 'bg-purple-100 text-purple-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700', 'bg-rose-100 text-rose-700', 'bg-cyan-100 text-cyan-700'];
+                        const initials = p.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2);
+                        return (
                         <div key={i} className="flex items-center gap-2.5">
-                            <span className="text-[16px]">{p.avatar}</span>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${colors[i % colors.length]}`}>
+                                {initials}
+                            </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[12px] font-medium text-gray-700">{p.name}</span>
@@ -538,7 +623,8 @@ const ThinkingProcessSidePanel: React.FC<{
                             </div>
                             <StatusIcon status={p.status} size="sm" />
                         </div>
-                    ))}
+                        );
+                    })}
                     {d.prediction && (
                         <div className="mt-2 bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
                             <span className="text-[11px] text-gray-500 font-medium">Prediction</span>
@@ -607,7 +693,12 @@ const ThinkingProcessSidePanel: React.FC<{
     return (
         <div className="flex flex-col h-full bg-white">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h2 className="text-[14px] font-bold text-gray-900">Thinking Process</h2>
+                <div>
+                    <h2 className="text-[14px] font-bold text-gray-900">Thinking Process</h2>
+                    {thinking.route && (
+                        <span className="text-[11px] text-blue-500 font-medium mt-0.5 block">Agent: {thinking.route}</span>
+                    )}
+                </div>
                 <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -668,7 +759,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
     const [showGraphPanel, setShowGraphPanel] = useState(false);
     const [showThinkingPanel, setShowThinkingPanel] = useState(false);
     const [activeGraphMsgIdx, setActiveGraphMsgIdx] = useState<number | null>(null);
-    const [chatMode, setChatMode] = useState<'auto'|'fast'|'collaborate'|'roundtable'>('auto');
+    const [chatMode, setChatMode] = useState<'auto'|'fast'|'roundtable'>('auto');
     const [chatModeOpen, setChatModeOpen] = useState(false);
     const chatModeRef = useRef<HTMLDivElement>(null);
     const [chatSelectedAgent, setChatSelectedAgent] = useState<string | null>(selectedAgentId || null);
@@ -747,10 +838,24 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
         setReactions(prev => ({ ...prev, [idx]: prev[idx] === type ? null : type }));
     };
 
-    // Chat title derived from initial message
-    const chatTitle = initialMessage.length > 55
-        ? initialMessage.slice(0, 55).trim() + '…'
-        : initialMessage;
+    // Chat title: condense to a short summary
+    const chatTitle = useMemo(() => {
+        const msg = initialMessage.trim();
+        // Remove question marks and common filler words
+        const cleaned = msg.replace(/[？?！!。，,]+$/g, '').trim();
+        // If short enough, use as-is
+        if (cleaned.length <= 20) return cleaned;
+        // Try to extract a short topic: take first meaningful clause
+        const clauseBreak = cleaned.search(/[，,、；;—]/);
+        if (clauseBreak > 4 && clauseBreak <= 25) return cleaned.slice(0, clauseBreak);
+        // For analysis/investment queries, extract the ticker/topic
+        const tickerMatch = cleaned.match(/(?:分析|analyze|analysis|invest|research|研究)\s*(.{1,15})/i);
+        if (tickerMatch) return `${tickerMatch[1].trim()} Analysis`;
+        // Default: truncate intelligently
+        const words = cleaned.split(/\s+/);
+        if (words.length <= 4) return cleaned.length > 25 ? cleaned.slice(0, 22) + '…' : cleaned;
+        return words.slice(0, 4).join(' ') + '…';
+    }, [initialMessage]);
 
     useEffect(() => {
         if (!chatModeOpen) return;
@@ -793,34 +898,76 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
         // Intent routing
         const isSearch = /sentiment|看法|舆情|搜索|search|signal/i.test(t);
         const isDaily = /今天|行情|价格|today|daily|情况/i.test(t);
-        const isAnalysis = /分析|analysis|analyze|深度|背景|建议|invest/i.test(t);
-        const isSimulation = /模拟|simulate|巴菲特|buffett|hedge/i.test(t);
+        const isAnalysis = /分析|analysis|analyze|深度|背景|建议|invest|调研|research|compare|对比/i.test(t);
+        const isSimulation = /模拟|simulate|巴菲特|buffett|hedge|预测/i.test(t);
         const isRoundtable = chatMode === 'roundtable';
         const isGeneric = !isSearch && !isDaily && !isAnalysis && !isSimulation;
 
-        if (isGeneric) return; // no thinking flow for generic
+        // Determine route label
+        const routeLabel = isSearch ? 'Signal Radar'
+            : isDaily ? 'Daily Agent'
+            : isAnalysis ? 'Investment Analyst'
+            : isSimulation ? 'AI Hedge Fund'
+            : 'Loka Agent';
 
-        // Build modules list
+        // Build modules list — ALL types get a thinking flow
         const modules: ThinkingModule[] = [];
 
-        // Search module
-        if (isSearch || isDaily || isAnalysis) {
+        // Generic gets a simple search module to show something
+        if (isGeneric) {
             modules.push({
                 type: 'search', status: 'pending',
                 data: {
-                    variant: isDaily || isAnalysis ? 'data_providers' : 'social',
-                    description: isDaily || isAnalysis
-                        ? 'Connecting to market data providers and financial APIs'
-                        : 'Searching for latest financial reports, analyst coverage, and market trends',
-                    providers: isDaily || isAnalysis
-                        ? DATA_PROVIDERS_POOL.slice(0, 12 + Math.floor(Math.random() * 10)).map(n => ({ name: n, status: 'pending' as const }))
-                        : undefined,
-                    sources: [],
+                    variant: 'data_providers',
+                    description: 'Preparing response...',
+                    providers: ['Loka Knowledge Base', 'Platform Config', 'Agent Registry'].map(n => ({ name: n, status: 'pending' as const })),
                 } as SearchModuleData,
             });
         }
 
-        // Analysis module
+        // Search module
+        if (isSearch || isDaily || isAnalysis) {
+            if (isAnalysis) {
+                // Analysis uses combined mode: social + data providers
+                modules.push({
+                    type: 'search', status: 'pending',
+                    data: {
+                        variant: 'combined',
+                        sections: [
+                            {
+                                id: 'social',
+                                label: 'Searching social media',
+                                status: 'pending',
+                                sources: [],
+                            },
+                            {
+                                id: 'data_providers',
+                                label: 'Fetching market data',
+                                status: 'pending',
+                                providers: DATA_PROVIDERS_POOL.slice(0, 12 + Math.floor(Math.random() * 10)).map(n => ({ name: n, status: 'pending' as const })),
+                            },
+                        ],
+                    } as SearchModuleData,
+                });
+            } else {
+                // Signal Radar = social only, Daily = data_providers only
+                modules.push({
+                    type: 'search', status: 'pending',
+                    data: {
+                        variant: isDaily ? 'data_providers' : 'social',
+                        description: isDaily
+                            ? 'Connecting to market data providers and financial APIs'
+                            : 'Searching for latest financial reports, analyst coverage, and market trends',
+                        providers: isDaily
+                            ? DATA_PROVIDERS_POOL.slice(0, 12 + Math.floor(Math.random() * 10)).map(n => ({ name: n, status: 'pending' as const }))
+                            : undefined,
+                        sources: [],
+                    } as SearchModuleData,
+                });
+            }
+        }
+
+        // Analysis module — show ALL sub-modules for Investment Analyst
         if (isAnalysis) {
             modules.push({
                 type: 'analysis', status: 'pending',
@@ -833,10 +980,36 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
                     ],
                 } as AnalysisModuleData,
             });
+
+            // Investment Analyst also runs a simulation panel
+            const panelists = SIM_PANELISTS.slice(0, 4 + Math.floor(Math.random() * 2)).map(p => ({
+                ...p, status: 'pending' as const,
+            }));
+            modules.push({
+                type: 'simulation', status: 'pending',
+                data: { panelists } as SimulationModuleData,
+            });
+
+            // And always runs consensus for analysis
+            modules.push({
+                type: 'consensus', status: 'pending',
+                data: { round: 0, maxRounds: 3, status: 'building' } as ConsensusModuleData,
+            });
         }
 
-        // Simulation module
-        if (isSimulation) {
+        // Simulation module (standalone, e.g. "模拟巴菲特")
+        if (isSimulation && !isAnalysis) {
+            // Simulation also needs data — add a search step if not already added
+            if (!isSearch && !isDaily) {
+                modules.push({
+                    type: 'search', status: 'pending',
+                    data: {
+                        variant: 'data_providers',
+                        description: 'Gathering market data for simulation panel',
+                        providers: ['Yahoo Finance', 'Bloomberg API', 'Alpha Vantage', 'CoinGecko', 'Polygon.io', 'Finnhub', 'TradingView', 'Morningstar'].map(n => ({ name: n, status: 'pending' as const })),
+                    } as SearchModuleData,
+                });
+            }
             const panelists = SIM_PANELISTS.slice(0, 4 + Math.floor(Math.random() * 2)).map(p => ({
                 ...p, status: 'pending' as const,
             }));
@@ -846,8 +1019,8 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
             });
         }
 
-        // Consensus module (roundtable only)
-        if (isRoundtable) {
+        // Consensus module (roundtable only, if not already added by analysis)
+        if (isRoundtable && !isAnalysis) {
             modules.push({
                 type: 'consensus', status: 'pending',
                 data: { round: 0, maxRounds: 3, status: 'building' } as ConsensusModuleData,
@@ -858,7 +1031,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
         modules.push({ type: 'done', status: 'pending' });
 
         // Initialize flow
-        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { modules, isActive: true, route: isSearch ? 'signal_radar' : isDaily ? 'daily' : isAnalysis ? 'analysis' : 'simulation' } }));
+        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { modules, isActive: true, route: routeLabel } }));
         setActiveGraphMsgIdx(msgIdx);
 
         const updateModule = (idx: number, patch: Partial<ThinkingModule>) => {
@@ -888,7 +1061,106 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
 
             if (mod.type === 'search') {
                 const sd = mod.data as SearchModuleData;
-                if (sd.variant === 'data_providers' && sd.providers) {
+                if (sd.variant === 'combined' && sd.sections) {
+                    // Combined: animate social section first, then data providers section
+                    const socialSec = sd.sections.find(s => s.id === 'social');
+                    const dataSec = sd.sections.find(s => s.id === 'data_providers');
+
+                    // --- Social sub-section ---
+                    if (socialSec) {
+                        // Set social section to active
+                        setThinkingProcesses(prev => {
+                            const flow = { ...prev[msgIdx] };
+                            const mods = [...flow.modules];
+                            const data = { ...(mods[mi].data as SearchModuleData) };
+                            const sections = (data.sections || []).map(s =>
+                                s.id === 'social' ? { ...s, status: 'active' as const } : s
+                            );
+                            mods[mi] = { ...mods[mi], data: { ...data, sections } };
+                            return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                        });
+                        await new Promise(r => setTimeout(r, 600));
+
+                        // Add social sources progressively
+                        const webSources = [...WEB_SOURCES_POOL].sort(() => Math.random() - 0.5).slice(0, 4);
+                        const socialSources = [...SOCIAL_SOURCES_POOL].sort(() => Math.random() - 0.5).slice(0, 4);
+                        const allSocialSources = [...webSources, ...socialSources];
+                        for (let si = 0; si < allSocialSources.length; si++) {
+                            await new Promise(r => setTimeout(r, 100 + Math.random() * 150));
+                            const visibleSources = allSocialSources.slice(0, si + 1);
+                            setThinkingProcesses(prev => {
+                                const flow = { ...prev[msgIdx] };
+                                const mods = [...flow.modules];
+                                const data = { ...(mods[mi].data as SearchModuleData) };
+                                const sections = (data.sections || []).map(s =>
+                                    s.id === 'social' ? { ...s, sources: visibleSources, totalFound: visibleSources.length } : s
+                                );
+                                mods[mi] = { ...mods[mi], data: { ...data, sections } };
+                                return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                            });
+                        }
+                        // Mark social done
+                        setThinkingProcesses(prev => {
+                            const flow = { ...prev[msgIdx] };
+                            const mods = [...flow.modules];
+                            const data = { ...(mods[mi].data as SearchModuleData) };
+                            const sections = (data.sections || []).map(s =>
+                                s.id === 'social' ? { ...s, status: 'done' as const } : s
+                            );
+                            mods[mi] = { ...mods[mi], data: { ...data, sections } };
+                            return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                        });
+                    }
+
+                    // --- Data providers sub-section ---
+                    if (dataSec && dataSec.providers) {
+                        // Set data section to active
+                        setThinkingProcesses(prev => {
+                            const flow = { ...prev[msgIdx] };
+                            const mods = [...flow.modules];
+                            const data = { ...(mods[mi].data as SearchModuleData) };
+                            const sections = (data.sections || []).map(s =>
+                                s.id === 'data_providers' ? { ...s, status: 'active' as const } : s
+                            );
+                            mods[mi] = { ...mods[mi], data: { ...data, sections } };
+                            return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                        });
+                        await new Promise(r => setTimeout(r, 300));
+
+                        // Animate each provider pill
+                        const providers = dataSec.providers;
+                        for (let pi = 0; pi < providers.length; pi++) {
+                            await new Promise(r => setTimeout(r, 80 + Math.random() * 120));
+                            setThinkingProcesses(prev => {
+                                const flow = { ...prev[msgIdx] };
+                                const mods = [...flow.modules];
+                                const data = { ...(mods[mi].data as SearchModuleData) };
+                                const sections = (data.sections || []).map(s => {
+                                    if (s.id !== 'data_providers') return s;
+                                    const ps = [...(s.providers || [])];
+                                    if (pi > 0) ps[pi - 1] = { ...ps[pi - 1], status: 'done' };
+                                    ps[pi] = { ...ps[pi], status: 'active' };
+                                    return { ...s, providers: ps };
+                                });
+                                mods[mi] = { ...mods[mi], data: { ...data, sections } };
+                                return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                            });
+                        }
+                        // Complete all providers and mark data section done
+                        setThinkingProcesses(prev => {
+                            const flow = { ...prev[msgIdx] };
+                            const mods = [...flow.modules];
+                            const data = { ...(mods[mi].data as SearchModuleData) };
+                            const sections = (data.sections || []).map(s => {
+                                if (s.id !== 'data_providers') return s;
+                                const ps = (s.providers || []).map(p => ({ ...p, status: 'done' as const }));
+                                return { ...s, status: 'done' as const, providers: ps };
+                            });
+                            mods[mi] = { ...mods[mi], data: { ...data, sections } };
+                            return { ...prev, [msgIdx]: { ...flow, modules: mods } };
+                        });
+                    }
+                } else if (sd.variant === 'data_providers' && sd.providers) {
                     // Animate providers connecting
                     for (let pi = 0; pi < sd.providers.length; pi++) {
                         await new Promise(r => setTimeout(r, 80 + Math.random() * 120));
@@ -1006,13 +1278,146 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
         setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], isActive: false } }));
     }, [chatMode]);
 
-    // ─── Send to AI (streaming) ─────────────────────────────
+    // ─── Mock response generator ──────────────────────────
+    const getMockResponse = (text: string): string => {
+        const t = text.toLowerCase();
+        if (/sentiment|看法|舆情|signal/i.test(t)) {
+            return `## Market Sentiment Analysis
+
+Based on analysis across Reddit, X/Twitter, YouTube, and financial news:
+
+**Overall Sentiment: Moderately Bullish** (Score: 68/100)
+
+- **Social Media Pulse**: Strong positive momentum on X with 73% bullish mentions in the past 24h
+- **Reddit Discussion**: r/wallstreetbets trending with 2.4k upvotes on bullish DD posts
+- **News Coverage**: 8 out of 12 recent articles carry positive outlook, citing strong Q4 earnings
+- **Institutional Flow**: Net inflows of $340M detected across major ETFs this week
+
+**Key Signals Detected:**
+1. Unusual options activity — heavy call buying at $200 strike (expiry next month)
+2. Short interest down 18% week-over-week
+3. Analyst upgrades: 3 new "Buy" ratings in the past 5 days
+
+**Risk Factors:**
+- Macro uncertainty: Fed rate decision pending next week
+- Sector rotation risk: Tech valuations stretched vs historical averages
+
+**Recommendation:** Monitor closely. Positive momentum is building, but wait for Fed clarity before increasing exposure.`;
+        }
+        if (/今天|行情|价格|today|daily|情况/i.test(t)) {
+            return `## Daily Market Brief
+
+**As of ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}**
+
+| Metric | Value | Change |
+|--------|-------|--------|
+| Price | $187.42 | +2.3% |
+| Volume | 48.2M | +15% vs avg |
+| Market Cap | $2.87T | — |
+| P/E Ratio | 24.5x | — |
+| 52w Range | $124.60 – $198.23 | Near high |
+
+**Today's Highlights:**
+1. Opened strong following positive pre-market sentiment from Asia
+2. Volume surging above 20-day average — institutional interest confirmed
+3. Key resistance at $190 being tested; breakout could target $205
+
+**Technical Setup:**
+- RSI: 62 (neutral-bullish)
+- MACD: Bullish crossover confirmed 2 days ago
+- Moving Averages: Price above 50-day and 200-day MA — bullish structure intact
+
+**Data Sources:** Yahoo Finance, Bloomberg, Alpha Vantage, Polygon.io`;
+        }
+        if (/模拟|simulate|巴菲特|buffett|hedge/i.test(t)) {
+            return `## AI Hedge Fund Simulation Results
+
+**Simulation Panel:** 5 legendary investors analyzed this opportunity
+
+| Investor | Verdict | Confidence | Key Reasoning |
+|----------|---------|------------|---------------|
+| Warren Buffett | **Buy** | 82% | Strong moat, durable competitive advantage, fair valuation |
+| Charlie Munger | **Buy** | 76% | Quality business at a reasonable price, excellent management |
+| Ray Dalio | **Hold** | 61% | Macro headwinds could create short-term pressure |
+| Cathie Wood | **Buy** | 88% | Massive AI/tech tailwind, 5-year compounding story |
+| Peter Lynch | **Buy** | 79% | Growth at reasonable price, strong earnings trajectory |
+
+**Consensus: Buy** (Confidence: 77.2%)
+
+**Simulated Portfolio Action:**
+- Allocate 8-12% of portfolio
+- Entry zone: $180-188
+- Target: $225 (12-month)
+- Stop loss: $165 (-12%)
+
+**Monte Carlo Simulation (10,000 runs):**
+- Median 12-month return: +18.4%
+- 90th percentile: +34.2%
+- 10th percentile: -8.7%
+- Probability of positive return: 74.3%`;
+        }
+        if (/分析|analysis|analyze|深度|背景|建议|invest|调研|research/i.test(t)) {
+            return `## Investment Analysis Report
+
+### Executive Summary
+**Verdict: Moderately Bullish** | Confidence: 72% | Risk Level: Medium
+
+### Fundamental Analysis
+- **Revenue Growth:** +28% YoY ($35.4B TTM), accelerating for 3 consecutive quarters
+- **Gross Margin:** 74.2%, expanding due to AI product mix shift
+- **Free Cash Flow:** $12.8B TTM, providing strong reinvestment capacity
+- **Debt/Equity:** 0.41x — conservative leverage, well within comfort zone
+
+### Technical Analysis
+- **Trend:** Uptrend confirmed (price above 50/200 MA)
+- **Support Levels:** $175.76 (strong), $162.30 (secondary)
+- **Resistance:** $198.23 (52-week high), $210 (psychological)
+- **RSI:** 62 — room to run before overbought
+- **Volume Profile:** Accumulation pattern over past 3 weeks
+
+### Sentiment Analysis
+- **News Sentiment:** +0.67 (positive bias across 47 articles analyzed)
+- **Social Score:** 78/100 (Reddit, X, StockTwits aggregated)
+- **Insider Activity:** 2 executive purchases in past 30 days, no sales
+- **Institutional Ownership:** Up 2.3% QoQ
+
+### Risk Assessment
+| Risk Factor | Level | Mitigation |
+|-------------|-------|-----------|
+| Valuation stretch | Medium | DCF suggests 15% upside at current multiples |
+| Macro sensitivity | Medium | Diversified revenue base provides cushion |
+| Competition | Low | Strong moat with 3-year technology lead |
+| Regulatory | Low | No pending actions or investigations |
+
+### Decision
+**Action: Accumulate on dips** — Strong fundamentals support continued upside. Technical setup favors buyers. Enter in $180-188 range with 6-month horizon.`;
+        }
+        // Generic / greeting
+        return `Hello! I'm Loka Super Agent — your AI-powered research and analysis assistant.
+
+Here's what I can help you with:
+
+**Investment Analysis** — Deep-dive into any stock, crypto, or market
+- "Analyze NVIDIA's investment potential"
+- "What's the market sentiment on Bitcoin?"
+
+**Market Research** — Industry reports and trend analysis
+- "Research the Southeast Asian food delivery market"
+- "Compare Figma vs Sketch strengths and weaknesses"
+
+**Simulation** — AI hedge fund style predictions
+- "Simulate Warren Buffett analyzing Tesla"
+- "Run a prediction market simulation on AI stocks"
+
+Try asking me something specific, and I'll assemble the right team of AI agents to deliver a structured report.`;
+    };
+
+    // ─── Send to AI (mock streaming) ────────────────────────
     const sendToAI = useCallback(async (text: string, existingMessages?: Message[]) => {
         setIsStreaming(true);
 
-        // Compute correct index from actual current messages
         const currentMessages = existingMessages ?? [];
-        const msgIdx = currentMessages.length; // index where assistant msg will be
+        const msgIdx = currentMessages.length;
 
         setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
         
@@ -1021,72 +1426,35 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
         setShowThinkingPanel(true);
         setShowGraphPanel(false);
 
-        // Run thinking simulation
+        // Run thinking simulation (visual effect)
         await simulateThinking(msgIdx, text);
 
-        try {
-            const abortController = new AbortController();
-            abortControllerRef.current = abortController;
+        // Simulate streaming the mock response
+        const mockContent = getMockResponse(text);
+        const words = mockContent.split(' ');
+        let accumulated = '';
 
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-            const token = sessionStorage.getItem('loka_token');
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            const response = await fetch(`${API_BASE}/chat/stream`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ content: text, sessionId }),
-                signal: abortController.signal,
-            });
-
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const reader = response.body!.getReader();
-            const decoder = new TextDecoder();
-            let fullContent = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6).trim();
-                        if (data === '[DONE]') continue;
-                        try {
-                            const parsed = JSON.parse(data);
-                            if (parsed.content) {
-                                fullContent += parsed.content;
-                                setMessages(prev => {
-                                    const updated = [...prev];
-                                    updated[msgIdx] = { ...updated[msgIdx], content: fullContent };
-                                    return updated;
-                                });
-                            }
-                        } catch { /* skip malformed */ }
-                    }
-                }
-            }
-
+        for (let i = 0; i < words.length; i++) {
+            accumulated += (i === 0 ? '' : ' ') + words[i];
+            const snapshot = accumulated;
             setMessages(prev => {
                 const updated = [...prev];
-                updated[msgIdx] = { ...updated[msgIdx], isStreaming: false, timestamp: new Date().toLocaleTimeString() };
+                updated[msgIdx] = { ...updated[msgIdx], content: snapshot };
                 return updated;
             });
-        } catch (err: any) {
-            if (err.name === 'AbortError') return;
-            // Fallback: show error
-            setMessages(prev => {
-                const updated = [...prev];
-                updated[msgIdx] = { ...updated[msgIdx], content: 'Sorry, I encountered an error. Please try again.', isStreaming: false };
-                return updated;
-            });
-        } finally {
-            setIsStreaming(false);
-            abortControllerRef.current = null;
+            // Variable speed: faster for common words, slight pause on punctuation
+            const delay = /[.!?\n]$/.test(words[i]) ? 30 : 8;
+            await new Promise(r => setTimeout(r, delay));
         }
-    }, [sessionId, simulateThinking]);
+
+        setMessages(prev => {
+            const updated = [...prev];
+            updated[msgIdx] = { ...updated[msgIdx], isStreaming: false, timestamp: new Date().toLocaleTimeString() };
+            return updated;
+        });
+
+        setIsStreaming(false);
+    }, [simulateThinking]);
 
     // ─── Auto-send initial message ──────────────────────────
     useEffect(() => {
@@ -1119,38 +1487,18 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
             {/* ══ Header: chat title + graph toggle ══ */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                 <h1 className="text-[13px] font-semibold text-gray-800 truncate max-w-[60%]">{chatTitle}</h1>
-                <div className="flex items-center gap-3">
-                    {/* Thinking Process toggle */}
-                    <button
-                        onClick={() => { setShowThinkingPanel(t => !t); if (!showThinkingPanel) setShowGraphPanel(false); }}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                            showThinkingPanel ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                        }`}
-                    >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" />
-                        </svg>
-                        Thinking Process
-                    </button>
-                    {/* Graph toggle */}
-                    {currentKgData && (
-                        <button
-                            onClick={() => { setShowGraphPanel(g => !g); if (!showGraphPanel) setShowThinkingPanel(false); }}
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                                showGraphPanel ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                            }`}
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="6" cy="6" r="3" strokeWidth="2"/>
-                                <circle cx="18" cy="6" r="3" strokeWidth="2"/>
-                                <circle cx="12" cy="18" r="3" strokeWidth="2"/>
-                                <line x1="6.93" y1="8.5" x2="11.07" y2="15.5" strokeWidth="1.5"/>
-                                <line x1="17.07" y1="8.5" x2="12.93" y2="15.5" strokeWidth="1.5"/>
-                            </svg>
-                            Graph
-                        </button>
-                    )}
-                </div>
+                <button
+                    onClick={() => setShowGraphPanel(p => !p)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                        showGraphPanel ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                    }`}
+                >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <circle cx="5" cy="12" r="2.5" /><circle cx="19" cy="5" r="2.5" /><circle cx="19" cy="19" r="2.5" />
+                        <path d="M7.5 11L16.5 6M7.5 13L16.5 18" />
+                    </svg>
+                    Multi-Agent Graph
+                </button>
             </div>
 
             {/* ══ Content Row ══ */}
@@ -1344,54 +1692,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack,
                                                 </div>
                                             )}
                                         </div>
-                                        {/* Agent selector */}
-                                        <div className="relative" ref={agentPickerRef}>
-                                            {chatSelectedAgent ? (() => {
-                                                const ag = QUICK_ACTIONS.find(a => a.id === chatSelectedAgent);
-                                                if (!ag) return null;
-                                                const AgIc = ag.icon;
-                                                return (
-                                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[12px] font-medium">
-                                                        <AgIc />
-                                                        <span>{ag.label}</span>
-                                                        <button
-                                                            onClick={() => setChatSelectedAgent(null)}
-                                                            className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors"
-                                                        >
-                                                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })() : (
-                                                <button
-                                                    onClick={() => setAgentPickerOpen(v => !v)}
-                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all"
-                                                >
-                                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" /></svg>
-                                                    Agent
-                                                    <ChatChevron />
-                                                </button>
-                                            )}
-                                            {agentPickerOpen && !chatSelectedAgent && (
-                                                <div className="absolute bottom-full left-0 mb-1.5 w-52 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30" style={{ animation: 'menu-pop 0.15s ease-out' }}>
-                                                    {QUICK_ACTIONS.map(ag => {
-                                                        const AgIc = ag.icon;
-                                                        return (
-                                                            <button
-                                                                key={ag.id}
-                                                                onClick={() => { setChatSelectedAgent(ag.id); setAgentPickerOpen(false); }}
-                                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-gray-50 transition-colors"
-                                                            >
-                                                                <div className="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
-                                                                    <AgIc />
-                                                                </div>
-                                                                <span className="text-[12px] font-medium text-gray-700">{ag.label}</span>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
+
                                     </div>
                                     {/* Right: action buttons */}
                                     <div className="flex items-center gap-1">
