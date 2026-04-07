@@ -4,10 +4,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api } from '../services/api';
-import { socket } from '../services/socket';
-import { renderMarkdownContent } from '../utils/markdown';
+import { QUICK_ACTIONS } from '../constants';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
@@ -19,15 +16,29 @@ const InputIcons = {
   Image: () => <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
 };
 
+const AGENT_NAMES: Record<string, string> = {
+  invest: 'Investment Analysis',
+  research: 'Signal Radar',
+  forecast: 'Forecast',
+  scout: 'Project Scout',
+  sentiment: 'Sentiment Check',
+  portfolio: 'Portfolio Review',
+};
+
+const ChatChevron = () => <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>;
+
+const CHAT_MODES = [
+  { id: 'auto' as const,        label: 'Auto',        desc: 'System picks the best mode for you',     icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
+  { id: 'fast' as const,        label: 'Fast',        desc: 'Single agent, quick response',            icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
+  { id: 'collaborate' as const, label: 'Deep', desc: 'Agents split work, assemble one answer', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
+  { id: 'roundtable' as const,  label: 'Roundtable',  desc: 'Multi-agent debate & cross-validation',  icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M14 5.5a7.5 7.5 0 014.5 12" /><path d="M17 19.5H7" /><path d="M5.5 17A7.5 7.5 0 0110 5.5" /></svg> },
+];
+
 interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
     isStreaming?: boolean;
-    hedgeFundLogs?: string[];
-    isHedgeFundRunning?: boolean;
-    stockAnalysisLogs?: string[];
-    isStockAnalysisRunning?: boolean;
 }
 
 interface AgentStep {
@@ -58,17 +69,50 @@ interface ThinkingProcess {
 
 // ─── Agent Council Config ───────────────────────────────────
 const AGENT_COUNCIL = [
-    { id: 'agent_0', name: 'Fundamental Analyst', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', color: 'bg-emerald-500', steps: ['Ingesting 10-K & financial statements', 'Calculating DCF valuation models', 'Evaluating balance sheet health', 'Formulating core thesis'] },
-    { id: 'agent_1', name: 'Macro Strategist', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-blue-500', steps: ['Analyzing cross-asset correlations', 'Evaluating interest rate impact', 'Scanning global liquidity trends', 'Synthesizing macro regime context'] },
-    { id: 'agent_2', name: 'Sentiment Engine', icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z', color: 'bg-violet-500', steps: ['Parsing FinTwit & Retail sentiment', 'Scanning news & events momentum', 'Analyzing option market skew', 'Identifying market pivot risks'] },
-    { id: 'agent_3', name: 'Quant Tracker', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', color: 'bg-rose-500', steps: ['Processing Stock OHLC Data', 'Evaluating moving average bounds', 'Calculating RSI & Volatility bands', 'Detecting anomalous trading volume'] }
-];
-
-const MODES = [
-    { id: 'auto' as const, label: 'Auto', desc: 'System picks the best mode for you', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" /></svg> },
-    { id: 'fast' as const, label: 'Fast', desc: 'Single agent, quick response', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
-    { id: 'collaborate' as const, label: 'Collaborate', desc: 'Agents split work, assemble one answer', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
-    { id: 'roundtable' as const, label: 'Roundtable', desc: 'Multi-agent debate & cross-validation', icon: () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M14 5.5a7.5 7.5 0 014.5 12" /><path d="M17 19.5H7" /><path d="M5.5 17A7.5 7.5 0 0110 5.5" /></svg> },
+    {
+        id: 'risk_assessor',
+        name: 'Risk Assessor',
+        icon: '🛡️',
+        color: 'orange',
+        steps: [
+            'Verifying revenue streams & financial statements',
+            'Evaluating credit score & default probability',
+            'Analyzing market position & competitive landscape',
+            'Generating risk assessment report',
+        ],
+    },
+    {
+        id: 'market_analyst',
+        name: 'Market Analyst',
+        icon: '📊',
+        color: 'blue',
+        steps: [
+            'Retrieving recent Stock OHLC Data',
+            'Analyzing revenue structure & market share',
+            'Reviewing active users & ARR growth',
+        ],
+    },
+    {
+        id: 'web_search',
+        name: 'Web Search Agent',
+        icon: '🌐',
+        color: 'green',
+        steps: [
+            'Finding recent news & events',
+            'Cross-referencing catalysts',
+            'Summarizing market sentiment',
+        ],
+    },
+    {
+        id: 'trading_strategist',
+        name: 'Trading Strategist',
+        icon: '📈',
+        color: 'purple',
+        steps: [
+            'Correlating technical indicators',
+            'Formulating short-term strategy',
+        ],
+    },
 ];
 
 // ─── Knowledge Graph Types ──────────────────────────────────
@@ -527,173 +571,154 @@ const ThinkingProcessPanel: React.FC<{
 };
 
 
-
+// ─── Markdown-like renderer for AI responses ────────────────
+const renderMarkdown = (text: string) => {
+    if (!text) return null;
+    // Simple markdown: bold, headers, lists
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+        if (line.startsWith('### ')) return <h3 key={i} className="text-sm font-bold text-gray-900 mt-4 mb-2">{line.slice(4)}</h3>;
+        if (line.startsWith('## ')) return <h2 key={i} className="text-base font-bold text-gray-900 mt-5 mb-2">{line.slice(3)}</h2>;
+        if (line.startsWith('# ')) return <h1 key={i} className="text-lg font-bold text-gray-900 mt-6 mb-3">{line.slice(2)}</h1>;
+        if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="text-sm text-gray-700 leading-relaxed ml-4 list-disc">{line.slice(2)}</li>;
+        if (line.match(/^\d+\.\s/)) return <li key={i} className="text-sm text-gray-700 leading-relaxed ml-4 list-decimal">{line.replace(/^\d+\.\s/, '')}</li>;
+        if (line.trim() === '') return <br key={i} />;
+        // Bold text
+        const boldParsed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        return <p key={i} className="text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: boldParsed }} />;
+    });
+};
 
 // ═════════════════════════════════════════════════════════════
 // SuperAgentChat — Main Component
 // ═════════════════════════════════════════════════════════════
 interface SuperAgentChatProps {
-    initialMessage?: string;
-    restoreSessionId?: string;
+    initialMessage: string;
     onBack: () => void;
-    agentCount?: number;   // how many agents to use (default 2)
-    mode?: 'auto' | 'fast' | 'collaborate' | 'roundtable';
-    initialAgent?: string;
+    agentCount?: number;
+    selectedAgentId?: string;
 }
 
-const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restoreSessionId, onBack, agentCount = 2, mode = 'auto', initialAgent }) => {
+const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, onBack, agentCount = 2, selectedAgentId }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const [thinkingProcesses, setThinkingProcesses] = useState<Record<number, ThinkingProcess>>({});
-    
-    // Two-Phase Workflow State
-    const [workflowPhase, setWorkflowPhase] = useState<'idle' | 'research' | 'consensus'>('idle');
-    const [researchLogs, setResearchLogs] = useState<string[]>([]);
-    const [researchSummary, setResearchSummary] = useState<string | null>(null);
-    const hasStartedResearch = useRef(false);
-    const [isRouting, setIsRouting] = useState(false);
-
-    
-    // Mode tracking
-    const [currentMode, setCurrentMode] = useState<'auto' | 'fast' | 'collaborate' | 'roundtable'>(mode);
-    const [modeOpen, setModeOpen] = useState(false);
-    const modeRef = useRef<HTMLDivElement>(null);
-
-    // Stable session tracking
-    const [generatedId] = useState(() => crypto.randomUUID());
-    const activeSessionId = restoreSessionId || generatedId;
-    
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [justCreatedId] = useState(() => ({ current: null as string | null }));
-
-    // Keep URL in sync for new sessions via React Router
-    useEffect(() => {
-        if (!restoreSessionId && !searchParams.get('session')) {
-            justCreatedId.current = activeSessionId;
-            setSearchParams({ session: activeSessionId }, { replace: true });
-        }
-    }, [activeSessionId, restoreSessionId, searchParams, setSearchParams]);
-
-    useEffect(() => {
-        if (!modeOpen) return;
-        const h = (e: MouseEvent) => { if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false); };
-        document.addEventListener('mousedown', h);
-        return () => document.removeEventListener('mousedown', h);
-    }, [modeOpen]);
-
+    const [sessionId] = useState(() => crypto.randomUUID());
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const hasSentInitial = useRef(false);
-
-    useEffect(() => {
-        if (!restoreSessionId) return;
-        
-        // Bypass fetching history if we *just* created this session and the URL update triggered a prop change.
-        if (justCreatedId.current === restoreSessionId) {
-            justCreatedId.current = null;
-            return;
-        }
-
-        const fetchHistory = async () => {
-             // Reset state to avoid leakage from previous sessions
-            setMessages([]);
-            setThinkingProcesses({});
-            setActiveGraphMsgIdx(null);
-            setShowGraphPanel(false);
-
-            try {
-                const token = sessionStorage.getItem('loka_token') || localStorage.getItem('loka_token');
-                const headers: Record<string, string> = {};
-                if (token) headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch(`${API_BASE}/chat/history?sessionId=${restoreSessionId}`, { headers });
-                if (res.ok) {
-                    const data = await res.json();
-                    const newThinking: Record<number, ThinkingProcess> = {};
-                    const lastAssistantIdx = data.map((d: any)=>d.role).lastIndexOf('assistant');
-
-                    setMessages(data.map((m: any, idx: number) => {
-                        if (m.metadata) {
-                            try {
-                                const parsedMeta = JSON.parse(m.metadata);
-                                if (parsedMeta && parsedMeta.mode === 'collaborate' || parsedMeta.mode === 'roundtable') {
-                                    const agents = AGENT_COUNCIL.map((a, aIdx) => {
-                                        const r = parsedMeta.agentResponses && parsedMeta.agentResponses[aIdx];
-                                        return {
-                                            agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
-                                            status: r ? 'completed' : 'waiting',
-                                            summary: r ? r.answer.slice(0, 150) : '',
-                                            details: r ? r.answer : '',
-                                            confidence: r ? Math.round(r.confidence * 100) : 0,
-                                            verdict: r && r.confidence > 0.7 ? 'bullish' : 'neutral',
-                                            steps: [ { label: r ? `${a.name} responded` : 'No response', status: 'done' } ],
-                                        };
-                                    });
-                                    newThinking[idx] = {
-                                        agents: agents as any,
-                                        isActive: false,
-                                        phase: 'persuading',
-                                        consensus: {
-                                            verdict: parsedMeta.confidence > 0.7 ? 'bullish' : 'neutral',
-                                            confidence: Math.round(parsedMeta.confidence * 100),
-                                            duration: parsedMeta.executionTime,
-                                        }
-                                    };
-                                }
-                            } catch (e) {}
-                        }
-                        return {
-                            role: m.role,
-                            content: m.content,
-                            timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        };
-                    }));
-
-                    setThinkingProcesses(newThinking);
-                    if (Object.keys(newThinking).length > 0) {
-                        const maxIdx = Math.max(...Object.keys(newThinking).map(Number));
-                        setActiveGraphMsgIdx(maxIdx);
-                        setShowGraphPanel(true);
-                    }
-
-                    // Reconnection check
-                    if (data.length > 0 && data[data.length - 1].role === 'user') {
-                        socket.emit('agent:chat:check', { sessionId: restoreSessionId }, (res: { isRunning: boolean; mode?: string }) => {
-                            if (res.isRunning) {
-                                setIsStreaming(true);
-                                const msgIdx = data.length;
-                                
-                                setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
-                                
-                                const useConsensusEngine = res.mode === 'collaborate' || res.mode === 'roundtable';
-                                if (useConsensusEngine) {
-                                    const council = AGENT_COUNCIL;
-                                    const agents: AgentThought[] = council.map(a => ({
-                                        agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
-                                        status: 'analyzing' as const, summary: '', 
-                                        steps: [{ label: `${a.name} reconnecting...`, status: 'active' as const }],
-                                    }));
-                                    setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
-                                    setActiveGraphMsgIdx(msgIdx);
-                                    setShowGraphPanel(true);
-                                }
-
-                                window.dispatchEvent(new CustomEvent('session-started', { 
-                                    detail: { id: restoreSessionId, title: data[0].content.slice(0, 60), agentId: 'superagent' } 
-                                }));
-                            }
-                        });
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to load chat history', err);
-            }
-        };
-        fetchHistory();
-    }, [restoreSessionId]);
     // ─── Knowledge Graph Panel ───────────────────────────────
     const [showGraphPanel, setShowGraphPanel] = useState(false);
     const [activeGraphMsgIdx, setActiveGraphMsgIdx] = useState<number | null>(null);
+    const [chatMode, setChatMode] = useState<'auto'|'fast'|'collaborate'|'roundtable'>('auto');
+    const [chatModeOpen, setChatModeOpen] = useState(false);
+    const chatModeRef = useRef<HTMLDivElement>(null);
+    const [chatSelectedAgent, setChatSelectedAgent] = useState<string | null>(selectedAgentId || null);
+    const [agentPickerOpen, setAgentPickerOpen] = useState(false);
+    const agentPickerRef = useRef<HTMLDivElement>(null);
+    const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing'>('idle');
+    const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [chatPastedImages, setChatPastedImages] = useState<string[]>([]);
+    const chatFileRef = useRef<HTMLInputElement>(null);
+
+    const handleChatPaste = (e: React.ClipboardEvent) => {
+        const items = Array.from(e.clipboardData.items);
+        const imageItems = items.filter(it => it.type.startsWith('image/'));
+        if (!imageItems.length) return;
+        e.preventDefault();
+        imageItems.forEach(item => {
+            const file = item.getAsFile();
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                if (ev.target?.result) setChatPastedImages(prev => [...prev, ev.target!.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleChatFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                if (ev.target?.result) setChatPastedImages(prev => [...prev, ev.target!.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+    };
+
+    const MOCK_TRANSCRIPTIONS = [
+        'What is the current risk profile of NVIDIA for Q2 2026?',
+        'Compare Bitcoin and Ethereum momentum over the past 30 days',
+        'Which AI infrastructure companies have the strongest moat?',
+        'Show me the latest market sentiment analysis on Tesla',
+        'Build me a diversified portfolio for a 3-year horizon',
+    ];
+
+    const stopRecording = () => {
+        if (voiceTimerRef.current) clearTimeout(voiceTimerRef.current);
+        setVoiceState('transcribing');
+        voiceTimerRef.current = setTimeout(() => {
+            const t = MOCK_TRANSCRIPTIONS[Math.floor(Math.random() * MOCK_TRANSCRIPTIONS.length)];
+            setInputText(t);
+            setVoiceState('idle');
+        }, 1800);
+    };
+
+    const handleVoiceClick = () => {
+        if (voiceState === 'idle') {
+            setVoiceState('recording');
+            voiceTimerRef.current = setTimeout(stopRecording, 8000);
+        } else if (voiceState === 'recording') {
+            stopRecording();
+        }
+    };
+    const [reactions, setReactions] = useState<Record<number, 'liked' | 'disliked' | null>>({});
+    const [copied, setCopied] = useState<Record<number, boolean>>({});
+
+    const handleCopy = (idx: number, content: string) => {
+        navigator.clipboard.writeText(content).then(() => {
+            setCopied(prev => ({ ...prev, [idx]: true }));
+            setTimeout(() => setCopied(prev => ({ ...prev, [idx]: false })), 2000);
+        });
+    };
+
+    const handleReaction = (idx: number, type: 'liked' | 'disliked') => {
+        setReactions(prev => ({ ...prev, [idx]: prev[idx] === type ? null : type }));
+    };
+
+    // Chat title derived from initial message
+    const chatTitle = initialMessage.length > 55
+        ? initialMessage.slice(0, 55).trim() + '…'
+        : initialMessage;
+
+    useEffect(() => {
+        if (!chatModeOpen) return;
+        const h = (e: MouseEvent) => { if (chatModeRef.current && !chatModeRef.current.contains(e.target as Node)) setChatModeOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [chatModeOpen]);
+
+    useEffect(() => {
+        if (!agentPickerOpen) return;
+        const h = (e: MouseEvent) => { if (agentPickerRef.current && !agentPickerRef.current.contains(e.target as Node)) setAgentPickerOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [agentPickerOpen]);
+
+    const currentChatMode = CHAT_MODES.find(m => m.id === chatMode)!;
+
+    // Auto-grow textarea
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        ta.style.height = 'auto';
+        ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+    }, [inputText]);
 
     const currentThinking = activeGraphMsgIdx !== null ? thinkingProcesses[activeGraphMsgIdx] : null;
     const currentQuery = activeGraphMsgIdx !== null ? messages.slice(0, activeGraphMsgIdx).reverse().find(m => m.role === 'user')?.content ?? '' : '';
@@ -704,439 +729,178 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, thinkingProcesses]);
 
-    // ─── Send to AI (WebSocket) ─────────────────────────────
-    const sendToAI = useCallback((text: string, existingMessages?: Message[]) => {
-        // Socket handles everything via server now!
-        const currentMessages = existingMessages ?? [];
-        const msgIdx = currentMessages.length; // Will be the index for assistant bubble
-        
-        socket.emit('agent:chat', { content: text, mode: currentMode, sessionId: activeSessionId, agentId: 'superagent' });
+    // ─── Simulate thinking process ──────────────────────────
+    const simulateThinking = useCallback(async (msgIdx: number) => {
+        const council = AGENT_COUNCIL.slice(0, agentCount);
+        const agents: AgentThought[] = council.map(a => ({
+            agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
+            status: 'waiting', summary: '', steps: a.steps.map(s => ({ label: s, status: 'pending' as const })),
+        }));
+        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
 
-        window.dispatchEvent(new CustomEvent('session-started', { 
-            detail: { id: activeSessionId, title: text.slice(0, 60), agentId: 'superagent' } 
+        await Promise.all(agents.map(async (agent, aIdx) => {
+            // Set to analyzing
+            setThinkingProcesses(prev => {
+                const tp = { ...prev[msgIdx] };
+                const updatedAgents = [...tp.agents];
+                updatedAgents[aIdx] = { ...updatedAgents[aIdx], status: 'analyzing' };
+                return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
+            });
+
+            const steps = council[aIdx].steps;
+            for (let sIdx = 0; sIdx < steps.length; sIdx++) {
+                await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
+                setThinkingProcesses(prev => {
+                    const tp = { ...prev[msgIdx] };
+                    const updatedAgents = [...tp.agents];
+                    const updatedSteps = [...(updatedAgents[aIdx].steps || [])];
+                    if (sIdx > 0) updatedSteps[sIdx - 1] = { ...updatedSteps[sIdx - 1], status: 'done' };
+                    // Inject mock detailType for specific steps
+                    let detailType: 'table' | 'news' | undefined;
+                    if (updatedSteps[sIdx].label.includes('financial statements') || updatedSteps[sIdx].label.includes('Stock OHLC Data')) detailType = 'table';
+                    if (updatedSteps[sIdx].label.includes('competitive landscape') || updatedSteps[sIdx].label.includes('news & events')) detailType = 'news';
+                    updatedSteps[sIdx] = { ...updatedSteps[sIdx], status: 'active', detailType };
+                    updatedAgents[aIdx] = { ...updatedAgents[aIdx], steps: updatedSteps };
+                    return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
+                });
+            }
+
+            // Complete agent
+            await new Promise(r => setTimeout(r, 300));
+            const verdicts: ('bullish' | 'neutral')[] = ['bullish', 'neutral'];
+            const verdict = verdicts[Math.floor(Math.random() * 2)];
+            const confidence = 65 + Math.floor(Math.random() * 30);
+            const summaries = [
+                'Low default probability (2.3%). Revenue growth at 28% MoM exceeds benchmark.',
+                'Moderate risk detected. Revenue concentration >40% in single client. Profit margin adequate at 65%.',
+                'Strong credit profile. Consistent revenue history over 12 months. Diversified customer base across 50+ clients.',
+            ];
+            const summary = summaries[Math.floor(Math.random() * summaries.length)];
+            const details = `Risk Score: ${verdict === 'bullish' ? 'A+' : 'B+'} | Default Probability: ${(Math.random() * 5).toFixed(1)}% | Revenue Stability: ${(75 + Math.random() * 20).toFixed(0)}%`;
+
+            setThinkingProcesses(prev => {
+                const tp = { ...prev[msgIdx] };
+                const updatedAgents = [...tp.agents];
+                const completedSteps = (updatedAgents[aIdx].steps || []).map(s => ({ ...s, status: 'done' as const }));
+                updatedAgents[aIdx] = { ...updatedAgents[aIdx], status: 'completed', summary, details, verdict, confidence, steps: completedSteps };
+                return { ...prev, [msgIdx]: { ...tp, agents: updatedAgents } };
+            });
         }));
 
+        // Move to evaluating phase
+        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], phase: 'evaluating' } }));
+        await new Promise(r => setTimeout(r, 1200));
+
+        // Move to persuading phase
+        setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { ...prev[msgIdx], phase: 'persuading' } }));
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Generate consensus
+        setThinkingProcesses(prev => ({
+            ...prev,
+            [msgIdx]: {
+                ...prev[msgIdx],
+                isActive: false,
+                consensus: {
+                    verdict: Math.random() > 0.3 ? 'bullish' : 'neutral',
+                    confidence: 70 + Math.floor(Math.random() * 25),
+                    duration: 2 + Math.random() * 3,
+                },
+            },
+        }));
+    }, [agentCount]);
+
+    // ─── Send to AI (streaming) ─────────────────────────────
+    const sendToAI = useCallback(async (text: string, existingMessages?: Message[]) => {
+        setIsStreaming(true);
+
+        // Compute correct index from actual current messages
+        const currentMessages = existingMessages ?? [];
+        const msgIdx = currentMessages.length; // index where assistant msg will be
+
         setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true }]);
+        
+        // Open graph automatically out of the box
+        setActiveGraphMsgIdx(msgIdx);
+        setShowGraphPanel(true);
 
-        if (currentMode === 'auto') {
-            // Routing will take care of rendering the panel once it resolves
-            return;
-        }
+        // Run thinking simulation
+        await simulateThinking(msgIdx);
 
-        const useConsensusEngine = currentMode === 'collaborate' || currentMode === 'roundtable';
-        if (useConsensusEngine) {
-            const council = AGENT_COUNCIL;
-            const agents: AgentThought[] = council.map(a => ({
-                agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
-                status: 'analyzing' as const, summary: '', 
-                steps: [{ label: `${a.name} is thinking...`, status: 'active' as const }],
-            }));
-            setThinkingProcesses(prev => ({ ...prev, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
-            setActiveGraphMsgIdx(msgIdx);
-            setShowGraphPanel(true);
-        }
-    }, [activeSessionId, currentMode]);
+        try {
+            const abortController = new AbortController();
+            abortControllerRef.current = abortController;
 
-    /* Socket listeners */
-    useEffect(() => {
-        const onStarted = (data: any) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setShowGraphPanel(true);
-            setIsStreaming(true);
-        };
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            const token = sessionStorage.getItem('loka_token');
+            if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const onProgress = (data: { content: string; sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (!last || last.role !== 'assistant') {
-                    updated.push({ role: 'assistant', content: data.content, timestamp: new Date().toLocaleTimeString(), isStreaming: true });
-                } else {
-                    updated[updated.length - 1] = { ...last, content: (last.content || '') + data.content };
-                }
-                return updated;
+            const response = await fetch(`${API_BASE}/chat/stream`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ content: text, sessionId }),
+                signal: abortController.signal,
             });
-        };
 
-        const onStreamDone = (data: { content: string; sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(false);
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (last && last.role === 'assistant') {
-                    updated[updated.length - 1] = { ...last, content: data.content, isStreaming: false };
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const reader = response.body!.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data);
+                            if (parsed.content) {
+                                fullContent += parsed.content;
+                                setMessages(prev => {
+                                    const updated = [...prev];
+                                    updated[msgIdx] = { ...updated[msgIdx], content: fullContent };
+                                    return updated;
+                                });
+                            }
+                        } catch { /* skip malformed */ }
+                    }
                 }
-                return updated;
-            });
-            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
-        };
-
-        const onConsensusDone = (data: { result: any; sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(false);
+            }
 
             setMessages(prev => {
                 const updated = [...prev];
-                const msgIdx = updated.length - 1; // Assuming the streaming blank message is last
-                if (updated[msgIdx] && updated[msgIdx].role === 'assistant') {
-                    const finalAnswer = data.result.consensus?.finalAnswer || 'No consensus reached.';
-                    updated[msgIdx] = { ...updated[msgIdx], content: finalAnswer, isStreaming: false, timestamp: new Date().toLocaleTimeString() };
-                }
+                updated[msgIdx] = { ...updated[msgIdx], isStreaming: false, timestamp: new Date().toLocaleTimeString() };
                 return updated;
             });
-
-            setThinkingProcesses(prev => {
-                const keys = Object.keys(prev).map(Number).sort((a,b)=>b-a);
-                if (keys.length === 0) return prev;
-                const msgIdx = keys[0];
-
-                const tp = prev[msgIdx];
-                if (!tp) return prev;
-
-                const updatedAgents = tp.agents.map((agent: any, idx: number) => {
-                    const realResponse = data.result.consensus.agentResponses[idx];
-                    if (realResponse) {
-                        return {
-                            ...agent,
-                            status: 'completed',
-                            summary: realResponse.answer.slice(0, 150),
-                            details: realResponse.answer,
-                            confidence: Math.round(realResponse.confidence * 100),
-                            verdict: realResponse.confidence > 0.7 ? 'bullish' : 'neutral',
-                            steps: [{ label: `${agent.agentName} responded`, status: 'done' }],
-                        };
-                    }
-                    return { ...agent, status: 'completed', steps: [{ label: 'No response', status: 'done' }] };
-                });
-
-                return {
-                    ...prev, [msgIdx]: {
-                        ...tp,
-                        agents: updatedAgents as any,
-                        isActive: false,
-                        phase: 'persuading',
-                        consensus: {
-                            verdict: data.result.consensus.confidence > 0.7 ? 'bullish' : 'neutral',
-                            confidence: Math.round(data.result.consensus.confidence * 100),
-                            duration: data.result.consensus.executionTime,
-                        },
-                    }
-                };
+        } catch (err: any) {
+            if (err.name === 'AbortError') return;
+            // Fallback: show error
+            setMessages(prev => {
+                const updated = [...prev];
+                updated[msgIdx] = { ...updated[msgIdx], content: 'Sorry, I encountered an error. Please try again.', isStreaming: false };
+                return updated;
             });
-            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
-        };
-
-        const onError = (data: { error: string; sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
+        } finally {
             setIsStreaming(false);
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (last && last.role === 'assistant') {
-                    updated[updated.length - 1] = { ...last, content: `⚠️ Error: ${data.error}`, isStreaming: false };
-                } else {
-                    updated.push({ role: 'assistant', content: `⚠️ Error: ${data.error}`, timestamp: new Date().toLocaleTimeString() });
-                }
-                return updated;
-            });
-            setThinkingProcesses(prev => {
-                const keys = Object.keys(prev).map(Number).sort((a,b)=>b-a);
-                if (keys.length === 0) return prev;
-                return { ...prev, [keys[0]]: { ...prev[keys[0]], isActive: false } };
-            });
-            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
-        };
-
-        const onResearchStarted = (data: any) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setResearchLogs([]);
-        };
-
-        const onResearchProgress = (data: { log: string; sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setResearchLogs(prev => [...prev, data.log]);
-        };
-
-        const onResearchDone = (data: { summary: string; sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            
-            setResearchSummary(data.summary);
-            setResearchLogs(prev => [...prev, '✓ Report generated successfully']);
-            setWorkflowPhase('consensus');
-
-            // Now automatically forward this summary to the multi-agent consensus network
-            // Note: Since we are in an effect callback, we use the initialMessage stored in state/props
-            const fullPrompt = `${initialMessage}\n\n[Signal Radar Intercepted Data]:\n${data.summary}`;
-            const existingMessages: Message[] = [{ role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() }];
-            sendToAI(fullPrompt, existingMessages);
-        };
-
-        const onResearchError = (data: { error: string; sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setResearchLogs(prev => [...prev, `⚠️ Error: ${data.error}`]);
-            setWorkflowPhase('consensus');
-            
-            // Still fallback to regular consensus even if research failed
-            const existingMessages: Message[] = [{ role: 'user', content: initialMessage || '', timestamp: new Date().toLocaleTimeString() }];
-            sendToAI(initialMessage || '', existingMessages);
-        };
-
-        // ── AI Hedge Fund listeners ──
-        const onHedgefundStarted = (data: { sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(true);
-        };
-
-        const onHedgefundProgress = (data: { sessionId?: string; log: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (!last || last.role !== 'assistant') {
-                    updated.push({ role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, hedgeFundLogs: [data.log], isHedgeFundRunning: true });
-                } else {
-                    updated[updated.length - 1] = { ...last, hedgeFundLogs: [...(last.hedgeFundLogs || []), data.log] };
-                }
-                return updated;
-            });
-        };
-
-        const onHedgefundDone = (data: { sessionId?: string; report: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(false);
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (last && last.role === 'assistant') {
-                    updated[updated.length - 1] = { ...last, content: data.report, isStreaming: false, isHedgeFundRunning: false };
-                }
-                return updated;
-            });
-            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
-        };
-
-        const onHedgefundError = (data: { sessionId?: string; error: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(false);
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (last && last.role === 'assistant') {
-                    updated[updated.length - 1] = { ...last, content: `⚠️ Hedge Fund Error: ${data.error}`, isStreaming: false, isHedgeFundRunning: false };
-                } else {
-                    updated.push({ role: 'assistant', content: `⚠️ Hedge Fund Error: ${data.error}`, timestamp: new Date().toLocaleTimeString(), isHedgeFundRunning: false });
-                }
-                return updated;
-            });
-            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
-        };
-
-        // ── Stock Analysis listeners ──
-        const onStockAnalysisStarted = (data: { sessionId?: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(true);
-        };
-
-        const onStockAnalysisProgress = (data: { sessionId?: string; log: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (!last || last.role !== 'assistant') {
-                    updated.push({ role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, stockAnalysisLogs: [data.log], isStockAnalysisRunning: true });
-                } else {
-                    updated[updated.length - 1] = { ...last, stockAnalysisLogs: [...(last.stockAnalysisLogs || []), data.log] };
-                }
-                return updated;
-            });
-        };
-
-        const onStockAnalysisDone = (data: { sessionId?: string; report: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(false);
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (last && last.role === 'assistant') {
-                    updated[updated.length - 1] = { ...last, content: data.report, isStreaming: false, isStockAnalysisRunning: false };
-                }
-                return updated;
-            });
-            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
-        };
-
-        const onStockAnalysisError = (data: { sessionId?: string; error: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsStreaming(false);
-            setMessages(prev => {
-                let updated = [...prev];
-                let last = updated[updated.length - 1];
-                if (last && last.role === 'assistant') {
-                    updated[updated.length - 1] = { ...last, content: `⚠️ Stock Analysis Error: ${data.error}`, isStreaming: false, isStockAnalysisRunning: false };
-                } else {
-                    updated.push({ role: 'assistant', content: `⚠️ Stock Analysis Error: ${data.error}`, timestamp: new Date().toLocaleTimeString(), isStockAnalysisRunning: false });
-                }
-                return updated;
-            });
-            window.dispatchEvent(new CustomEvent('session-done', { detail: { id: data.sessionId || activeSessionId } }));
-        };
-
-        const onChatRouting = (data: { sessionId: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsRouting(true);
-        };
-
-        const onChatRouted = (data: { sessionId: string; mode: string }) => {
-            if (data.sessionId && restoreSessionId && data.sessionId !== restoreSessionId) return;
-            if (!restoreSessionId && data.sessionId && activeSessionId !== data.sessionId) return;
-            setIsRouting(false);
-            setCurrentMode(data.mode as any);
-            
-            // If it resolved to a consensus mode, inject the fake thinking panel now!
-            const useConsensusEngine = data.mode === 'collaborate' || data.mode === 'roundtable';
-            if (useConsensusEngine) {
-                setMessages(prev => {
-                    const msgIdx = prev.length - 1; // Assuming the streaming blank message is last
-                    const council = AGENT_COUNCIL;
-                    const agents: AgentThought[] = council.map(a => ({
-                        agentId: a.id, agentName: a.name, agentIcon: a.icon, agentColor: a.color,
-                        status: 'analyzing' as const, summary: '', 
-                        steps: [{ label: `${a.name} is thinking...`, status: 'active' as const }],
-                    }));
-                    setThinkingProcesses(tp => ({ ...tp, [msgIdx]: { agents, isActive: true, phase: 'generating' } }));
-                    setActiveGraphMsgIdx(msgIdx);
-                    setShowGraphPanel(true);
-                    return prev;
-                });
-            }
-        };
-
-        socket.on('agent:chat:started', onStarted);
-        socket.on('agent:chat:progress', onProgress);
-        socket.on('agent:chat:stream_done', onStreamDone);
-        socket.on('agent:chat:consensus_done', onConsensusDone);
-        socket.on('agent:chat:error', onError);
-        socket.on('agent:chat:routing', onChatRouting);
-        socket.on('agent:chat:routed', onChatRouted);
-        
-        socket.on('agent:research:started', onResearchStarted);
-        socket.on('agent:research:progress', onResearchProgress);
-        socket.on('agent:research:done', onResearchDone);
-        socket.on('agent:research:error', onResearchError);
-
-        socket.on('agent:hedgefund:started', onHedgefundStarted);
-        socket.on('agent:hedgefund:progress', onHedgefundProgress);
-        socket.on('agent:hedgefund:done', onHedgefundDone);
-        socket.on('agent:hedgefund:error', onHedgefundError);
-
-        socket.on('agent:stockanalysis:started', onStockAnalysisStarted);
-        socket.on('agent:stockanalysis:progress', onStockAnalysisProgress);
-        socket.on('agent:stockanalysis:done', onStockAnalysisDone);
-        socket.on('agent:stockanalysis:error', onStockAnalysisError);
-
-        return () => {
-            socket.off('agent:chat:started', onStarted);
-            socket.off('agent:chat:progress', onProgress);
-            socket.off('agent:chat:stream_done', onStreamDone);
-            socket.off('agent:chat:consensus_done', onConsensusDone);
-            socket.off('agent:chat:error', onError);
-            socket.off('agent:chat:routing', onChatRouting);
-            socket.off('agent:chat:routed', onChatRouted);
-            
-            socket.off('agent:research:started', onResearchStarted);
-            socket.off('agent:research:progress', onResearchProgress);
-            socket.off('agent:research:done', onResearchDone);
-            socket.off('agent:research:error', onResearchError);
-
-            socket.off('agent:hedgefund:started', onHedgefundStarted);
-            socket.off('agent:hedgefund:progress', onHedgefundProgress);
-            socket.off('agent:hedgefund:done', onHedgefundDone);
-            socket.off('agent:hedgefund:error', onHedgefundError);
-
-            socket.off('agent:stockanalysis:started', onStockAnalysisStarted);
-            socket.off('agent:stockanalysis:progress', onStockAnalysisProgress);
-            socket.off('agent:stockanalysis:done', onStockAnalysisDone);
-            socket.off('agent:stockanalysis:error', onStockAnalysisError);
-        };
-    }, [restoreSessionId, activeSessionId, currentMode, initialMessage, sendToAI]);
+            abortControllerRef.current = null;
+        }
+    }, [sessionId, simulateThinking]);
 
     // ─── Auto-send initial message ──────────────────────────
     useEffect(() => {
-        if (hasSentInitial.current || restoreSessionId || !initialMessage) return;
+        if (hasSentInitial.current) return;
         hasSentInitial.current = true;
-        
         const userMsg: Message = { role: 'user', content: initialMessage, timestamp: new Date().toLocaleTimeString() };
         const initialMessages = [userMsg];
         setMessages(initialMessages);
-
-        // Check if this is a hedge fund request
-        if (initialMessage.startsWith('[HEDGEFUND] ')) {
-            const tickerInput = initialMessage.replace('[HEDGEFUND] ', '').trim();
-            // Extract tickers: split by comma, remove non-alpha chars like " — Social Media"
-            const tickers = tickerInput.split(',').map(t => t.replace(/[^A-Za-z]/g, '').trim().toUpperCase()).filter(Boolean);
-            
-            // Fix the displayed user message to be cleaner
-            setMessages([{ role: 'user', content: `Analyze ${tickers.join(', ')} using AI Hedge Fund`, timestamp: new Date().toLocaleTimeString() }]);
-            setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, hedgeFundLogs: [], isHedgeFundRunning: true }]);
-            setIsStreaming(true);
-            
-            setTimeout(() => {
-                socket.emit('agent:hedgefund', { tickers, sessionId: activeSessionId, showReasoning: true });
-                window.dispatchEvent(new CustomEvent('session-started', { 
-                    detail: { id: activeSessionId, title: `AI Hedge Fund: ${tickers.join(', ')}`, agentId: 'hedgefund' } 
-                }));
-            }, 50);
-        } else if (initialMessage.startsWith('[STOCKANALYSIS] ')) {
-            const tickerInput = initialMessage.replace('[STOCKANALYSIS] ', '').trim();
-            const tickers = tickerInput.split(',').map(t => t.replace(/[^A-Za-z0-9]/g, '').trim().toUpperCase()).filter(Boolean);
-            
-            setMessages([{ role: 'user', content: `Analyze ${tickers.join(', ')} using A/H/US Stock Tracker`, timestamp: new Date().toLocaleTimeString() }]);
-            setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toLocaleTimeString(), isStreaming: true, stockAnalysisLogs: [], isStockAnalysisRunning: true }]);
-            setIsStreaming(true);
-            
-            setTimeout(() => {
-                socket.emit('agent:stockanalysis', { tickers, sessionId: activeSessionId });
-                window.dispatchEvent(new CustomEvent('session-started', { 
-                    detail: { id: activeSessionId, title: `Stock Analysis: ${tickers.join(', ')}`, agentId: 'stockanalysis' } 
-                }));
-            }, 50);
-        } else if (initialAgent === 'research' && (currentMode === 'collaborate' || currentMode === 'roundtable')) {
-            setWorkflowPhase('research');
-            hasStartedResearch.current = true;
-            setTimeout(() => {
-                socket.emit('agent:research', { topic: initialMessage, deep: false, days: 30, sessionId: activeSessionId });
-                window.dispatchEvent(new CustomEvent('session-started', { 
-                    detail: { id: activeSessionId, title: initialMessage.slice(0, 60), agentId: 'superagent' } 
-                }));
-            }, 50);
-        } else {
-            setWorkflowPhase('consensus');
-            setTimeout(() => sendToAI(initialMessage, initialMessages), 50);
-        }
-    }, [initialMessage, restoreSessionId, sendToAI, initialAgent, currentMode, activeSessionId]);
+        // Pass the current messages array directly to avoid stale closure
+        setTimeout(() => sendToAI(initialMessage, initialMessages), 50);
+    }, [initialMessage, sendToAI]);
 
     // ─── Handle send ────────────────────────────────────────
     const handleSend = () => {
@@ -1151,20 +915,16 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
 
     return (
         <div className="flex flex-col h-full bg-white overflow-hidden">
-            {/* ══ Shared Header ══ */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 shrink-0">
-                <button onClick={onBack} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                </button>
+            <style>{`
+                @keyframes voice-bar { 0%,100%{height:3px} 50%{height:10px} }
+                .voice-bar { min-height: 3px; display:inline-block; border-radius:9999px; background:#9ca3af; }
+            `}</style>
+            {/* ══ Header: chat title + graph toggle ══ */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                <h1 className="text-[13px] font-semibold text-gray-800 truncate max-w-[60%]">{chatTitle}</h1>
                 <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center text-white text-xs font-black">L</div>
-                    <span className="text-sm font-semibold text-gray-900">Loka SuperAgent</span>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="text-[10px] text-gray-400 font-medium">{agentCount} Agents Online</span>
                     {currentKgData && (
-                        <div className="ml-2 pl-3 border-l border-gray-200 flex items-center gap-2 cursor-pointer" onClick={() => setShowGraphPanel(g => !g)}>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowGraphPanel(g => !g)}>
                             <svg className={`w-3.5 h-3.5 transition-colors ${showGraphPanel ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <circle cx="6" cy="6" r="3" strokeWidth="2"/>
                                 <circle cx="18" cy="6" r="3" strokeWidth="2"/>
@@ -1176,7 +936,7 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                             <span className="text-[11px] font-medium text-gray-500">Multi-Agent Graph</span>
                             <button
                                 type="button"
-                                className={`relative inline-flex h-4 w-7 ml-1 items-center rounded-full transition-colors ${
+                                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
                                     showGraphPanel ? 'bg-blue-500' : 'bg-gray-200'
                                 }`}
                                 aria-pressed={showGraphPanel}
@@ -1202,27 +962,13 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                         <div className="flex justify-end">
                                             <div className="max-w-[72%] px-4 py-3 bg-gray-900 text-white rounded-2xl rounded-br-sm shadow-sm">
                                                 <p className="text-[13px] leading-relaxed">{msg.content}</p>
-                                                <p className="text-[9px] text-gray-400 mt-1.5 text-right">{msg.timestamp}</p>
+                                                <p className="text-[9px] text-gray-500 mt-1.5 text-right">{msg.timestamp}</p>
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="flex items-start gap-3">
                                             <div className="w-7 h-7 rounded-xl bg-gray-900 flex items-center justify-center text-white text-[10px] font-black shrink-0 mt-0.5">L</div>
                                             <div className="flex-1 min-w-0">
-                                                {(researchSummary && i === 1) && (
-                                                    <div className="mb-4">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <div className="w-3.5 h-3.5 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-600">
-                                                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                            </div>
-                                                            <span className="text-[11px] font-semibold text-gray-600">Phase 1: Signal Radar Intelligence Assembled</span>
-                                                        </div>
-                                                        <div className="ml-5 text-[10px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg p-3 max-h-32 overflow-y-auto">
-                                                            <div className="font-semibold text-gray-700 mb-1">Raw Intelligence Report:</div>
-                                                            {researchSummary.slice(0, 300)}... <span className="text-blue-500 underline cursor-pointer" title={researchSummary}>Hover to view</span>
-                                                        </div>
-                                                    </div>
-                                                )}
                                                 {thinkingProcesses[i] && (
                                                     <ThinkingProcessPanel
                                                         thinking={thinkingProcesses[i]}
@@ -1233,93 +979,9 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                                         }}
                                                     />
                                                 )}
-                                                {/* ── AI Hedge Fund Thinking Flow ── */}
-                                                {(msg.isHedgeFundRunning || (msg.hedgeFundLogs && msg.hedgeFundLogs.length > 0)) && (
-                                                    <div className="mb-4">
-                                                        <div className="flex items-center gap-1.5 mb-2">
-                                                            {msg.isHedgeFundRunning ? (
-                                                                <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                                                            ) : (
-                                                                <div className="w-3.5 h-3.5 rounded-full bg-emerald-100 flex items-center justify-center">
-                                                                    <svg className="w-2 h-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                                </div>
-                                                            )}
-                                                            <span className="text-[11px] font-semibold text-gray-500">{msg.isHedgeFundRunning ? 'Hedge Fund agents analyzing...' : 'Analysis complete'}</span>
-                                                        </div>
-                                                        <div className="pl-2 border-l-2 border-gray-100 ml-[7px] space-y-0.5 max-h-[350px] overflow-y-auto">
-                                                            {msg.hedgeFundLogs?.length === 0 && msg.isHedgeFundRunning && (
-                                                                <div className="flex items-center gap-1.5 py-0.5">
-                                                                    <div className="w-2.5 h-2.5 border border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                                                                    <span className="text-[11px] text-blue-600 font-bold">Initializing execution layer...</span>
-                                                                </div>
-                                                            )}
-                                                            {msg.hedgeFundLogs?.map((l, idx) => {
-                                                                const isLast = idx === (msg.hedgeFundLogs?.length ?? 0) - 1;
-                                                                const isDone = !msg.isHedgeFundRunning || !isLast;
-                                                                const cleanLog = l.replace(/\x1b\[[0-9;]*m/g, '').trim();
-                                                                if (!cleanLog) return null;
-                                                                return (
-                                                                    <div key={idx} className="flex items-center gap-1.5 py-0.5">
-                                                                        {isDone ? (
-                                                                            <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                                                        ) : (
-                                                                            <div className="w-2.5 h-2.5 border border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                                                                        )}
-                                                                        <span className={`text-[11px] leading-snug break-words flex-1 ${isDone ? 'text-gray-600 font-medium' : 'text-blue-600 font-bold'}`}>{cleanLog}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {/* ── Stock Analysis Flow ── */}
-                                                {(msg.isStockAnalysisRunning || (msg.stockAnalysisLogs && msg.stockAnalysisLogs.length > 0)) && (
-                                                    <div className="mb-4">
-                                                        <div className="flex items-center gap-1.5 mb-2">
-                                                            {msg.isStockAnalysisRunning ? (
-                                                                <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                                                            ) : (
-                                                                <div className="w-3.5 h-3.5 rounded-full bg-red-100 flex items-center justify-center">
-                                                                    <svg className="w-2 h-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                                </div>
-                                                            )}
-                                                            <span className="text-[11px] font-semibold text-gray-500">{msg.isStockAnalysisRunning ? 'Stock Analysis gathering data...' : 'Analysis complete'}</span>
-                                                        </div>
-                                                        <div className="pl-2 border-l-2 border-gray-100 ml-[7px] space-y-0.5 max-h-[350px] overflow-y-auto">
-                                                            {msg.stockAnalysisLogs?.length === 0 && msg.isStockAnalysisRunning && (
-                                                                <div className="flex items-center gap-1.5 py-0.5">
-                                                                    <div className="w-2.5 h-2.5 border border-red-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                                                                    <span className="text-[11px] text-red-600 font-bold">Initializing stock analysis module...</span>
-                                                                </div>
-                                                            )}
-                                                            {msg.stockAnalysisLogs?.map((l, idx) => {
-                                                                const isLast = idx === (msg.stockAnalysisLogs?.length ?? 0) - 1;
-                                                                const isDone = !msg.isStockAnalysisRunning || !isLast;
-                                                                const cleanLog = l.replace(/\x1b\[[0-9;]*m/g, '').trim();
-                                                                if (!cleanLog) return null;
-                                                                return (
-                                                                    <div key={idx} className="flex items-center gap-1.5 py-0.5">
-                                                                        {isDone ? (
-                                                                            <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                                                        ) : (
-                                                                            <div className="w-2.5 h-2.5 border border-red-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                                                                        )}
-                                                                        <span className={`text-[11px] leading-snug break-words flex-1 ${isDone ? 'text-gray-600 font-medium' : 'text-red-600 font-bold'}`}>{cleanLog}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {isRouting && msg.isStreaming && i === messages.length - 1 && (
-                                                    <div className="mb-3 mt-1 flex items-center gap-2 text-blue-500 font-mono text-[10px]">
-                                                        <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                                        Router Agent: Evaluating intent & scaling capacity...
-                                                    </div>
-                                                )}
                                                 {msg.content ? (
-                                                    <div className="text-[13px] text-gray-700 leading-relaxed markdown-content">
-                                                        {renderMarkdownContent(msg.content)}
+                                                    <div className="text-[13px] text-gray-700 leading-relaxed space-y-1">
+                                                        {renderMarkdown(msg.content)}
                                                     </div>
                                                 ) : msg.isStreaming ? (
                                                     <div className="flex items-center gap-1 py-1">
@@ -1329,35 +991,46 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                                                     </div>
                                                 ) : null}
                                                 {!msg.isStreaming && msg.content && (
-                                                    <p className="text-[9px] text-gray-400 mt-2">{msg.timestamp}</p>
+                                                    <div className="flex items-center gap-0.5 mt-3">
+                                                        {/* Copy */}
+                                                        <button
+                                                            onClick={() => handleCopy(i, msg.content)}
+                                                            title="Copy markdown"
+                                                            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-all"
+                                                        >
+                                                            {copied[i] ? (
+                                                                <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                                            ) : (
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" strokeWidth={2} /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" strokeWidth={2} /></svg>
+                                                            )}
+                                                        </button>
+                                                        {/* Like */}
+                                                        <button
+                                                            onClick={() => handleReaction(i, 'liked')}
+                                                            title="Like"
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                                                                reactions[i] === 'liked' ? 'text-blue-500 bg-blue-50' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill={reactions[i] === 'liked' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z" /><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" /></svg>
+                                                        </button>
+                                                        {/* Dislike */}
+                                                        <button
+                                                            onClick={() => handleReaction(i, 'disliked')}
+                                                            title="Dislike"
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                                                                reactions[i] === 'disliked' ? 'text-red-400 bg-red-50' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill={reactions[i] === 'disliked' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z" /><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" /></svg>
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
                                     )}
                                 </div>
                             ))}
-                            {workflowPhase === 'research' && messages.length === 1 && (
-                                <div className="flex items-start gap-3">
-                                    <div className="w-7 h-7 rounded-xl bg-gray-900 flex items-center justify-center text-white text-[10px] font-black shrink-0 mt-0.5">L</div>
-                                    <div className="flex-1 min-w-0 mt-1">
-                                        <div className="mb-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                                <span className="text-[11px] font-semibold text-gray-500">Phase 1: Signal Radar acquiring intelligence... (This may take up to 5 minutes)</span>
-                                            </div>
-                                            <div className="pl-2 border-l-2 border-gray-100 ml-1.5 space-y-1.5 max-h-64 overflow-y-auto">
-                                                {researchLogs.map((log, lIdx) => (
-                                                    <div key={lIdx} className="text-[10px] text-gray-400 font-mono flex items-start gap-1.5 leading-relaxed">
-                                                        <span className="text-gray-300 mt-0.5">&gt;</span>
-                                                        <span className={log.includes('Error') || log.includes('error') ? 'text-red-400' : ''}>{log}</span>
-                                                    </div>
-                                                ))}
-                                                <div ref={messagesEndRef} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                             <div ref={messagesEndRef} />
                         </div>
                     </div>
@@ -1365,73 +1038,194 @@ const SuperAgentChat: React.FC<SuperAgentChatProps> = ({ initialMessage, restore
                     {/* Input */}
                     <div className="shrink-0 pt-2 pb-8 px-4 md:px-8 bg-gradient-to-t from-white via-white to-transparent">
                         <div className="max-w-3xl mx-auto">
-                            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl shadow-sm pl-2 pr-4 py-2 focus-within:border-gray-300 focus-within:shadow-md transition-all">
-                                <div className="relative shrink-0" ref={modeRef}>
-                                    <button
-                                        onClick={() => setModeOpen(v => !v)}
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-all"
-                                    >
-                                        {React.createElement(MODES.find(m => m.id === currentMode)!.icon)}
-                                        <span className="hidden sm:inline">{MODES.find(m => m.id === currentMode)?.label}</span>
-                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                    </button>
-                                    {modeOpen && (
-                                        <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden z-30" style={{ animation: 'menu-pop 0.15s ease-out' }}>
-                                            {MODES.map(m => {
-                                                const MIcon = m.icon;
-                                                const isActive = currentMode === m.id;
-                                                return (
-                                                <button
-                                                    key={m.id}
-                                                    onClick={() => { setCurrentMode(m.id); setModeOpen(false); }}
-                                                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors ${isActive ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
-                                                >
-                                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                        <MIcon />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className={`text-[12px] font-semibold ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>{m.label}</p>
-                                                        <p className="text-[10px] text-gray-400 leading-tight">{m.desc}</p>
-                                                    </div>
-                                                    {isActive && (
-                                                        <svg className="w-3.5 h-3.5 text-gray-900 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                    )}
-                                                </button>
-                                                );
-                                            })}
+                            <div className="bg-white border border-gray-200 rounded-2xl relative" style={{ boxShadow: '0 2px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)' }}>
+                                {/* Voice overlay: Recording */}
+                                {voiceState === 'recording' && (
+                                    <div className="absolute inset-x-0 top-0 bottom-[52px] flex items-center justify-center">
+                                        <div className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-full px-4 py-2 shadow-sm">
+                                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                                            <div className="flex items-end gap-[3px] h-4">
+                                                {[
+                                                    { delay: '0s',    dur: '1.8s' },
+                                                    { delay: '0.3s',  dur: '1.2s' },
+                                                    { delay: '0.6s',  dur: '2.1s' },
+                                                    { delay: '0.15s', dur: '1.5s' },
+                                                    { delay: '0.45s', dur: '1.9s' },
+                                                ].map(({ delay, dur }, i) => (
+                                                    <span key={i} className="voice-bar w-[3px]" style={{ animationName: 'voice-bar', animationDuration: dur, animationDelay: delay, animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite' }} />
+                                                ))}
+                                            </div>
+                                            <button
+                                                onClick={stopRecording}
+                                                className="ml-0.5 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                                            </button>
                                         </div>
-                                    )}
-                                </div>
-                                <input
-                                    type="text"
+                                    </div>
+                                )}
+                                {/* Voice overlay: Transcribing */}
+                                {voiceState === 'transcribing' && (
+                                    <div className="absolute inset-x-0 top-0 bottom-[52px] flex items-center justify-center">
+                                        <div className="flex items-center bg-white border border-gray-200 rounded-full px-4 py-2 shadow-sm">
+                                            <span className="text-[13px] text-gray-500 font-medium">Thinking…</span>
+                                        </div>
+                                    </div>
+                                )}
+                                {/* Hidden file input */}
+                                <input ref={chatFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleChatFileChange} />
+                                {/* Image preview strip */}
+                                {chatPastedImages.length > 0 && voiceState === 'idle' && (
+                                    <div className="flex items-center gap-2 px-4 pt-3 flex-wrap">
+                                        {chatPastedImages.map((src, idx) => (
+                                            <div key={idx} className="relative group shrink-0">
+                                                <img src={src} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-200 shadow-sm" />
+                                                <button
+                                                    onClick={() => setChatPastedImages(prev => prev.filter((_, i) => i !== idx))}
+                                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                                >
+                                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <textarea
+                                    ref={textareaRef}
+                                    rows={1}
                                     value={inputText}
                                     onChange={e => setInputText(e.target.value)}
+                                    onPaste={handleChatPaste}
                                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                    placeholder="Ask a follow-up question..."
-                                    disabled={isStreaming}
-                                    className="flex-1 bg-transparent outline-none text-sm text-gray-900 placeholder:text-gray-400 py-2 min-w-0"
+                                    placeholder={voiceState !== 'idle' ? '' : 'Ask a follow-up question...'}
+                                    disabled={isStreaming || voiceState !== 'idle'}
+                                    className="w-full bg-transparent outline-none resize-none text-[14px] text-gray-900 placeholder:text-gray-400 px-4 pt-4 pb-2 leading-relaxed overflow-y-auto"
+                                    style={{ minHeight: '56px', maxHeight: '200px', visibility: voiceState !== 'idle' ? 'hidden' : 'visible' }}
                                 />
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Attach file">
-                                        <InputIcons.Attach />
-                                    </button>
-                                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Add image">
-                                        <InputIcons.Image />
-                                    </button>
-                                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Voice input">
-                                        <InputIcons.Mic />
-                                    </button>
-                                    <button
-                                        onClick={handleSend}
-                                        disabled={!inputText.trim() || isStreaming}
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ml-1 ${inputText.trim() && !isStreaming ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                                    </button>
+                                <div className="flex items-center justify-between px-3 pb-3">
+                                    {/* Left: mode selector + agent selector */}
+                                    <div className="flex items-center gap-1">
+                                        <div className="relative" ref={chatModeRef}>
+                                            <button
+                                                onClick={() => setChatModeOpen(v => !v)}
+                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-all"
+                                            >
+                                                {React.createElement(currentChatMode.icon)}
+                                                {currentChatMode.label}
+                                                <ChatChevron />
+                                            </button>
+                                            {chatModeOpen && (
+                                                <div className="absolute bottom-full left-0 mb-1.5 w-64 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30" style={{ animation: 'menu-pop 0.15s ease-out' }}>
+                                                    {CHAT_MODES.map(m => {
+                                                        const MIcon = m.icon;
+                                                        const isActive = chatMode === m.id;
+                                                        return (
+                                                            <button
+                                                                key={m.id}
+                                                                onClick={() => { setChatMode(m.id); setChatModeOpen(false); }}
+                                                                className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors ${isActive ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                                                            >
+                                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                                    <MIcon />
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className={`text-[12px] font-semibold ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>{m.label}</p>
+                                                                    <p className="text-[10px] text-gray-400 leading-tight">{m.desc}</p>
+                                                                </div>
+                                                                {isActive && (
+                                                                    <svg className="w-3.5 h-3.5 text-gray-900 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* Agent selector */}
+                                        <div className="relative" ref={agentPickerRef}>
+                                            {chatSelectedAgent ? (() => {
+                                                const ag = QUICK_ACTIONS.find(a => a.id === chatSelectedAgent);
+                                                if (!ag) return null;
+                                                const AgIc = ag.icon;
+                                                return (
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[12px] font-medium">
+                                                        <AgIc />
+                                                        <span>{ag.label}</span>
+                                                        <button
+                                                            onClick={() => setChatSelectedAgent(null)}
+                                                            className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors"
+                                                        >
+                                                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })() : (
+                                                <button
+                                                    onClick={() => setAgentPickerOpen(v => !v)}
+                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" /></svg>
+                                                    Agent
+                                                    <ChatChevron />
+                                                </button>
+                                            )}
+                                            {agentPickerOpen && !chatSelectedAgent && (
+                                                <div className="absolute bottom-full left-0 mb-1.5 w-52 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30" style={{ animation: 'menu-pop 0.15s ease-out' }}>
+                                                    {QUICK_ACTIONS.map(ag => {
+                                                        const AgIc = ag.icon;
+                                                        return (
+                                                            <button
+                                                                key={ag.id}
+                                                                onClick={() => { setChatSelectedAgent(ag.id); setAgentPickerOpen(false); }}
+                                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-gray-50 transition-colors"
+                                                            >
+                                                                <div className="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+                                                                    <AgIc />
+                                                                </div>
+                                                                <span className="text-[12px] font-medium text-gray-700">{ag.label}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* Right: action buttons */}
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => chatFileRef.current?.click()} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Attach file">
+                                            <InputIcons.Attach />
+                                        </button>
+                                        <button
+                                            onClick={handleVoiceClick}
+                                            title={voiceState === 'recording' ? 'Stop recording' : 'Voice input'}
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                                                voiceState === 'recording'
+                                                    ? 'text-red-500 bg-red-50 hover:bg-red-100'
+                                                    : voiceState === 'transcribing'
+                                                    ? 'text-gray-300 cursor-not-allowed'
+                                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                            disabled={voiceState === 'transcribing'}
+                                        >
+                                            {voiceState === 'recording' ? (
+                                                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                                            ) : (
+                                                <InputIcons.Mic />
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={!inputText.trim() || isStreaming}
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${inputText.trim() && !isStreaming ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 {/* Knowledge Graph Card */}
